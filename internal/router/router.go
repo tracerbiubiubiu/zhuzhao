@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
 // Deps 路由依赖
@@ -59,14 +61,15 @@ type Deps struct {
 	// S6 二期 B6-7 站内消息中心（000076 起 selfService 组——自数据无 L1 码；inbox:read 随 000078 退役）
 	InboxHandler *handler.InboxHandler
 
-	JWTManager   *jwt.Manager
-	Enforcer     *casbin.SyncedEnforcer
-	RedisClient  *redis.Client
-	DBPool       *pgxpool.Pool
-	Logger       *slog.Logger
-	RoleFetcher  middleware.RoleFetcher
-	AuditService middleware.AuditLogger
-	Registry     resource.Registry
+	JWTManager       *jwt.Manager
+	Enforcer         *casbin.SyncedEnforcer
+	RedisClient      *redis.Client
+	DBPool           *pgxpool.Pool
+	AccountSnapshots middleware.AccountSnapshotter
+	Logger           *slog.Logger
+	RoleFetcher      middleware.RoleFetcher
+	AuditService     middleware.AuditLogger
+	Registry         resource.Registry
 
 	// E-②：内网回调端点（/internal/jobs/callback，AK/SK 验签 + 专用网络拓扑；C10：action_id 在 body）。
 	// Enabled=false（默认）不挂路由；SK 缺失已在 config.Load 拒绝启动（fail-closed）。
@@ -184,6 +187,11 @@ func New(deps Deps) *gin.Engine {
 	// 翻案追记）：Enabled=false（默认）不挂载；装配逻辑独立为 mountCompatGroup
 	//（可测——开关/验签/归因的装配层断言见 compat_mount_test.go）。
 	mountCompatGroup(r, deps.CompatAKSK)
+	accountSnapshots := deps.AccountSnapshots
+	if accountSnapshots == nil {
+		accountSnapshots = accountSnapshotSource{lookup: repository.NewAccountSecurityLookup(deps.DBPool)}
+	}
+	jwtOpts := []middleware.JWTOption{middleware.WithAccountSecurity(accountSnapshots)}
 
 	v1 := r.Group("/api/v1")
 	{
@@ -202,7 +210,7 @@ func New(deps Deps) *gin.Engine {
 		// 以下路由需要 JWT 认证 + Casbin 鉴权 + 审计日志
 		authed := v1.Group("")
 		authed.Use(
-			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
@@ -217,6 +225,9 @@ func New(deps Deps) *gin.Engine {
 				// 认证模块（需鉴权）
 				selfService.POST("/auth/logout", deps.AuthHandler.Logout)
 				selfService.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)
+				// C05：按原操作号受权核查账号安全操作结果（丢响应后按 K 查——
+				// 绑定原操作者或目标管理权；catalogExempt 登记）
+				selfService.GET("/users/status/result", deps.UserHandler.OperationResult)
 				// B5-4 richtext 渲染 SSOT（05 号 §6）：登录态自服务——无票据访问面、
 				// 纯消毒渲染（A.7 存储自服务面同款形态）
 				selfService.POST("/tickets/richtext/render", deps.TicketHandler.RenderRichtext)
@@ -264,7 +275,7 @@ func New(deps Deps) *gin.Engine {
 			files := v1.Group("/files")
 			files.Use(
 				// A.11 双凭证：header 优先→file_session cookie 桥接（B5-2-2 形态 B）
-				middleware.FileAuth(middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup)),
+				middleware.FileAuth(middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...)),
 				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			)
 			{
@@ -276,7 +287,7 @@ func New(deps Deps) *gin.Engine {
 			// 手动落行[谁/筛选/行数]）；L1 = CasbinAuth + menu_apis 绑 ticket_list（000065）
 			ticketExport := v1.Group("")
 			ticketExport.Use(
-				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...),
 				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 				middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
 			)
@@ -535,7 +546,7 @@ func New(deps Deps) *gin.Engine {
 	// 未配置上游不挂载（gateway 默认关闭）。
 	if deps.Gateway != nil {
 		deps.Gateway.Mount(r,
-			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup),
+			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
@@ -561,4 +572,18 @@ func mountCompatGroup(r *gin.Engine, cfg config.CompatAKSKConfig) {
 	}
 	compatGroup := r.Group("/compat", compat.GinMiddleware(&compat.Verifier{Keys: keys}, nil))
 	compatGroup.POST("/echo", (&handler.CompatHandler{}).Echo)
+}
+
+// accountSnapshotSource C05 装配桥：repo 安全快照 → middleware 最小账号事实
+// （middleware 不引 repository，router 双侧可见做结构适配）。
+type accountSnapshotSource struct {
+	lookup *repository.AccountSecurityLookup
+}
+
+func (a accountSnapshotSource) AccountSnapshot(ctx context.Context, userID int64) (middleware.AccountSnapshot, error) {
+	snap, err := a.lookup.AccountSecuritySnapshot(ctx, userID)
+	if err != nil {
+		return middleware.AccountSnapshot{}, err
+	}
+	return middleware.AccountSnapshot{Status: snap.Status, Deleted: snap.Deleted, SessionEpoch: snap.SessionEpoch, ProjectionEpoch: snap.ProjectionEpoch}, nil
 }

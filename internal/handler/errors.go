@@ -39,6 +39,8 @@ var httpStatusByCode = map[int]int{
 	errcode.ErrFileTypeNotAllowed.Code:     http.StatusBadRequest, // 文件类型不允许
 	errcode.ErrFileNotFound.Code:           http.StatusNotFound,   // 文件不存在（含防枚举归属遮蔽）
 	errcode.ErrFileAlreadyBound.Code:       http.StatusConflict,   // 已确认/已关联
+	// 503 依赖故障（C05：投影待恢复等可恢复 503 统一透传业务码，UI 按码分类）
+	errcode.ErrServiceUnavailable.Code: 503,
 	// 400 参数/业务规则
 	errcode.ErrInvalidParams.Code:        400,
 	errcode.ErrOrgCannotMoveToChild.Code: 400,

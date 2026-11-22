@@ -106,13 +106,13 @@ func TestUserService_UpdateStatusGuards(t *testing.T) {
 	require.NoError(t, userRepo.Create(ctx, me))
 
 	// 禁用自己 → 403（ErrForbidden）
-	err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: me.ID, Status: 0}, me.ID)
+	_, err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: me.ID, Status: 0}, me.ID, "")
 	requireErrCode(t, err, errcode.ErrForbidden)
 
 	// is_system 用户禁用 → 403（ErrUserIsSystem）
 	sysUser := &model.User{Username: "sys", EmployeeNo: "E640002", Password: hash, Status: 1, IsSystem: true}
 	require.NoError(t, userRepo.Create(ctx, sysUser))
-	err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: sysUser.ID, Status: 0}, me.ID)
+	_, err = svc.UpdateStatus(ctx, &model.UpdateUserStatusRequest{UserID: sysUser.ID, Status: 0}, me.ID, "")
 	requireErrCode(t, err, errcode.ErrUserIsSystem)
 }
 

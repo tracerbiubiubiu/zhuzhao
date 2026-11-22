@@ -49,7 +49,7 @@ func TestTicketPeopleHTTP_ContextGateAndProjection(t *testing.T) {
 	ctx := context.Background()
 	uid := func(name string, status int) int64 {
 		var id int64
-		require.NoError(t, pool.QueryRow(ctx, `INSERT INTO users(username,password,employee_no,real_name,status) VALUES($1,'not-a-credential',$1,$1,$2) RETURNING id`, name, status).Scan(&id))
+		require.NoError(t, pool.QueryRow(ctx, `INSERT INTO users(username,password,employee_no,real_name,status,session_epoch,session_projection_epoch) VALUES($1,'not-a-credential',$1,$1,$2,3,3) RETURNING id`, name, status).Scan(&id))
 		return id
 	}
 	actor := uid("f3_operator", 1)
@@ -92,7 +92,7 @@ func TestTicketPeopleHTTP_ContextGateAndProjection(t *testing.T) {
 	svc := ticket.NewTicketService(pool, repository.NewTicketRepo(pool), orgs, reg, roles, service.NewOrgDelegationService(pool), nil, nil, nil)
 	spy := &peopleSearchSpy{repo: repository.NewTicketPeopleRepo(pool)}
 	m := jwtpkg.NewManager(jwtpkg.Config{Secret: "people-test-identity-only-0123456789", AccessTTL: time.Minute})
-	r := router.New(router.Deps{JWTManager: m, AuditService: peopleAudit{}, RedisClient: startStubRedis(t), Enforcer: enforcer, RoleFetcher: roles, Registry: reg, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), TicketPeopleHandler: handler.NewTicketPeopleHandler(ticket.NewPeopleService(svc, enforcer, spy))})
+	r := router.New(router.Deps{DBPool: pool, JWTManager: m, AuditService: peopleAudit{}, RedisClient: startStubRedis(t), Enforcer: enforcer, RoleFetcher: roles, Registry: reg, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), TicketPeopleHandler: handler.NewTicketPeopleHandler(ticket.NewPeopleService(svc, enforcer, spy))})
 	query := func(purpose string, id int64) string {
 		return fmt.Sprintf("/api/v1/tickets/people?purpose=%s&ticket_id=%d&q=needle", purpose, id)
 	}

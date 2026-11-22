@@ -1125,6 +1125,30 @@ definitions:
     required:
     - action
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service.UserOperationResultView:
+    properties:
+      account_status:
+        type: integer
+      command:
+        type: string
+      created_at:
+        type: string
+      operation_id:
+        type: string
+      projection_pending:
+        type: boolean
+      projection_state:
+        type: string
+      session_epoch:
+        example: "0"
+        type: string
+      status:
+        type: string
+      target_user_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_handler.DeleteAttachmentInput:
     properties:
       object_key:
@@ -3669,6 +3693,31 @@ paths:
       security:
       - BearerAuth: []
       summary: 启用/禁用用户
+      tags:
+      - users
+  /api/v1/users/status/result:
+    get:
+      parameters:
+      - description: 原操作号（X-Operation-ID）
+        in: query
+        name: operation_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 原操作回执及对应代际的投影状态
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service.UserOperationResultView'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 按原操作号核查账号安全操作结果（停用/删除/重置/自助改密）
       tags:
       - users
   /api/v1/users/update:

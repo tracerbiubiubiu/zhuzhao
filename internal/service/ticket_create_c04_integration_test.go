@@ -113,7 +113,11 @@ func newCreateC04(t *testing.T, prepare func(*createC04Fixture)) *createC04Fixtu
 
 func (f *createC04Fixture) request(ctx context.Context, purposeChange string) *httptest.ResponseRecorder {
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("userID", f.actor); c.Next() }, middleware.CasbinAuth(f.enforcer, f.rbac, nil))
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", f.actor)
+		c.Set("session_epoch", int64(1)) // 初始数据库安全代际的合成准入事实
+		c.Next()
+	}, middleware.CasbinAuth(f.enforcer, f.rbac, nil))
 	path := "/api/v1/tickets"
 	if purposeChange == "wrong_route" {
 		path += "/update"
@@ -347,7 +351,11 @@ func TestC04_CreateSingleConnectionValidationAndDispatch(t *testing.T) {
 	// This is the same production handler/middleware/route, with MIME and
 	// dictionary reads active inside G2 and a real post-commit assignment.
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("userID", f.actor); c.Next() }, middleware.CasbinAuth(f.enforcer, f.rbac, nil))
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", f.actor)
+		c.Set("session_epoch", int64(1))
+		c.Next()
+	}, middleware.CasbinAuth(f.enforcer, f.rbac, nil))
 	r.POST("/api/v1/tickets", handler.NewTicketHandler(f.svc, nil, nil).Create)
 	body := fmt.Sprintf(`{"type_code":%q,"title":%q,"org_id":"%d","template_code":%q,"custom_data":{"source":"synthetic","choice":"valid","upload":[%q]}}`, f.code, f.code, f.org, f.code, f.code+".png")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets", bytes.NewBufferString(body)).WithContext(ctx)

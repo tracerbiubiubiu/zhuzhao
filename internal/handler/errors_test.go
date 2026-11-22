@@ -74,7 +74,6 @@ var allErrCodes = []*errcode.Error{
 var unmappedAllowlist = map[int]string{
 	errcode.ErrInternal.Code:               "内部错误本义 500",
 	errcode.ErrTooManyReqs.Code:            "429 由登录锁定路径直写（TooManyRequests）",
-	errcode.ErrServiceUnavailable.Code:     "503 由鉴权中间件直写（ServiceUnavailable）",
 	errcode.ErrInvalidCredentials.Code:     "auth handler 直写",
 	errcode.ErrTokenExpired.Code:           "auth handler 直写",
 	errcode.ErrRefreshTokenInvalid.Code:    "auth handler 直写",

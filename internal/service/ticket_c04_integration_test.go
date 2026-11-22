@@ -33,7 +33,7 @@ import (
 // including its durable event/comment, even with a stale in-memory enforcer.
 func TestC04_HTTPFreshAuthorization(t *testing.T) {
 	for _, command := range []string{"update", "transition", "close", "assign", "comments", "notes", "relations", "delete", "cc", "cc/remove", "tags", "tags/remove"} {
-		for _, change := range []string{"allow", "policy", "role", "account", "membership", "l3", "hidden", "cc", "deleted", "org_allow", "org_revoke", "expired", "inherit_allow", "inherit_revoke", "wrong_route", "wrong_actor", "rollback", "post", "concurrent_account", "allow_reverse", "target_hidden", "target_l3", "duplicate_reverse", "closed_reply", "post_ignored", "post_builtin"} {
+		for _, change := range []string{"allow", "policy", "role", "account", "membership", "l3", "hidden", "cc", "deleted", "org_allow", "org_revoke", "expired", "inherit_allow", "inherit_revoke", "wrong_route", "wrong_actor", "rollback", "post", "concurrent_account", "allow_reverse", "target_hidden", "target_l3", "duplicate_reverse", "closed_reply", "post_ignored", "post_builtin", "credential_missing", "pat_revoked", "pat_expired", "pat_owner", "pat_removed", "pat_wrong_type", "credential_ambiguous"} {
 			if command != "transition" && change == "post" {
 				continue
 			}
@@ -231,8 +231,22 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 					want = http.StatusOK
 				}
 
+				var patID int64
+				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO personal_access_tokens(user_id,name,secret_hash)VALUES($1,'fixture',$2)RETURNING id`, actor, code).Scan(&patID))
 				r := gin.New()
-				r.Use(func(c *gin.Context) { c.Set("userID", actor); c.Next() })
+				r.Use(func(c *gin.Context) {
+					c.Set("userID", actor)
+					if change != "credential_missing" {
+						c.Set("pat_id", patID)
+					}
+					if change == "pat_wrong_type" {
+						c.Set("pat_id", "fixture")
+					}
+					if change == "credential_ambiguous" {
+						c.Set("session_epoch", int64(0))
+					}
+					c.Next()
+				})
 				if selfService {
 					r.Use(middleware.SelfService())
 				}
@@ -267,6 +281,14 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 						q := repository.IAMDB(ctx, testPool)
 						var err error
 						switch change {
+						case "pat_revoked":
+							return repository.NewPatRepo(testPool).Revoke(ctx, patID, actor)
+						case "pat_expired":
+							_, err = q.Exec(ctx, `UPDATE personal_access_tokens SET expires_at=NOW()-interval '1 second' WHERE id=$1`, patID)
+						case "pat_owner":
+							_, err = q.Exec(ctx, `UPDATE personal_access_tokens SET user_id=$2 WHERE id=$1`, patID, other)
+						case "pat_removed":
+							_, err = q.Exec(ctx, `DELETE FROM personal_access_tokens WHERE id=$1`, patID)
 						case "policy":
 							_, err = q.Exec(ctx, `DELETE FROM casbin_rule WHERE v0=$1`, "role::"+code)
 						case "role":
@@ -376,7 +398,9 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 					require.Equal(t, 2, events)
 					require.Equal(t, 1, comments)
 				}
-				if change != "wrong_route" && change != "wrong_actor" {
+				if change == "credential_missing" || change == "pat_wrong_type" || change == "credential_ambiguous" {
+					require.Empty(t, trace.pids, "invalid credential facts fail before decision reads")
+				} else if change != "wrong_route" && change != "wrong_actor" {
 					require.Len(t, trace.pids, 1, "fresh IAM reads, L2/L3 and writes use one connection")
 				}
 				if change == "post_ignored" {
@@ -393,13 +417,17 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 
 // Observe production query execution, not an authorization stub.
 type c04Trace struct {
-	mu       sync.Mutex
-	pids     map[uint32]bool
-	attempt  chan struct{}
-	rowLocks []int64
+	mu          sync.Mutex
+	pids        map[uint32]bool
+	attempt     chan struct{}
+	rowLocks    []int64
+	beforeWrite func(context.Context)
 }
 
 func (tr *c04Trace) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	if tr.beforeWrite != nil && strings.Contains(data.SQL, "UPDATE tickets") {
+		tr.beforeWrite(ctx)
+	}
 	if strings.Contains(data.SQL, "pg_advisory_lock") {
 		select {
 		case tr.attempt <- struct{}{}:

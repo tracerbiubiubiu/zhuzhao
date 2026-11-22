@@ -94,7 +94,10 @@ func TestIAMGuard_RevocationAndTargetGrantCommitBeforeSensitiveWrite(t *testing.
 			}
 			done := make(chan error, 1)
 			go func() {
-				done <- svc.ResetPassword(ctx, &model.ResetPasswordRequest{UserID: f.target, Password: "SyntheticChangedPassword#2026"}, f.actor)
+				func() {
+					_, err := svc.ResetPassword(ctx, &model.ResetPasswordRequest{UserID: f.target, Password: "SyntheticChangedPassword#2026"}, f.actor, "")
+					done <- err
+				}()
 			}()
 			select {
 			case event := <-trace.event:

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/crypto"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
@@ -24,6 +27,7 @@ type UserService struct {
 	db            *pgxpool.Pool
 	userRepo      *repository.UserRepo
 	roleRepo      *repository.RoleRepo
+	opsRepo       *repository.SessionOperationRepo
 	orgService    *OrgService
 	rdb           *goredis.Client
 	jwtManager    *jwtpkg.Manager
@@ -41,9 +45,21 @@ func NewUserService(
 		db:         db,
 		userRepo:   userRepo,
 		roleRepo:   roleRepo,
+		opsRepo:    repository.NewSessionOperationRepo(db),
 		orgService: orgService,
 		rdb:        rdb,
 		jwtManager: jwtManager,
+	}
+}
+
+// sessionDeps C05 统一安全写依赖集（账号状态/删除/重置与自助改密共用）。
+func (s *UserService) sessionDeps() SessionSecurityDeps {
+	return SessionSecurityDeps{
+		pool:      s.db,
+		userRepo:  s.userRepo,
+		opsRepo:   s.opsRepo,
+		rdb:       s.rdb,
+		accessTTL: s.jwtManager.AccessTTL(),
 	}
 }
 
@@ -196,9 +212,41 @@ func (s *UserService) Create(ctx context.Context, req *model.CreateUserRequest, 
 			return nil, err
 		}
 	}
+	// C05：创建同事务写初始安全事实回执与投影意图（epoch=1/projection=0 由列默认
+	// 承载；首版目标代际 1，worker/内联投影确认后登录准入放行）
+	opsRepo := repository.NewSessionOperationRepo(s.db)
+	initialEpoch := int64(1)
+	if err := opsRepo.InsertOperationTx(ctx, tx, &repository.SessionOperation{
+		OperationID:      fmt.Sprintf("create:%d", user.ID),
+		Namespace:        "http",
+		Command:          SessionCmdUserCreate,
+		TargetUserID:     user.ID,
+		ActorUserID:      actorUserID,
+		ExpectedEpoch:    initialEpoch,
+		InputFingerprint: SessionBindingFingerprint(SessionCmdUserCreate, user.ID, actorUserID),
+		Status:           "completed",
+		ResultEpoch:      &initialEpoch,
+	}); err != nil {
+		return nil, err
+	}
+	if err := opsRepo.InsertIntentTx(ctx, tx, &repository.SessionProjectionIntent{
+		OperationID:   fmt.Sprintf("create:%d", user.ID),
+		UserID:        user.ID,
+		TargetEpoch:   initialEpoch,
+		DesiredActive: user.Status == 1,
+		Reason:        "user-create-bootstrap",
+	}); err != nil {
+		return nil, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+	// The nested transaction is a savepoint. Only the owning IAM commit can
+	// make the bootstrap intent visible to the projection's separate connection.
+	_ = repository.AfterIAMCommit(ctx, func() error {
+		_ = tryProjectUserSession(ctx, s.sessionDeps(), user.ID, initialEpoch)
+		return nil
+	})
 	return user, nil
 }
 
@@ -257,103 +305,182 @@ func (s *UserService) Update(ctx context.Context, req *model.UpdateUserRequest, 
 	return user, nil
 }
 
-func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64) error {
+// Delete 软删除用户（C05：删除同事务推进安全代际、写回执与投影意图；
+// Redis 撤销失败不再只是日志——原意图可跨进程恢复）。
+func (s *UserService) Delete(ctx context.Context, userID, actorUserID int64, operationID string) (*SessionCommandResult, error) {
 	if !iamCommandActive(ctx, "user.delete") {
-		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.delete", actorUserID, s.userRepo, func(ctx context.Context) error { return s.Delete(ctx, userID, actorUserID) })
+		return guardedIAMValue(ctx, s.userRepo.WithIAMGuard, "user.delete", actorUserID, s.userRepo, func(ctx context.Context) (*SessionCommandResult, error) {
+			return s.Delete(ctx, userID, actorUserID, operationID)
+		})
 	}
 	if userID == actorUserID {
-		return errcode.ErrForbidden
+		return nil, errcode.ErrForbidden
 	}
 	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := s.ensureSensitiveCanManage(ctx, actorUserID, userID); err != nil {
-		return err
+		return nil, err
 	}
 	if user.IsSystem {
-		return errcode.ErrUserIsSystem
+		return nil, errcode.ErrUserIsSystem
 	}
-	// TOCTOU 修复：最后 superadmin 检查与软删除放同一事务，
-	// advisory lock 串行化并发删除，杜绝两个请求同时通过 n<=1 检查
-	if ok, err := s.userRepo.IsSuperadminUser(ctx, userID); err != nil {
-		return err
-	} else if ok {
-		if err := s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
-			if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
-				return err
+	deps := s.sessionDeps()
+	opID := ResolveOperationID(operationID)
+	if res, hit, err := lookUpOperation(ctx, deps, SessionCmdUserDelete, opID, actorUserID, userID); err != nil {
+		return nil, err
+	} else if hit {
+		return res, nil // F021：同 K 重投只返回原结果，不再次执行
+	}
+	isSuper, err := s.userRepo.IsSuperadminUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	epoch, _, _, err := securityWrite(ctx, deps, SessionCmdUserDelete, opID, "http", actorUserID, userID,
+		func(snap *repository.UserSecuritySnapshot) error {
+			if snap.Deleted {
+				return errcode.ErrUserNotFound
 			}
-			n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
-			if err != nil {
-				return err
+			return nil
+		},
+		func(tx pgx.Tx, snap *repository.UserSecuritySnapshot) (int64, bool, error) {
+			if isSuper {
+				// TOCTOU 修复：最后 superadmin 检查与软删除同事务（advisory lock 串行化）
+				if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
+					return 0, false, err
+				}
+				n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
+				if err != nil {
+					return 0, false, err
+				}
+				if n <= 1 {
+					return 0, false, errcode.ErrCannotRemoveLastSuperadmin
+				}
 			}
-			if n <= 1 {
-				return errcode.ErrCannotRemoveLastSuperadmin
-			}
-			return s.userRepo.SoftDeleteTx(ctx, tx, userID)
-		}); err != nil {
-			return err
+			newEpoch, err := s.userRepo.SoftDeleteWithEpochTx(ctx, tx, userID, snap.SessionEpoch)
+			return newEpoch, true, err
+		},
+		func(*repository.UserSecuritySnapshot) bool { return false }, "user-delete")
+	if errors.Is(err, errcode.ErrConcurrentModification) {
+		// 同 K 并发：唯一保留失败收敛为读原回执（最多执行一次）
+		if res, hit, lerr := lookUpOperation(ctx, deps, SessionCmdUserDelete, opID, actorUserID, userID); lerr == nil && hit {
+			return res, nil
 		}
-		return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()) })
+		return nil, err
 	}
-	if err := s.userRepo.SoftDelete(ctx, userID); err != nil {
-		return err
+	if err != nil {
+		return nil, err
 	}
-	return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, userID, s.jwtManager.AccessTTL()) })
+	if err := projectAfterCommit(ctx, deps, userID, epoch); err != nil {
+		return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, err
+	}
+	return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, nil
 }
 
-func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserStatusRequest, actorUserID int64) error {
+// UpdateStatus 启用/禁用（C05：状态与代际同事务推进；禁用提交后 Redis 投影
+// 失败保持已提交事实，原意图可恢复；重新启用要求前一撤销已投影确认）。
+func (s *UserService) UpdateStatus(ctx context.Context, req *model.UpdateUserStatusRequest, actorUserID int64, operationID string) (*SessionCommandResult, error) {
 	if !iamCommandActive(ctx, "user.status") {
-		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.status", actorUserID, s.userRepo, func(ctx context.Context) error { return s.UpdateStatus(ctx, req, actorUserID) })
+		return guardedIAMValue(ctx, s.userRepo.WithIAMGuard, "user.status", actorUserID, s.userRepo, func(ctx context.Context) (*SessionCommandResult, error) {
+			return s.UpdateStatus(ctx, req, actorUserID, operationID)
+		})
 	}
 	// B4-3：不能禁用自己（自禁用后需他人恢复，易产生工单；与 Delete 的自我保护对齐）
 	if req.Status == 0 && req.UserID == actorUserID {
-		return errcode.ErrForbidden
+		return nil, errcode.ErrForbidden
 	}
 	// B4-3：is_system 种子用户不可禁用（与 Delete 的 ErrUserIsSystem 保护对齐；
 	// 种子 admin 被禁用将失去兜底管理入口）
 	target, err := s.userRepo.FindByID(ctx, req.UserID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if req.Status == 0 && target.IsSystem {
-		return errcode.ErrUserIsSystem
+		return nil, errcode.ErrUserIsSystem
 	}
 	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
-		return err
+		return nil, err
 	}
-	if req.Status == 0 {
-		// TOCTOU 修复：禁用 superadmin 的最后一人检查与状态更新同事务
-		if ok, err := s.userRepo.IsSuperadminUser(ctx, req.UserID); err != nil {
-			return err
-		} else if ok {
-			if err := s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
+	deps := s.sessionDeps()
+	opID := ResolveOperationID(operationID)
+	command := SessionCmdUserDisable
+	if req.Status == 1 {
+		command = SessionCmdUserEnable
+	}
+	if res, hit, err := lookUpOperation(ctx, deps, command, opID, actorUserID, req.UserID); err != nil {
+		return nil, err
+	} else if hit {
+		return res, nil // F021：同 K 重投只返回原结果，不无意义推进代际
+	}
+	if req.Status == 1 {
+		// enable 门（底座 §4.2）：重新启用不自动清除未完成撤销——已切换账号在
+		// 前一撤销投影确认前拒绝启用并保持停用（待恢复冲突）
+		switched, err := deps.opsRepo.HasAnyIntentForUser(ctx, req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if switched {
+			snap, err := s.userRepo.SecuritySnapshot(ctx, req.UserID)
+			if err != nil {
+				return nil, err
+			}
+			if snap.ProjectionEpoch < snap.SessionEpoch {
+				return nil, errcode.ErrServiceUnavailable
+			}
+		}
+	}
+	isSuper, err := s.userRepo.IsSuperadminUser(ctx, req.UserID)
+	if err != nil {
+		return nil, err
+	}
+	epoch, changed, _, err := securityWrite(ctx, deps, command, opID, "http", actorUserID, req.UserID,
+		func(snap *repository.UserSecuritySnapshot) error {
+			if snap.Deleted {
+				return errcode.ErrUserNotFound
+			}
+			return nil
+		},
+		func(tx pgx.Tx, snap *repository.UserSecuritySnapshot) (int64, bool, error) {
+			if req.Status == 0 && snap.Status == 0 {
+				// 重复相同目标状态不无意义推进
+				return snap.SessionEpoch, false, nil
+			}
+			if req.Status == 0 && isSuper {
+				// TOCTOU 修复：禁用 superadmin 的最后一人检查与状态更新同事务
 				if err := repository.AcquireSuperadminGuard(ctx, tx); err != nil {
-					return err
+					return 0, false, err
 				}
 				n, err := s.userRepo.CountActiveSuperadminUsersTx(ctx, tx)
 				if err != nil {
-					return err
+					return 0, false, err
 				}
 				if n <= 1 {
-					return errcode.ErrCannotRemoveLastSuperadmin
+					return 0, false, errcode.ErrCannotRemoveLastSuperadmin
 				}
-				return s.userRepo.UpdateStatusTx(ctx, tx, req.UserID, req.Status)
-			}); err != nil {
-				return err
 			}
-			// 与非超管禁用路径一致：禁用成功后吊销全部会话
-			// （JWT 中间件不查 DB status，须靠 disabled 键拦截存量 AT）
-			return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
+			newEpoch, changed, err := s.userRepo.AdvanceEpochSetStatusTx(ctx, tx, req.UserID, snap.SessionEpoch, req.Status)
+			return newEpoch, changed, err
+		},
+		func(*repository.UserSecuritySnapshot) bool { return req.Status == 1 }, "user-status")
+	if errors.Is(err, errcode.ErrConcurrentModification) {
+		// 同 K 并发：唯一保留失败收敛为读原回执
+		if res, hit, lerr := lookUpOperation(ctx, deps, command, opID, actorUserID, req.UserID); lerr == nil && hit {
+			return res, nil
 		}
+		return nil, err
 	}
-	if err := s.userRepo.UpdateStatus(ctx, req.UserID, req.Status); err != nil {
-		return err
+	if err != nil {
+		return nil, err
 	}
-	if req.Status == 0 {
-		return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
+	if !changed {
+		return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, nil
 	}
-	return repository.AfterIAMCommit(ctx, func() error { return clearUserDisabled(ctx, s.rdb, req.UserID) })
+	// 投影按本事务冻结的 desiredActive 安装（与意图同源；更晚的命令以更新代际取代）
+	if err := projectAfterCommit(ctx, deps, req.UserID, epoch); err != nil {
+		return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, err
+	}
+	return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, nil
 }
 
 func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesRequest, actorUserID int64) error {
@@ -427,25 +554,154 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 	})
 }
 
-func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswordRequest, actorUserID int64) error {
+// ResetPassword 管理员重置密码（C05：同事务写口令/代际/回执/意图；保持原
+// disabled 状态不顺便启用；F021——同 K 携不同口令均不再次执行，只核查原结果；
+// 口令不进回执/指纹/日志）。
+func (s *UserService) ResetPassword(ctx context.Context, req *model.ResetPasswordRequest, actorUserID int64, operationID string) (*SessionCommandResult, error) {
 	if !iamCommandActive(ctx, "user.reset") {
-		return guardedIAMCommand(ctx, s.userRepo.WithIAMGuard, "user.reset", actorUserID, s.userRepo, func(ctx context.Context) error { return s.ResetPassword(ctx, req, actorUserID) })
+		return guardedIAMValue(ctx, s.userRepo.WithIAMGuard, "user.reset", actorUserID, s.userRepo, func(ctx context.Context) (*SessionCommandResult, error) {
+			return s.ResetPassword(ctx, req, actorUserID, operationID)
+		})
 	}
 	if err := s.ensureSensitiveCanManage(ctx, actorUserID, req.UserID); err != nil {
 		// 重置密码场景保留 30005 专用文案（04-user.md 契约）
 		if errors.Is(err, errcode.ErrCannotManageHigher) {
-			return errcode.ErrCannotResetHigher
+			return nil, errcode.ErrCannotResetHigher
 		}
-		return err
+		return nil, err
 	}
-	hash, err := crypto.HashPassword(req.Password)
+	hash, err := crypto.HashPassword(req.Password) // bcrypt 在锁外计算
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return nil, fmt.Errorf("hash password: %w", err)
 	}
-	if err := s.userRepo.UpdatePassword(ctx, req.UserID, hash, true); err != nil {
-		return err
+	deps := s.sessionDeps()
+	opID := ResolveOperationID(operationID)
+	if res, hit, err := lookUpOperation(ctx, deps, SessionCmdUserResetPwd, opID, actorUserID, req.UserID); err != nil {
+		return nil, err
+	} else if hit {
+		return res, nil // 已存在：明确核查状态，不重放 TokenPair、不比较口令
 	}
-	return repository.AfterIAMCommit(ctx, func() error { return revokeUserSessionsWithRetry(ctx, s.rdb, req.UserID, s.jwtManager.AccessTTL()) })
+	epoch, _, _, err := securityWrite(ctx, deps, SessionCmdUserResetPwd, opID, "http", actorUserID, req.UserID,
+		func(snap *repository.UserSecuritySnapshot) error {
+			if snap.Deleted {
+				return errcode.ErrUserNotFound
+			}
+			return nil
+		},
+		func(tx pgx.Tx, snap *repository.UserSecuritySnapshot) (int64, bool, error) {
+			newEpoch, err := s.userRepo.AdvanceEpochResetPasswordTx(ctx, tx, req.UserID, snap.SessionEpoch, hash)
+			return newEpoch, true, err
+		},
+		func(snap *repository.UserSecuritySnapshot) bool { return snap.Status == 1 },
+		"user-reset-password")
+	if errors.Is(err, errcode.ErrConcurrentModification) {
+		if res, hit, lerr := lookUpOperation(ctx, deps, SessionCmdUserResetPwd, opID, actorUserID, req.UserID); lerr == nil && hit {
+			return res, nil
+		}
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	// 重置保持原账号状态：投影按本事务冻结的 desiredActive 安装（不顺便启用/禁用）
+	if err := projectAfterCommit(ctx, deps, req.UserID, epoch); err != nil {
+		return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, err
+	}
+	return &SessionCommandResult{OperationID: opID, Status: "completed", Epoch: epoch}, nil
+}
+
+// UserOperationResultView 受权核查视图（不含口令/token/秘密输入）。
+type UserOperationResultView struct {
+	OperationID       string `json:"operation_id"`
+	Command           string `json:"command,omitempty"`
+	Status            string `json:"status"`
+	TargetUserID      string `json:"target_user_id,omitempty"`
+	AccountStatus     *int   `json:"account_status,omitempty"`
+	ResultEpoch       int64  `json:"session_epoch,string,omitempty"`
+	ProjectionState   string `json:"projection_state,omitempty"`
+	ProjectionPending bool   `json:"projection_pending"`
+	CreatedAt         string `json:"created_at,omitempty"`
+	UpdatedAt         string `json:"updated_at,omitempty"`
+}
+
+// GetOperationResult 按原操作号受权核查（开工计划 §5.1 结果映射）：原操作者本人
+// 或当前对目标有敏感管理权者可查；非授权查询拒绝；查不到 K 维持 not_found
+// （调用方按「待核查」处理，不复发自动重做）。
+func (s *UserService) GetOperationResult(ctx context.Context, operationID string, actorUserID int64) (*UserOperationResultView, error) {
+	var view *UserOperationResultView
+	err := repository.WithIAMCommandGuard(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
+		var readErr error
+		view, readErr = s.readOperationResult(ctx, tx, operationID, actorUserID)
+		return readErr
+	})
+	return view, err
+}
+
+func (s *UserService) readOperationResult(ctx context.Context, tx pgx.Tx, operationID string, actorUserID int64) (*UserOperationResultView, error) {
+	internal := trustedIAMInternal(ctx)
+	purpose, admitted := middleware.IAMRequestFromContext(ctx)
+	if !internal && (!admitted || !purpose.SelfService || purpose.UserID != actorUserID || purpose.Method != "GET" || purpose.Path != "/api/v1/users/status/result") {
+		return nil, errcode.ErrNoPermission
+	}
+	op, err := s.opsRepo.FindOperationByID(ctx, operationID)
+	if errors.Is(err, errcode.ErrNotFound) {
+		return &UserOperationResultView{OperationID: operationID, Status: "not_found"}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if op.Namespace != "http" {
+		return nil, errcode.ErrNoPermission
+	}
+	var command string
+	var requestedStatus *int
+	switch op.Command {
+	case SessionCmdChangePassword:
+		if op.ActorUserID != actorUserID || op.TargetUserID != actorUserID {
+			return nil, errcode.ErrNoPermission
+		}
+	case SessionCmdUserDisable, SessionCmdUserEnable:
+		command = "user.status"
+		status := 0
+		if op.Command == SessionCmdUserEnable {
+			status = 1
+		}
+		requestedStatus = &status
+	case SessionCmdUserDelete:
+		command = "user.delete"
+	case SessionCmdUserResetPwd:
+		command = "user.reset"
+	default:
+		return nil, errcode.ErrNoPermission
+	}
+	if command != "" {
+		if !internal {
+			if err := authorizeIAMCurrentRoute(ctx, s.userRepo, actorUserID, iamPurposes[command], "POST", purpose.Model); err != nil {
+				return nil, err
+			}
+		}
+		if err := s.ensureSensitiveCanManage(ctx, actorUserID, op.TargetUserID); err != nil {
+			return nil, err
+		}
+	}
+	view := &UserOperationResultView{
+		OperationID:   op.OperationID,
+		Command:       op.Command,
+		Status:        op.Status,
+		TargetUserID:  strconv.FormatInt(op.TargetUserID, 10),
+		AccountStatus: requestedStatus,
+		CreatedAt:     op.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     op.UpdatedAt.Format(time.RFC3339),
+	}
+	if op.ResultEpoch != nil {
+		view.ResultEpoch = *op.ResultEpoch
+		view.ProjectionState, err = s.opsRepo.OperationProjection(ctx, tx, op.TargetUserID, view.ResultEpoch)
+		if err != nil {
+			return nil, err
+		}
+		view.ProjectionPending = view.ProjectionState == "pending"
+	}
+	return view, nil
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (*model.User, error) {

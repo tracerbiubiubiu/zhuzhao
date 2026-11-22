@@ -111,7 +111,11 @@ func mintPurpose(t *testing.T, actor int64, roleCode, path string, selfService b
 	var minted context.Context
 	r := gin.New()
 	chain := []gin.HandlerFunc{
-		func(c *gin.Context) { c.Set("userID", actor); c.Next() },
+		func(c *gin.Context) {
+			c.Set("userID", actor)
+			c.Set("session_epoch", int64(1)) // 初始数据库安全代际的合成准入事实
+			c.Next()
+		},
 	}
 	if selfService {
 		chain = append(chain, middleware.SelfService())
@@ -458,7 +462,11 @@ func TestAttachmentCommand_HandlerE2E(t *testing.T) {
 	rbac := service.NewRBACService(repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool),
 		repository.NewMenuRepo(testPool), enforcer)
 	r := gin.New()
-	r.Use(func(c *gin.Context) { c.Set("userID", actor); c.Next() },
+	r.Use(func(c *gin.Context) {
+		c.Set("userID", actor)
+		c.Set("session_epoch", int64(1))
+		c.Next()
+	},
 		middleware.SelfService(), middleware.CasbinAuth(enforcer, rbac, nil))
 	r.POST(confirmPath, b.handler.Confirm)
 	r.POST("/api/v1/tickets/attachments/delete", b.handler.DeleteAttachment)
