@@ -240,6 +240,8 @@ enable先要求前一安全撤销已投影，未完成则明确冲突/待恢复�
 
 worker仅按当前DB状态和epoch投影：旧代intent superseded，Lua单调安装目标epoch/状态，网络在DB锁外，完成按当前epoch＋原lease/fence CAS回写projection_epoch/receipt。失败保留本地安全事实及pending，不回滚禁用/改密，不改成新operation。RT槽按`refresh:db1:<uid>:<epoch>:<device>`隔代；旧worker不扫描删除新代槽。
 
+C05 停用、启用、删除、管理重置及原操作号查询在同一 IAM 守卫事务内重验调用方状态与当前凭据。JWT 校验现行安全代际，PAT 复核原主体、吊销和到期。查询先校验调用方资格，再读取原号。记录缺失或当前对象不可见时统一返回 `not_found`。
+
 新AT/RT显式带`session_schema=db_epoch_v1`与十进制session_epoch，文件cookie同AT。utils的`jwt/jwt.go`新增明确签发/claims能力，旧公共方法保持兼容，核心才要求新schema；不能让utils通用parser破坏其它消费者。Login验证的凭据/epoch快照必须与最终签发绑定，重读发现后来的新代只能拒绝，不能借新代签旧凭据。Refresh按原token epoch定位槽并原子比较旧hash/替换新hash，两次并发只一笔赢；不能GETDEL后无条件SET覆盖较新登录。最后检查后仍可能发生新的安全提交，已签旧代token由后续DB检查拒绝，不许诺网络输出与撤权跨库原子。
 
 AT/RT及文件cookie核DB当前active/deleted/epoch与投影就绪，再核Redis会话约束；投影缺失/不可证503并恢复当前代，不能缺键回0。PAT只核当前DB账号、PAT自身状态及当前业务权，**不接AT/RT epoch或投影pending门**：密码重置不自动撤PAT，禁用/删除立即因账号拒绝，重新启用后未撤PAT按既有政策恢复。PAT DB故障由现统一401改为明确503若采用须列兼容用例，不虚标当前已区分。
