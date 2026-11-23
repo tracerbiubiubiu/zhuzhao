@@ -57,9 +57,14 @@ func (r *MessageLogRepo) List(ctx context.Context, page, pageSize int, bizType, 
 		return nil, 0, err
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
+	// Historical post-action failure messages used the ops domain and a
+	// numeric ticket ID. Cron and storage messages use named IDs.
 	q := `SELECT id, template_code, biz_type, biz_id, channel, recipients, subject, body, status,
-		COALESCE(error, ''), COALESCE(actor_id, 0), created_at
-		FROM message_log ` + where + ` ORDER BY id DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args))
+		COALESCE(error, ''), COALESCE(actor_id, 0), created_at, ` + riskTicketNotificationSQL + `
+		FROM (SELECT message_log.*, CASE WHEN biz_type IN ('ticket', 'ops') AND pg_input_is_valid(biz_id, 'bigint')
+		             THEN biz_id::bigint END AS ticket_id
+		      FROM message_log ` + where + ` ORDER BY id DESC LIMIT $` + strconv.Itoa(len(args)-1) + ` OFFSET $` + strconv.Itoa(len(args)) + `) notice
+		ORDER BY id DESC`
 	rows, err := r.db.Query(ctx, q, args...)
 	if err != nil {
 		return nil, 0, err
@@ -69,9 +74,16 @@ func (r *MessageLogRepo) List(ctx context.Context, page, pageSize int, bizType, 
 	for rows.Next() {
 		var l model.MessageLog
 		var actor int64
+		var restricted bool
 		if err := rows.Scan(&l.ID, &l.TemplateCode, &l.BizType, &l.BizID, &l.Channel,
-			&l.Recipients, &l.Subject, &l.Body, &l.Status, &l.Error, &actor, &l.CreatedAt); err != nil {
+			&l.Recipients, &l.Subject, &l.Body, &l.Status, &l.Error, &actor, &l.CreatedAt, &restricted); err != nil {
 			return nil, 0, err
+		}
+		if restricted {
+			l.Subject, l.Body = NeutralTicketNotificationTitle, ""
+			if l.Error != "" {
+				l.Error = "通知处理失败"
+			}
 		}
 		if actor > 0 {
 			l.ActorID = &actor
@@ -89,6 +101,14 @@ type MessageRuleRepo struct {
 
 func NewMessageRuleRepo(db *pgxpool.Pool) *MessageRuleRepo {
 	return &MessageRuleRepo{db: db}
+}
+
+// IsRiskTicketNotification supplies the provenance needed by message routing.
+func (r *MessageRuleRepo) IsRiskTicketNotification(ctx context.Context, ticketID int64) (bool, error) {
+	var restricted bool
+	err := r.db.QueryRow(ctx, `SELECT `+riskTicketNotificationSQL+` FROM (SELECT $1::bigint AS ticket_id) notice`,
+		ticketID).Scan(&restricted)
+	return restricted, err
 }
 
 // GetByAction 按事件动作查启用规则（notify hook 消费——替代硬编码映射）。

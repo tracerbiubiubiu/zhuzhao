@@ -113,6 +113,10 @@ type TicketComment struct {
 	// 作者回填（2026-10-13 展示统一批；此前 CreatedBy 裸 ID）——语义同 Ticket 姓名回填
 	CreatedByName string `json:"created_by_name,omitempty" db:"-"`
 	CreatedByNo   string `json:"created_by_no,omitempty" db:"-"`
+	// EvidenceVersion 公开评论的可核证据版本规范形（Phase6 B2 卡二 R1——
+	// 2026-11-23 告知项：基础模型在 ticket.go；规范形唯一实现与合同见
+	// internal/model/comment，仅公开评论回填，内部备注恒空）
+	EvidenceVersion string `json:"evidence_version,omitempty" db:"-"`
 }
 
 // TicketEvent 工单事件日志（审计 + Phase 3 事件队列）

@@ -27,10 +27,11 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 		defer func() {
 			if err := recover(); err != nil {
 				stack := string(debug.Stack())
+				path := operationLogPath(c)
 				logger.Error("panic recovered",
 					slog.Any("error", err),
 					slog.String("stack", stack),
-					slog.String("path", c.Request.URL.Path),
+					slog.String("path", path),
 				)
 				IncPanic() // P4-8 指标计数（与落库同位）
 				if sink != nil {
@@ -49,7 +50,7 @@ func Recovery(logger *slog.Logger, sink PanicSink) gin.HandlerFunc {
 							pathB = pathB[:200]
 						}
 						_ = sink.Upsert(ctx, hex.EncodeToString(h[:]), msg, stack, pathB)
-					}(singleton.Detach(c.Request.Context()), fmt.Sprint(err), stack, c.Request.URL.Path)
+					}(singleton.Detach(c.Request.Context()), fmt.Sprint(err), stack, path)
 				}
 				response.InternalError(c, "服务器内部错误")
 				c.Abort()

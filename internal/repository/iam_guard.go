@@ -25,10 +25,11 @@ type IAMDBTX interface {
 
 type iamWriteKey struct{}
 type iamWriteState struct {
-	pool   *pgxpool.Pool
-	tx     pgx.Tx
-	after  []func() error
-	shared bool
+	pool          *pgxpool.Pool
+	tx            pgx.Tx
+	after         []func() error
+	shared        bool
+	savepointOpen bool
 }
 
 var iamLocalGates sync.Map
@@ -58,6 +59,9 @@ func IAMDB(ctx context.Context, pool *pgxpool.Pool) IAMDBTX {
 // is acknowledged. Failure still means "DB committed, projection failed".
 func AfterIAMCommit(ctx context.Context, fn func() error) error {
 	if state, ok := ctx.Value(iamWriteKey{}).(*iamWriteState); ok {
+		if state.savepointOpen {
+			return errors.New("after-commit projection requires its active IAM savepoint context")
+		}
 		state.after = append(state.after, fn)
 		return nil
 	}

@@ -52,6 +52,7 @@ func CatalogExemptRoutes() []string {
 }
 
 var catalogExempt = map[string]bool{
+	"POST /api/v1/risk-items/report":                  true, // The feed uses dedicated AK/SK and source scoping.
 	"GET /api/v1/tickets/people":                      true, // F3: ticket.PeopleService checks original write L1 (where applicable) and concrete business context; docs/modules/ticket.md.
 	"GET /api/v1/ticket-types/:code/fields/variables": true, // B6-3 变量字典（模板编辑器读面）
 	"GET /api/v1/me/notification-optouts":             true, // B6-3 自服务偏好（登录态）

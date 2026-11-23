@@ -49,17 +49,9 @@ func parseEvidenceTransitionRequest(req *model.TransitionTicketRequest) (evidenc
 	if len(req.CustomDataPatch) > CustomDataMaxBytes {
 		return evidenceTransitionRequest{}, errcode.New(errcode.ErrInvalidParams.Code, "custom_data_patch 超出长度上限")
 	}
-	patch := map[string]any{}
-	if len(req.CustomDataPatch) > 0 {
-		dec := json.NewDecoder(bytes.NewReader(req.CustomDataPatch))
-		dec.UseNumber()
-		if !json.Valid(req.CustomDataPatch) || dec.Decode(&patch) != nil || patch == nil {
-			return evidenceTransitionRequest{}, errcode.New(errcode.ErrInvalidParams.Code, "custom_data_patch 须为 JSON 对象")
-		}
-	}
-	cmd.patch, err = json.Marshal(patch)
+	cmd.patch, err = normalizeTransitionPayload(req.CustomDataPatch, cmd.comment)
 	if err != nil {
-		return evidenceTransitionRequest{}, errcode.ErrInvalidParams
+		return evidenceTransitionRequest{}, err
 	}
 	encoded, err := json.Marshal(struct {
 		Contract string
@@ -173,6 +165,10 @@ func (s *Service) findEvidenceTransitionReplayTx(ctx context.Context, tx pgx.Tx,
 // the edge's execution condition on before, and ruled out a replay. The caller
 // must roll back on any error and add any required successor intent before commit.
 func (s *Service) applyEvidenceTransitionTx(ctx context.Context, tx pgx.Tx, cmd evidenceTransitionRequest, before *model.Ticket, snapshot *model.TicketDefinitionSnapshot, actorID int64) (repository.TicketEvidenceTransitionResult, error) {
+	return s.applyEvidenceTransitionGuardedTx(ctx, tx, cmd, before, snapshot, actorID, nil)
+}
+
+func (s *Service) applyEvidenceTransitionGuardedTx(ctx context.Context, tx pgx.Tx, cmd evidenceTransitionRequest, before *model.Ticket, snapshot *model.TicketDefinitionSnapshot, actorID int64, guard func(*model.Ticket) error) (repository.TicketEvidenceTransitionResult, error) {
 	var result repository.TicketEvidenceTransitionResult
 	if !cmd.versioned() || before.ID != cmd.ticketID {
 		return result, errcode.ErrInvalidParams
@@ -211,6 +207,13 @@ func (s *Service) applyEvidenceTransitionTx(ctx context.Context, tx pgx.Tx, cmd 
 	data, err := s.validateEvidenceTransitionData(ctx, tx, before, snapshot.Fields, collect, cmd.patch, tm)
 	if err != nil {
 		return result, err
+	}
+	if guard != nil {
+		candidate := cloneTicketSnapshot(before)
+		candidate.CustomData = append(json.RawMessage(nil), data...)
+		if err := guard(&candidate); err != nil {
+			return result, err
+		}
 	}
 	if len(collect) > 0 {
 		refs, err := fieldReferences(snapshot.Fields, data)
@@ -462,4 +465,26 @@ func evidenceValueEmpty(raw json.RawMessage) bool {
 	}
 	var text string
 	return json.Unmarshal(raw, &text) == nil && strings.TrimSpace(text) == ""
+}
+
+// cloneTicketSnapshot keeps trusted callbacks and queued effects from changing
+// the command's original authorization/validator snapshot through pointer fields.
+func cloneTicketSnapshot(ticket *model.Ticket) model.Ticket {
+	out := *ticket
+	out.CustomData = append(json.RawMessage(nil), ticket.CustomData...)
+	out.DefinitionVersion = cloneTicketPointer(ticket.DefinitionVersion)
+	out.DefinitionRef = cloneTicketPointer(ticket.DefinitionRef)
+	out.AssignedTo = cloneTicketPointer(ticket.AssignedTo)
+	out.EscalationSupervisor = cloneTicketPointer(ticket.EscalationSupervisor)
+	out.SLADueAt = cloneTicketPointer(ticket.SLADueAt)
+	out.StatusChangedAt = cloneTicketPointer(ticket.StatusChangedAt)
+	return out
+}
+
+func cloneTicketPointer[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
 }

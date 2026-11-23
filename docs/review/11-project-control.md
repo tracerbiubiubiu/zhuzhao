@@ -22,7 +22,7 @@
 
 - **2026-11-22 Phase 6 剩余排期**。第 6–9 项是人工整改的下一段。第 10–22 项列出权限、扩展、联动、其余已确认功能、原前端逐项验收和外部离线交付。原预算和日期供复算，实际入网及启用按当前放行顺序。 [剩余开发顺序与验收](../planning/intranet-uaa-release-schedule.md#剩余开发顺序与验收)
 
-- **人工漏洞整改（发布验收点 B2）**。`zz-g04-it1` 的第 1–3 项联合验收通过，覆盖隔离连线、账号停用与原操作核查、转派后保存前重查权限。第 1–3 项已合入三仓主线，合并后的 CI 通过。第 4–5 项通过隔离联合验收并已合入主线，覆盖既有类型建单恢复、规则钉版、可信旧票补绑和工单证据原子转换。第 6–9 项下一步在外部验证。真实试用由所有者按 Q12 另批。 [验收记录](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [开工计划](../planning/phase6-b2-kickoff-plan.md#本批实施与验收安排)
+- **人工漏洞整改（发布验收点 B2）**。第 1–5 项通过隔离联合验收并已合入主线。第 6–8 项隔离候选通过登记、个人派单、部门调转、逐项复测、证据保留和接单提醒主路径。第 9 项由不同助手独立执行丢响应和复核，核到原号回读及实际重启无重复写入。普通门禁含独占栈 55 条既有浏览器回归。第 6–9 项保留候选与报告，真实试用由所有者按 Q12 另批。 [实施分工与门禁](../planning/phase6-b2-stage6-9-plan.md) · [第 6–9 项验证](reports/phase6-b2-stage9-validation-2026-11-23.md) · [第 1–3 项验收](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)
 
 - **最后进入内网，首发用本地账号密码（B4）**。先在外部完成本次已定 Phase 6 能力和原前端需求，所有公司内网依赖用 mock 验收，完成离线安装和恢复演练。获准进入后按目标环境预演（B0）、所选真实服务、业务试用的顺序验证。完整公司统一登录与权限双模式及其完整 mock 后续单独排。 [入网顺序](../planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做)
 
@@ -86,7 +86,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
-| **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项已合入主线并通过[隔离联合验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)。逐资产复测、局部返工和关单待第 6–9 项验收。 | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
+| **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项已合入主线并通过[隔离联合验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)。逐资产复测、局部返工、关单和历史附件保留有[本轮隔离证据](reports/phase6-b2-stage9-validation-2026-11-23.md)。 | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
+| **风险登记、个人派单和逐资产办理** | 人工与受控来源登记；核实责任后按漏洞和具名责任人派单；分派部门与现势部门分别读回；逐资产证据、复测、风险接受及接单提醒。 | 第 6、7 项五条浏览器用例通过独立复跑。第 8 项在隔离候选完成浏览器、真实附件、丢响应、重启及提醒读回专项。第 9 项隔离签收范围见[验证记录](reports/phase6-b2-stage9-validation-2026-11-23.md)。后续推送候选收紧当前派单授权与钉版校验，保护已引用证据和审计正文，补齐待复测接受与原操作号核查。 | `internal/service/risk`、`riskdispatch`、`riskremediation`、`riskreminder`；迁移 `000089` 至 `000092` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围，11 月 20 日补有双端写权限的关联候选 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
 | **平台策略库（批次 A）** | 内置行级策略：`org-member`/`owner-only`/`role-gated` + `Builtin()` 注册；`RequireSchema`须由消费者显式调用，Register不自动查库 | 🟡 **库就绪待接线**：生产装配零消费者；原M-E消费预期已因独立库边界取消，首个本库新资源需要L2时触发；工单手写策略与builtin双路并存 | `internal/pkg/resource/builtin.go`；[当前边界](../modules/authz.md) |
@@ -272,6 +273,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000086 | 可信旧票补绑证据摘要和不可变回执 | D01 |
 | 000087 | 工单业务修订和证据转换幂等回执 | D02 |
 | 000088 | 按工单读可用动作与绑定字段的 GET 授权 | D02 |
+| 000089 | 风险来源、登记、核实历史与授权目录，隔离候选 | D08/D09 |
+| 000090 | 个人派单目标、预览、批次回执与在办票唯一约束，隔离候选 | D10 |
+| 000091 | 分派代次、首次接单与站内提醒持久意图，隔离候选 | B2 第 8 项 |
+| 000092 | 逐项证据、复测、风险接受与原操作回执，隔离候选 | B2 第 8 项 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 

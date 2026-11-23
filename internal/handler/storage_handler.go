@@ -56,6 +56,9 @@ func (h *StorageHandler) authorizeTicketPurpose(c *gin.Context, purpose string, 
 		response.BadRequest(c, "参数错误")
 		return false
 	}
+	if h.svc.HasTicketAttachmentCommand() {
+		return true // service checks the exact purpose inside the IAM command
+	}
 	if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *ticketID); err != nil {
 		writeServiceError(c, err)
 		return false
@@ -112,7 +115,7 @@ func (h *StorageHandler) Confirm(c *gin.Context) {
 		return
 	}
 	// confirm 分流按 TicketID：带 ticket_id 即 ticket 态落绑（建单前态不带）
-	if in.TicketID != nil {
+	if in.TicketID != nil && !h.svc.HasTicketAttachmentCommand() {
 		if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *in.TicketID); err != nil {
 			writeServiceError(c, err)
 			return

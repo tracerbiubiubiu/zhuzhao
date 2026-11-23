@@ -250,6 +250,11 @@ func archiveFetchBatch(ctx context.Context, db archiveDB, table string, cutoff t
 				}
 			}
 		}
+		// 历史风险正文也在归档出口遮蔽，保留元信息和原始行 ID。
+		if path, ok := obj["path"].(string); table == "audit_logs" && ok && audit.IsRiskRoute(path) {
+			obj["request_body"] = ""
+			obj["response_summary"] = ""
+		}
 		line, err := json.Marshal(obj)
 		if err != nil {
 			return nil, fmt.Errorf("archive marshal %s: %w", table, err)

@@ -78,6 +78,25 @@ type TicketAttachmentCommand interface {
 	AttachmentCommand(ctx context.Context, action string, actorUserID, ticketID int64, fn func(context.Context) error) error
 }
 
+// TicketAttachmentUploadCommand is an optional, purpose-specific evidence port.
+// Richtext and deletion always retain TicketAttachmentCommand's update contract.
+type TicketAttachmentUploadCommand interface {
+	AttachmentUploadCommand(context.Context, string, int64, int64, *model.FileObject, func(context.Context) error) error
+}
+
+// HasTicketAttachmentCommand lets the handler defer upload authorization to the
+// service, where the stored purpose is known and preflight can precede object I/O.
+func (s *Service) HasTicketAttachmentCommand() bool { return s.ticketCmd != nil }
+
+func (s *Service) runUploadCommand(ctx context.Context, action string, actor, ticketID int64, f *model.FileObject, write func(context.Context) error) error {
+	if f.Purpose == "ticket_attachment" {
+		if cmd, ok := s.ticketCmd.(TicketAttachmentUploadCommand); ok {
+			return cmd.AttachmentUploadCommand(ctx, action, actor, ticketID, f, write)
+		}
+	}
+	return s.runAttachmentCommand(ctx, action, actor, ticketID, write)
+}
+
 // UseTicketAttachmentCommand 装配层注入守卫实现（handler 构造时机——一次性，
 // 非请求路径）。
 func (s *Service) UseTicketAttachmentCommand(cmd TicketAttachmentCommand) {
@@ -135,7 +154,7 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 	}
 	insert := func(ctx context.Context) error { return s.repo.InsertPending(ctx, f) }
 	if ticketPurposes[purpose] {
-		err = s.runAttachmentCommand(ctx, "presign", userID, *in.TicketID, insert)
+		err = s.runUploadCommand(ctx, "presign", userID, *in.TicketID, f, insert)
 	} else {
 		err = insert(ctx)
 	}
@@ -188,6 +207,22 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 	if prefix, ok := purposePrefixes[f.Purpose]; !ok || !strings.HasPrefix(f.ObjectKey, prefix) {
 		return nil, errcode.ErrFileAlreadyBound
 	}
+	if ticketPurposes[f.Purpose] {
+		if in.TicketID == nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
+		}
+		// A current preflight precedes external HEAD; the persistent command below
+		// rechecks the same purpose and facts after HEAD, in its own IAM ordering.
+		if err := s.runUploadCommand(ctx, "confirm", userID, *in.TicketID, f, func(context.Context) error { return nil }); err != nil {
+			return nil, err
+		}
+	} else if in.TicketID != nil {
+		// Preserve the handler's original update check even for a create/avatar
+		// object presented with ticket_id. Its stored purpose grants no evidence port.
+		if err := s.runAttachmentCommand(ctx, "confirm", userID, *in.TicketID, func(context.Context) error { return nil }); err != nil {
+			return nil, err
+		}
+	}
 
 	st, err := s.client.StatObject(ctx, f.ObjectKey)
 	if err != nil {
@@ -213,7 +248,7 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		}
 		// C04 撤权提交顺序：HEAD 实测已在 IAM 锁外完成（外部动作不进锁），
 		// 落绑在守卫内锁票重认证后同连接提交。
-		if err := s.runAttachmentCommand(ctx, "confirm", userID, *in.TicketID, func(ctx context.Context) error {
+		if err := s.runUploadCommand(ctx, "confirm", userID, *in.TicketID, f, func(ctx context.Context) error {
 			return s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, cfg.MaxAttachmentsPerTicket)
 		}); err != nil {
 			if errors.Is(err, repository.ErrStorageAlreadyBound) {

@@ -46,8 +46,9 @@ type App struct {
 	auditCron        *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
 	storageGC        *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
 	timeoutScan      *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
-	inboxCleanup     *service.CronScheduler  // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
-	intelCleanup     *service.CronScheduler  // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
+	riskReminder     *service.CronScheduler
+	inboxCleanup     *service.CronScheduler // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
+	intelCleanup     *service.CronScheduler // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
 	// 以下两件 2026-11-01 补启动（观测批注册了 scheduler 却漏 go Run——注册≠启动，
 	// cron-status 可见但 11 个 tick 周期零执行；StartedAt 字段由此而设）
 	storageUsageSample *service.CronScheduler    // C-6 存储用量采样：恒启用
@@ -328,7 +329,7 @@ func (a *App) Run() error {
 	if a.policyEval != nil {
 		a.policyEval.Start(requestCtx, ownerCtx)
 	}
-	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
+	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.riskReminder, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
 		if scheduler == nil {
 			continue
 		}

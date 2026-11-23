@@ -111,7 +111,7 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 ### 5.1 plan/apply和原子边界
 
-`POST /risk-items/dispatch-plan`候选输入 `{items:[{risk_id,expected_revision}],target_type_code,target_org_id,append_ticket_id?,expected_ticket_revision?}`，风险最多20条为一个group；批向导可提交多group，首版候选总上限200条（服务端可收紧），超限要求分批。输出 `{plan_id,expires_at,groups:[{group_key,owner_user_id,target_definition_ref,items,blocking_reasons}],input_hash}`；仅对已可见风险给逐项原因。plan 是派单预览，不预留工单名额；用户确认时仍按当时的权限重新检查。
+`POST /risk-items/dispatch-plan`候选输入 `{items:[{risk_id,expected_revision}],target_type_code,target_org_id,append_ticket_id?,expected_ticket_revision?}`，风险最多20条为一个group；批向导可提交多group，首版候选总上限200条（服务端可收紧），超限要求分批。输出 `{plan_id,expires_at,groups:[{group_key,owner_user_id,target_definition_ref,items,blocking_reasons}],input_hash}`；仅对已可见风险给逐项原因。plan 是派单预览，不预留工单名额。预览在同一 C04 事务复核当前权限、读取风险和钉版定义、保存计划与投影；确认时按当时权限及版本再检查。开启整改时，定义必须提供分派、接单、提交复测及复测留在原态、打回和关闭的六条边。派单前验证已发布边及允许的角色和字段；待复测工单拒绝追加，打回整改后可按现势条件重试。
 
 `POST /risk-items/dispatch`及`batch-dispatch`应用 `{operation_id,plan_id,plan_hash}`；如沿生命周期旧请求附items/type/definition等冗余字段，必须与plan完全一致，否则400，不接受覆盖。通用风险分组键至少含 owner、风险管理组织、目标组织、类型、定义及批准业务范围。漏洞整改按本节的[漏洞与责任人规则](#漏洞按责任人派单)。single需risk:manage和主锚/owner；bulk需主锚管理，沿B05不另要通用ticket:create、也不增派单角色。
 
@@ -121,7 +121,7 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 
 链接专用命令沿生命周期合同：`POST /risk-items/link-add`/`link-remove`收`{operation_id,risk_id,ticket_id,expected_risk_revision,expected_ticket_revision,expected_link_revision?,reason}`，追加还核同组、当前责任人及 20 项上限，漏洞整改另核漏洞标识一致，移出回合法待处置并重算票聚合，返回双方revision/link receipt。不能通过普通票字段写risk_id绕唯一性，未获ticket读资格不泄露其状态或标题。
 
-受限共享创建端口接收可信 `{operator_user_id,origin=risk_dispatch,creator_owner_ref,approved_target_mapping}`，不从外部body传。工单 `created_by=当前已核owner`、审计actor=真实操作者两者都留；普通创建用例继续按自身权限。`risk_owner`为桥管理字段，不能由普通表单/fetch/Agent改成自己。固定映射保留源风险ref/级别/系统/描述，取数建议可人工改，公式/受管字段照其独立规则。
+受限共享创建端口接收可信 `{operator_user_id,origin=risk_dispatch,creator_owner_ref,approved_target_mapping}`，不从外部body传。工单 `created_by=当前已核owner`、审计actor=真实操作者两者都留；普通创建用例继续按自身权限。`risk_owner`为桥管理字段，不能由普通表单/fetch/Agent改成自己。普通工单及通知只发布通用整改摘要与必要引用。风险标题、描述和逐项证据从风险详情按当前资格读取。公式和受管字段各自按钉版规则处理。
 
 工单 priority 取有效关联风险中的最高级别；`business_due_at` 取最早的风险 deadline，与节点 `sla_due_at` 分开保存。追加、移出、改级或改期时重新计算工单值，不覆盖风险原 deadline，也不用已移出的风险继续触发提醒。整组风险交给同一新 owner 时，可以在一个事务中更新 risk_owner 和合法参与关系；只交接其中部分风险时，则解除这些 links，进入待交接或重新派单，不把整张工单的复核权一起转走。旧 creator 的历史不改，原有读取资格仍按类型策略判断。
 
@@ -132,8 +132,9 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 - gate=off走已发布 `in_progress→closed` 的合法完成边；gate=on走 `in_progress→pending_verify`，当前risk_owner再按合法边复核。缺边/字段/当前资格则预检或提交拒绝，不能靠临时auto边绕过。
 - gate=on 的处理人 finish 此时只保存逐项整改 proposal/evidence，并将待复核项置 pending_verify；**不先把风险 closed 或 link resolved**。候选 `POST /risk-items/remediation-review` 收 `{operation_id,ticket_id,expected_ticket_revision,items:[{link_id,expected_link_revision,expected_risk_revision,decision:approve|reject,note,evidence_refs}]}`，当前 risk_owner 按票合法复核边及风险资格判定；approve 才落实已核修复结论，reject 要理由并回合法整改状态、保留原证据。接受类 proposal 仍须接受申请/非自确认流程，复核不能代替接受批准。部分复核先保存逐项结果，所有 active 项均有生效结论/合法detach才允许票终态。普通 risk.close、票 transition、自动边和任务回贴也必须经同一桥 validator，不能换入口绕过 review gate；紧急管理纠正另有明确权限/理由及历史，不默认让管理员跳过。
 - 已修复逐项写措施、证据、复测人/时间；接受由当前owner本人申请且主锚确认后才resolved；处理人非owner只能提出接受建议。误报/重复须主锚资格，E10 merge未启用时不能“重复”直接吞并风险，保留proposal待处理；取消回assessed并释放该link。
+- 首批 gate-on 在待复测阶段开放风险接受申请，并校验钉版定义可关闭或打回。有效待批时锁住该资产的整改结论，由另一名获权管理者确认或驳回。读取仅标识可恢复的过期或失效申请；当前责任人可重申，或沿原复测打回边恢复整改，提交事务保留旧申请和原提案。客户端收到明确拒绝后可刷新并显式重做；结果未知时只按原操作号核查或同参重试。启用风险接受时，已发布的关闭和打回边须允许所选独立审批人的工单角色。已经批准的接受到期后重评与重开尚未接入首批。
 - 票terminal前所有active links必须有已授权生效结论或合法detach；不能先全票closed再把尚待接受确认的risk标fixed。部分结果可保存为proposal/待处理，响应逐项反映；同库原子协调可直接落实有效项，使用异步消费的入口须明确pending。
-- 管理员仍能走现有物理删票入口，桥必须同事务将其active links置detached（reason=ticket_deleted）、风险回合法待处置状态并保存原票引用/历史；接受/关闭风险不被删票反向重开，未具备该删除接缝前对受保护active关联拒删。SET NULL只用于保留关联墓碑，不允许留下active且无票的静默孤儿。
+- 首批对活跃风险关联的物理删票关闭入口。历史提交或复测仍引用的工单附件、公开评论及工单保留，关联结束后仍参与删除与回收检查。无保护引用的普通工单沿既有删除规则。SET NULL只用于保留结束关联的墓碑。
 
 票终态和risk-resolution intent同事务。消费键 `(ticket_id,ticket_revision,link_id,resolution_version)`；迟到结果发现risk/link/owner revision变更即conflict，不覆盖新owner/周期。补发投影只更新供查询展示的数据，不重新执行复测或建单。
 
@@ -149,7 +150,11 @@ intent固定 `{event_id,event_type,risk_ref,aggregate_revision,rule_ref,recipien
 
 去重键复用[消息属主](task-activelist-message-detail.md#3-候选逻辑数据约束与事务)的 `(source,source_event_id,rule_id,rule_version,recipient_user_id,channel,semantic_key)`。适配时用稳定风险域身份和event_id标识原事实，用rule_ref解析稳定规则ID和版本，解析当前收件人后绑定其ID。风险摄取的外部source_ref不替代投递的原事实域。重试时继续用原收件人和原投递键，撤权或改派抑止旧待发，必要的新发由新事实或获权补发关联原项。template_revision固定绑定原delivery的payload，不因模板更新让旧event再次发送。每日提醒/汇总按风险、事件kind及配置时区的时隙建稳定key，重启不会重发同一时隙。通知文本仅编号/必要动作/受权深链，读取深链再次鉴权，不把敏感字段塞入IM；规则频次不是所有消息通用“exactly once”。
 
-业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两操作本地强审计失败回滚已由F017确认，仍按统一合同实施，不扩大为所有日志失败均回滚。
+风险路由审计保留方法、路由、结果与请求标识；风险正文从受权业务历史查询，旧审计记录在列表与归档输出中同样按风险路由遮蔽请求体和响应摘要。业务历史按风险/票当前可见性提供；跨模块审计检索/导出另需专门审计职责，沿[统一日志审计合同](../design/unified-observability-audit.md)。风险状态、接受、owner、派单/结论的领域历史与效果事务一致，必需历史写失败回滚本地命令；日志转发失败通过持久outbox补送。IAM两操作本地强审计失败回滚已由F017确认，仍按统一合同实施，不扩大为所有日志失败均回滚。
+
+隔离候选的首次接单提醒读取工单钉版定义的 `transition_meta.assigned.first_accept_reminder`，条目包含 `rule_id`、`rule_version` 和 `accept_within_minutes`。记录时使用该代分派时刻与发布时限计算固定截止。真实改派产生新代次，当前办理人经已发布路径接单时记录接单时间。启动扫描需要显式开启 `risk_remediation_enabled`，并设置正的 `risk_reminder.scan_interval`。站内投递在同一 IAM 屏障内重查办理人、当前动作权限和代次。隔离验收使用合成规则，正式启用仍按批准的策略和真实渠道执行。
+
+逐资产办理从 `GET /api/v1/risk-items/remediation-context/:id` 读取工单、绑定规则、风险和关联修订，以及每项最近五次提交和复测记录。分派办理人、接单、提交整改、逐项复测和接受审批各用独立 POST 按钮绑定。客户端保留原 `operation_id`，通过 `GET /api/v1/risk-items/remediation-operations/:id` 受权核查。文件引用使用同一工单已绑定附件的 `object_key` 和 `evidence_version`，同票公开记录可使用 `ticket-comment:<id>` 及其版本。已引用附件保留在票内。办结写票后复查现势结论和接受期限，满足条件时一并结束在办关联。整改写能力和附件存储均可用时允许新派单，既有受权回执可以继续查询。
 
 ## 7. 三层权限与异常可解释性
 

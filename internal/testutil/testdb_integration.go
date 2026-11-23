@@ -43,7 +43,7 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			postgres.WithDatabase("zhuzhao_test"),
 			postgres.WithUsername("zhuzhao"),
 			postgres.WithPassword("zhuzhao_test"),
-			testcontainers.WithWaitStrategy(
+			testcontainers.WithWaitStrategyAndDeadline(3*time.Minute,
 				wait.ForLog("database system is ready to accept connections").
 					WithOccurrence(2).
 					WithStartupTimeout(3*time.Minute),
@@ -233,6 +233,10 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000086_ticket_legacy_definition_bindings.up.sql",
 			"000087_ticket_evidence_transition.up.sql",
 			"000088_ticket_instance_actions.up.sql",
+			"000089_risk_registration.up.sql",
+			"000090_risk_personal_dispatch.up.sql",
+			"000091_riskreminder_accept_timeout.up.sql",
+			"000092_risk_remediation.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

@@ -23,10 +23,14 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	Audit    AuditConfig    `mapstructure:"audit"`
 
-	InternalJobs InternalJobsConfig `mapstructure:"internal_jobs"`
-	Taskrunner   TaskrunnerConfig   `mapstructure:"taskrunner"`
-	Gateway      GatewayConfig      `mapstructure:"gateway"`
-	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+	InternalJobs           InternalJobsConfig       `mapstructure:"internal_jobs"`
+	RiskIngest             RiskIngestConfig         `mapstructure:"risk_ingest"`
+	RiskAssetDirectory     RiskAssetDirectoryConfig `mapstructure:"risk_asset_directory"`
+	RiskRemediationEnabled bool                     `mapstructure:"risk_remediation_enabled"`
+	RiskReminder           RiskReminderConfig       `mapstructure:"risk_reminder"`
+	Taskrunner             TaskrunnerConfig         `mapstructure:"taskrunner"`
+	Gateway                GatewayConfig            `mapstructure:"gateway"`
+	RateLimit              RateLimitConfig          `mapstructure:"rate_limit"`
 
 	// 存量协议兼容层（utils aksk/compat v0.4.2，phase1/02-auth §存量迁移翻案追记）：
 	// /compat 路由组接收存量框架 x-auth-* 签名调用方。Enabled=false（默认）不挂路由
@@ -327,6 +331,18 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
+	viper.BindEnv("risk_ingest.enabled", "RISK_INGEST_ENABLED")
+	viper.BindEnv("risk_ingest.source_ref", "RISK_INGEST_SOURCE_REF")
+	viper.BindEnv("risk_ingest.ak", "RISK_INGEST_AK")
+	viper.BindEnv("risk_ingest.sk", "RISK_INGEST_SK")
+	viper.BindEnv("risk_asset_directory.enabled", "RISK_ASSET_DIRECTORY_ENABLED")
+	viper.BindEnv("risk_asset_directory.origin", "RISK_ASSET_DIRECTORY_ORIGIN")
+	viper.BindEnv("risk_asset_directory.ak", "RISK_ASSET_DIRECTORY_AK")
+	viper.BindEnv("risk_asset_directory.sk", "RISK_ASSET_DIRECTORY_SK")
+	viper.BindEnv("risk_asset_directory.timeout", "RISK_ASSET_DIRECTORY_TIMEOUT")
+	viper.BindEnv("risk_asset_directory.max_age", "RISK_ASSET_DIRECTORY_MAX_AGE")
+	viper.BindEnv("risk_remediation_enabled", "RISK_REMEDIATION_ENABLED")
+	viper.BindEnv("risk_reminder.scan_interval", "RISK_REMINDER_SCAN_INTERVAL")
 	viper.BindEnv("taskrunner.base_url", "TASKRUNNER_BASE_URL")
 	viper.BindEnv("taskrunner.sk", "TASKRUNNER_SK")
 	// 回调拼接基址（消费者=taskrunner）：宿主进程态 localhost / 容器态服务名，
