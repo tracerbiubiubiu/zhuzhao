@@ -238,11 +238,19 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 	if deadline != nil && deadline.IsZero() {
 		deadline = nil
 	}
-	hash := canonicalHash(map[string]any{
+	evidenceUntil := req.DispatchBasisValidUntil
+	if evidenceUntil != nil && (evidenceUntil.IsZero() || strings.TrimSpace(req.AssessmentNote) == "") {
+		return nil, errcode.ErrInvalidParams
+	}
+	input := map[string]any{
 		"command": "assess", "id": req.ID, "expected_revision": expected,
 		"level": req.Level, "treatment": req.Treatment,
 		"note": req.AssessmentNote, "deadline": deadline,
-	})
+	}
+	if evidenceUntil != nil {
+		input["dispatch_basis_valid_until"] = evidenceUntil.UTC()
+	}
+	hash := canonicalHash(input)
 	var result *model.RiskMutationResult
 	err = s.withHTTPCommand(ctx, riskAssessPath, actor, func(ctx context.Context, tx pgx.Tx) error {
 		receipt, replayed, err := repository.ClaimOperationTx(ctx, tx, actor, req.OperationID, hash, "assess")
@@ -271,11 +279,15 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 		if err != nil {
 			return err
 		}
+		evidence := map[string]any{
+			"level": req.Level, "treatment": req.Treatment,
+			"deadline": deadline, "note": req.AssessmentNote,
+		}
+		if evidenceUntil != nil {
+			evidence["dispatch_basis_valid_until"] = evidenceUntil.UTC()
+		}
 		if err := repository.InsertEventTx(ctx, tx, updated.ID, updated.Revision, "assessed", 0, actor,
-			req.OperationID, jsonBytes(map[string]any{
-				"level": req.Level, "treatment": req.Treatment,
-				"deadline": deadline, "note": req.AssessmentNote,
-			})); err != nil {
+			req.OperationID, jsonBytes(evidence)); err != nil {
 			return err
 		}
 		if err := repository.CompleteOperationTx(ctx, tx, actor, req.OperationID,

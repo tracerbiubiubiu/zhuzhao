@@ -336,6 +336,10 @@ func (d *Dispatcher) applyGroupTx(ctx context.Context, tx pgx.Tx, actorID int64,
 	if err != nil {
 		return GroupReceipt{}, err
 	}
+	receipt.CompletedAt = time.Now().UTC()
+	if !receipt.CompletedAt.Before(expiresAt) {
+		return failGroup(receipt, group, ItemConflict, ReasonPlanExpired), nil
+	}
 	factByID := make(map[int64]RiskFact, len(facts))
 	for _, fact := range facts {
 		factByID[fact.ID] = fact

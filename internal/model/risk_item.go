@@ -75,13 +75,14 @@ type RiskCreateRequest struct {
 
 // RiskAssessRequest 核实/评估（POST /risk-items/assess；详设 §2.2）。
 type RiskAssessRequest struct {
-	OperationID      string     `json:"operation_id" binding:"required,max=128"`
-	ID               int64      `json:"id,string" binding:"required"`
-	ExpectedRevision string     `json:"expected_revision" binding:"required"`
-	Level            string     `json:"level" binding:"required"`
-	AssessmentNote   string     `json:"assessment_note"`
-	Treatment        string     `json:"treatment" binding:"required"`
-	Deadline         *time.Time `json:"deadline,omitempty"`
+	OperationID             string     `json:"operation_id" binding:"required,max=128"`
+	ID                      int64      `json:"id,string" binding:"required"`
+	ExpectedRevision        string     `json:"expected_revision" binding:"required"`
+	Level                   string     `json:"level" binding:"required"`
+	AssessmentNote          string     `json:"assessment_note"`
+	Treatment               string     `json:"treatment" binding:"required"`
+	Deadline                *time.Time `json:"deadline,omitempty"`
+	DispatchBasisValidUntil *time.Time `json:"dispatch_basis_valid_until,omitempty"`
 }
 
 // RiskAssignRequest 责任确认（POST /risk-items/assign；详设 §2.2 主锚管理者）。
@@ -101,6 +102,7 @@ type FindingObservationV1 struct {
 	EventID         string              `json:"event_id" binding:"required,max=200"`
 	SourceSequence  string              `json:"source_sequence,omitempty"`
 	ObservedAt      time.Time           `json:"observed_at" binding:"required"`
+	ValidUntil      *time.Time          `json:"valid_until,omitempty"`
 	ObservationKind string              `json:"observation_kind,omitempty"` // observed|withdrawn|deleted，缺省 observed
 	AssetRef        *RiskAssetRef       `json:"asset_ref,omitempty"`
 	FindingClass    string              `json:"finding_class,omitempty"`

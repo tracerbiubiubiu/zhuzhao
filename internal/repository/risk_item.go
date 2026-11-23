@@ -181,6 +181,25 @@ func FindItemIDByFamilyTx(ctx context.Context, tx pgx.Tx, familyID int64) (int64
 	return id, true, nil
 }
 
+// LockObservedRiskItemsTx locks existing cycles in dispatch order. The caller
+// has already serialized each supplied family key with the source advisory lock.
+func LockObservedRiskItemsTx(ctx context.Context, tx pgx.Tx, scope string, schemaVersion int, keys []string) error {
+	rows, err := tx.Query(ctx, `
+		SELECT r.id FROM risk_items r
+		JOIN risk_families f ON f.id = r.family_id
+		WHERE f.fingerprint_scope = $1 AND f.key_schema_version = $2
+			AND f.canonical_key_hash = ANY($3)
+			AND r.id = (SELECT min(first.id) FROM risk_items first WHERE first.family_id = f.id)
+		ORDER BY r.id FOR UPDATE OF r`, scope, schemaVersion, keys)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+	}
+	return rows.Err()
+}
+
 // InsertRiskItemTx 落风险周期行（human_key 由服务层生成后传入）。
 func InsertRiskItemTx(ctx context.Context, tx pgx.Tx, r *RiskItemRow) (int64, error) {
 	var id int64

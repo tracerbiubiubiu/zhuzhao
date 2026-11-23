@@ -19,7 +19,7 @@ import (
 //   - 合成来源：src1:<hex(现势镜像 content_hash)>，镜像取该风险最近一次
 //     applied（accepted/duplicate）观察所属 (source, item) 的现势行；
 //     镜像 kind 非 observed（withdrawn/deleted）→ ”（撤回失效），
-//     无 applied 观察/镜像 → ”（无法核实）。
+//     停用来源、映射变更、身份不匹配、指定期限已过或无镜像 → 空（无法核实）。
 //
 // 只做纯快照读（无 FOR UPDATE）：report 应用路径按 advisory(source item) →
 // risk_source_records → risk_families → risk_items 顺序加锁，派单锁路径已持有
@@ -34,7 +34,10 @@ SELECT ri.id,
 			OR NULLIF(btrim(ri.asset_external_id), '') IS NULL
 		THEN ''
 		WHEN fam.fingerprint_scope = 'manual' THEN COALESCE((
-			SELECT 'man1:' || ri.id::text || ':' || e.aggregate_revision::text
+			SELECT CASE WHEN NULLIF(btrim(e.payload ->> 'note', E' \\t\\n\\r'), '') IS NOT NULL
+				AND ((e.payload ->> 'dispatch_basis_valid_until') IS NULL
+					OR (e.payload ->> 'dispatch_basis_valid_until')::timestamptz > statement_timestamp())
+				THEN 'man1:' || ri.id::text || ':' || e.aggregate_revision::text ELSE '' END
 			FROM risk_events e
 			WHERE e.risk_id = ri.id AND e.event_kind = 'assessed'
 			ORDER BY e.aggregate_revision DESC
@@ -42,12 +45,18 @@ SELECT ri.id,
 		), '')
 		ELSE COALESCE((
 			SELECT CASE
-				WHEN COALESCE(sr.mirror ->> 'kind', 'observed') <> 'observed' THEN ''
+				WHEN NOT source.enabled OR source.mapping_ref <> sr.mapping_ref
+					OR sr.mirror ->> 'kind' IS DISTINCT FROM 'observed'
+					OR sr.mirror ->> 'finding_key' IS DISTINCT FROM ri.finding_key
+					OR sr.mirror #>> '{asset_ref,provider}' IS DISTINCT FROM ri.asset_provider
+					OR sr.mirror #>> '{asset_ref,external_id}' IS DISTINCT FROM ri.asset_external_id
+					OR (sr.mirror ->> 'valid_until')::timestamptz <= statement_timestamp() THEN ''
 				ELSE 'src1:' || encode(sr.content_hash, 'hex')
 			END
 			FROM risk_observations o
 			JOIN risk_source_records sr
 				ON sr.source_ref = o.source_ref AND sr.source_item_key = o.source_item_key
+			JOIN risk_sources source ON source.source_ref = sr.source_ref
 			WHERE o.risk_id = ri.id AND o.result_kind IN ('accepted', 'duplicate')
 			ORDER BY o.observed_at DESC, o.ingest_id DESC
 			LIMIT 1

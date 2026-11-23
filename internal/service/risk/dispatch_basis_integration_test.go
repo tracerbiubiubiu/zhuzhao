@@ -6,6 +6,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -233,6 +234,30 @@ func TestDispatchBasis_ManualVerifiedLifecycle(t *testing.T) {
 	fresh := mustCreateIdentity(t, svc, "op-man-fresh-"+suffix, "R-man-fresh-"+suffix, orgGID, &userU,
 		"CVE-2026-FRESH-"+suffix, ref)
 	require.Empty(t, currentBasis(t, svc, fresh.Risk.ID))
+
+	now := time.Now().UTC()
+	expired := now.Add(-time.Minute)
+	valid := now.Add(time.Hour)
+	deadline := dDayAt(t, 0)
+	for _, checking := range []struct {
+		operation string
+		revision  string
+		note      string
+		until     *time.Time
+		basis     string
+	}{
+		{"expired", "1", "佐证已失效", &expired, ""},
+		{"valid", "2", "现势佐证", &valid, "man1:" + strconv.FormatInt(fresh.Risk.ID, 10) + ":3"},
+		{"no-note", "3", " \t\n", nil, ""},
+	} {
+		_, err := svc.Assess(ctx, model.RiskAssessRequest{
+			OperationID: "op-man-" + checking.operation + "-" + suffix,
+			ID:          fresh.Risk.ID, ExpectedRevision: checking.revision, Level: "high",
+			Treatment: "mitigate", Deadline: &deadline, AssessmentNote: checking.note, DispatchBasisValidUntil: checking.until,
+		}, userM)
+		require.NoError(t, err)
+		require.Equal(t, checking.basis, lockBasis(t, svc, fresh.Risk.ID))
+	}
 }
 
 // ── 契约三：来源匹配依据（src1 版本串）纳入派单事实、撤回失效、重报恢复 ───
@@ -245,7 +270,7 @@ func TestDispatchBasis_SourceMatchEvidenceAndWithdrawal(t *testing.T) {
 	basisSource := seedBasisSource(t)
 	itemKey := "asset-src-" + suffix + ":vuln-src:443"
 
-	observe := func(eventID, seq, kind string, sevValue string) *model.RiskReportResult {
+	observe := func(eventID, seq, kind string, sevValue string, adjust ...func(*model.FindingObservationV1)) *model.RiskReportResult {
 		t.Helper()
 		obs := baseObservation(suffix, eventID, seq)
 		obs.SourceRef = basisSource
@@ -257,6 +282,9 @@ func TestDispatchBasis_SourceMatchEvidenceAndWithdrawal(t *testing.T) {
 		}
 		if sevValue != "" {
 			obs.SourceSeverity = &model.RiskSourceSeverity{Scheme: "provider-five-level", Value: sevValue}
+		}
+		for _, customize := range adjust {
+			customize(&obs)
 		}
 		res, err := svc.Report(ctx, model.RiskReportRequest{Observations: []model.FindingObservationV1{obs}}, userM)
 		require.NoError(t, err)
@@ -298,6 +326,28 @@ func TestDispatchBasis_SourceMatchEvidenceAndWithdrawal(t *testing.T) {
 	// 重新断言恢复可派依据（新镜像版本）。
 	observe("evt-s4", "304", "", "5")
 	require.Equal(t, "src1:"+mirrorHashOf(t, basisSource, itemKey), currentBasis(t, svc, riskID))
+
+	observe("evt-s5", "305", "", "5", func(obs *model.FindingObservationV1) {
+		obs.AssetRef.ExternalID += "-different"
+	})
+	require.Empty(t, lockBasis(t, svc, riskID), "现势镜像资产须匹配登记身份")
+
+	now := time.Now().UTC()
+	expired := now.Add(-time.Minute)
+	observe("evt-s6", "306", "", "5", func(obs *model.FindingObservationV1) {
+		obs.ObservedAt, obs.ValidUntil = expired.Add(-time.Hour), &expired
+	})
+	require.Empty(t, lockBasis(t, svc, riskID), "已有期限的匹配依据到期后不可派")
+
+	valid := now.Add(time.Hour)
+	observe("evt-s7", "307", "", "5", func(obs *model.FindingObservationV1) {
+		obs.ObservedAt, obs.ValidUntil = now, &valid
+	})
+	require.Equal(t, "src1:"+mirrorHashOf(t, basisSource, itemKey), lockBasis(t, svc, riskID))
+
+	_, err := testPool.Exec(ctx, "UPDATE risk_sources SET enabled=false WHERE source_ref=$1", basisSource)
+	require.NoError(t, err)
+	require.Empty(t, lockBasis(t, svc, riskID), "停用来源不可派")
 }
 
 // ── 契约四：锁内取依据不锁来源镜像（防 report/source→risk 锁序反转） ──────

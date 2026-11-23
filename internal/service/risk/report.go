@@ -37,6 +37,7 @@ type observationFingerprint struct {
 	EventID        string                    `json:"event_id"`
 	SourceSequence string                    `json:"source_sequence"`
 	ObservedAt     string                    `json:"observed_at"`
+	ValidUntil     string                    `json:"valid_until,omitempty"`
 	Kind           string                    `json:"kind"`
 	AssetRef       *model.RiskAssetRef       `json:"asset_ref,omitempty"`
 	FindingClass   string                    `json:"finding_class,omitempty"`
@@ -81,6 +82,9 @@ func (s *Service) report(ctx context.Context, req model.RiskReportRequest, actor
 			return nil, errcode.ErrInvalidParams // 单批次限一来源
 		}
 		if o.SourceItemKey == "" || o.EventID == "" || o.MappingRef == "" || o.ObservedAt.IsZero() {
+			return nil, errcode.ErrInvalidParams
+		}
+		if o.ValidUntil != nil && !o.ValidUntil.After(o.ObservedAt) {
 			return nil, errcode.ErrInvalidParams
 		}
 		switch o.ObservationKind {
@@ -140,6 +144,15 @@ func (s *Service) report(ctx context.Context, req model.RiskReportRequest, actor
 				return err
 			}
 		}
+		if len(obs) > 1 {
+			families := make([]string, len(obs))
+			for i := range obs {
+				families[i] = canonicalKeyHex(src.FingerprintScope, obs[i].SourceItemKey)
+			}
+			if err := repository.LockObservedRiskItemsTx(ctx, tx, src.FingerprintScope, src.KeySchemaVersion, families); err != nil {
+				return err
+			}
+		}
 		items := make([]model.RiskReportItem, 0, len(obs))
 		for i := range obs {
 			item, err := s.applyObservation(ctx, tx, src, obs[i], actor, reservedKeys[i])
@@ -170,6 +183,9 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 		Kind: kind, AssetRef: o.AssetRef, FindingClass: o.FindingClass, FindingKey: o.FindingKey,
 		Port: o.Port, SourceSeverity: o.SourceSeverity, ConclusionRef: o.ConclusionRef,
 		EvidenceRefs: o.EvidenceRefs, MappingRef: o.MappingRef, Attributes: normalizeJSON(o.Attributes),
+	}
+	if o.ValidUntil != nil {
+		fp.ValidUntil = o.ValidUntil.UTC().Format(time.RFC3339Nano)
 	}
 	hash := canonicalHash(fp)
 	var seq *string
