@@ -13,6 +13,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/logger"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/postgres"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/redis"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/app/riskworkflow"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
@@ -32,6 +33,8 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/risk"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/riskdispatch"
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
@@ -322,7 +325,8 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	ticketService.SetActionRegistry(actionReg)
 	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
 	ticketPeopleHandler := handler.NewTicketPeopleHandler(ticket.NewPeopleService(ticketService, syncedEnforcer, repository.NewTicketPeopleRepo(pool)))
-	storageHandler := handler.NewStorageHandler(storageService, ticketService, auditService)
+	storageAuth := ticket.NewRiskWorkflowAttachmentCommand(ticketService, cfg.RiskRemediationEnabled)
+	storageHandler := handler.NewStorageHandler(storageService, storageAuth, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
 	settingsService := service.NewSettingsService(settingsRepo, storageStore, logger)
 	settingsHandler := handler.NewSettingsHandler(settingsService)
@@ -375,6 +379,42 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	})
 
 	cronRegistry := service.NewCronRegistry()
+	riskRecorder, riskCron, err := buildRiskReminder(cfg, pool, logger, cronRegistry)
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	// Phase 6 B2 第 6 项（D08/D09）风险登记与核实域（写主 service/risk；
+	// L1 经 000089 菜单绑定，L2/L3 与 C04 守卫在域内）
+	dispatchTickets := riskDispatchTicketPorts{service: ticketService, repo: ticketRepo, pool: pool, reminder: riskRecorder, remediation: cfg.RiskRemediationEnabled}
+	riskService := risk.NewServiceWithTicketViews(pool, logger, dispatchTickets)
+	riskAssetDirectory, err := cfg.RiskAssetDirectory.Client()
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	riskHandler := handler.NewRiskHandler(riskService, riskAssetDirectory)
+	riskDispatch := riskdispatch.NewDispatcher(riskdispatch.DispatcherDeps{
+		DB: pool, Tx: riskService, Authorizer: riskService, Facts: riskService, Commit: riskService,
+		Tickets: dispatchTickets, TicketViews: dispatchTickets, Owners: riskDispatchOwnerDirectory{},
+		Definitions: dispatchTickets,
+	})
+	var assignment *riskworkflow.AssignmentService
+	if riskRecorder != nil {
+		assignment = riskworkflow.NewAssignmentService(pool, ticketService, riskworkflow.AssignmentDependencies{
+			Clock: time.Now, RecordAssignment: riskRecorder.RecordConfiguredAssignment, RecordAcceptance: riskRecorder.RecordConfiguredAcceptance,
+		})
+	}
+	riskWorkflow := riskWorkflowPorts{
+		ReceiptService: riskworkflow.NewReceiptService(pool, ticketService),
+		pool:           pool, tickets: ticketService, storage: storageStore, enabled: cfg.RiskRemediationEnabled,
+		assignment: assignment,
+	}
+	riskWorkflowHandler := handler.NewRiskWorkflowHandler(riskWorkflow)
 	deps := router.Deps{
 		AuthHandler:         authHandler,
 		UserHandler:         userHandler,
@@ -395,26 +435,30 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		BadgeHandler:            handler.NewBadgeHandler(badgeSvc),
 		// G2-2 审计修复：InboxHandler 漏装配（deps 缺字段——nil 进路由，调用即
 		// nil pointer panic，inbox 三端点全 500；notifications 零落库同根）
-		InboxHandler:      handler.NewInboxHandler(inboxSvc),
-		SystemHandler:     handler.NewSystemHandler(cronRegistry),
-		IntelHandler:      handler.NewIntelHandler(intelSvc),
-		StorageHandler:    storageHandler,
-		SettingsHandler:   settingsHandler,
-		JWTManager:        manager,
-		Enforcer:          syncedEnforcer,
-		RedisClient:       client,
-		DBPool:            pool,
-		Logger:            logger,
-		RoleFetcher:       rbacService,
-		AuditService:      auditService,
-		Registry:          registry,
-		JobsHandler:       jobsHandler,
-		InternalJobs:      internalJobsConfig,
-		CompatAKSK:        compatAKSKConfig,
-		TaskrunnerHandler: taskrunnerHandler,
-		Gateway:           gatewayRegistry,
-		RateLimit:         rateLimitConfig,
-		TrustedProxies:    v,
+		InboxHandler:        handler.NewInboxHandler(inboxSvc),
+		SystemHandler:       handler.NewSystemHandler(cronRegistry),
+		IntelHandler:        handler.NewIntelHandler(intelSvc),
+		StorageHandler:      storageHandler,
+		SettingsHandler:     settingsHandler,
+		JWTManager:          manager,
+		Enforcer:            syncedEnforcer,
+		RedisClient:         client,
+		DBPool:              pool,
+		Logger:              logger,
+		RoleFetcher:         rbacService,
+		AuditService:        auditService,
+		Registry:            registry,
+		JobsHandler:         jobsHandler,
+		InternalJobs:        internalJobsConfig,
+		CompatAKSK:          compatAKSKConfig,
+		TaskrunnerHandler:   taskrunnerHandler,
+		Gateway:             gatewayRegistry,
+		RateLimit:           rateLimitConfig,
+		TrustedProxies:      v,
+		RiskHandler:         riskHandler,
+		RiskDispatchHandler: handler.NewRiskDispatchHandler(riskDispatch, riskDispatchDeptRead{pool: pool, service: riskdispatch.NewDeptStats(dispatchTickets)}, riskWorkflow.canWrite),
+		RiskIngest:          cfg.RiskIngest,
+		RiskWorkflowHandler: riskWorkflowHandler,
 	}
 	// P4-8：panic 聚合+运行时对账。engineRef 前置声明——闭包运行时取（engine 由
 	// router.New(deps) 在下方构造后回填）
@@ -451,6 +495,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		cleanup()
 		return nil, nil, err
 	}
+	app.riskReminder = riskCron
 	// C05 会话投影恢复 worker：跨进程按原 intent 重投（失败保留 pending，不删项）。
 	// 启动先扫一轮确认 bootstrap 意图，避免切换就绪门误伤首次登录。
 	sessionCtx, sessionCancel := context.WithCancel(context.Background())

@@ -79,6 +79,16 @@ func validateTransitionEdges(states []string, transitions map[string][]string, r
 		}
 	}
 	for key, seg := range m {
+		var published struct {
+			FirstAccept *model.RiskFirstAcceptRule `json:"first_accept_reminder"`
+		}
+		if err := json.Unmarshal(seg, &published); err != nil {
+			return errcode.New(errcode.ErrInvalidParams.Code, fmt.Sprintf("transition_meta[%s] 结构不合法", key))
+		}
+		if published.FirstAccept != nil && (key != StatusAssigned ||
+			!validEdges[transitionKey(StatusAssigned, StatusInProgress)] || !published.FirstAccept.Valid()) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "接单提醒须发布在 assigned 节点并提供有效规则及接单出边")
+		}
 		// 两形键：state 级（B10-4 timeout）与转换级（from>to）——按 ">" 区分
 		if !strings.Contains(key, ">") {
 			if !stateSet[key] {

@@ -78,6 +78,13 @@ func (r *StorageRepo) DeleteTicketAttachment(ctx context.Context, bucket string,
 	if err := checkStoredAttachmentReferences(snapshot.Fields, data, key); err != nil {
 		return err
 	}
+	remediationReferenced, err := hasRiskTicketEvidence(ctx, tx, ticketID, &key)
+	if err != nil {
+		return err
+	}
+	if remediationReferenced {
+		return ErrStorageAttachmentReferenced
+	}
 	if _, err = tx.Exec(ctx, `DELETE FROM ticket_attachments WHERE ticket_id=$1 AND file_object_id=$2`, ticketID, id); err != nil {
 		return err
 	}

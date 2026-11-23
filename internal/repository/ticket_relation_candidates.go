@@ -14,7 +14,7 @@ func (r *TicketRepo) SearchRelationCandidates(ctx context.Context, filter resour
 		return nil, fmt.Errorf("ticket relation candidates: missing authorization predicate")
 	}
 	where, args := buildTicketWhere(filter, model.TicketListQuery{Keyword: keyword})
-	rows, err := IAMDB(ctx, r.db).Query(ctx, `SELECT id, title, status FROM tickets`+where+` ORDER BY id DESC LIMIT 20`, args...)
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `SELECT id, `+TicketSummaryTitleSQL+`, status FROM tickets`+where+` ORDER BY id DESC LIMIT 20`, args...)
 	if err != nil {
 		return nil, err
 	}

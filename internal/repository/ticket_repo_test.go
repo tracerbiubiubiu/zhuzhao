@@ -58,7 +58,7 @@ func TestTicketListConds(t *testing.T) {
 
 	t.Run("keyword 转义 ILIKE 元字符（D2-21）", func(t *testing.T) {
 		conds, args := ticketListConds(model.TicketListQuery{Keyword: `50%_ok\`}, 0)
-		if len(conds) != 1 || conds[0] != `title ILIKE $1 ESCAPE '\'` {
+		if len(conds) != 1 || conds[0] != TicketSummaryTitleSQL+` ILIKE $1 ESCAPE '\'` {
 			t.Fatalf("unexpected conds: %v", conds)
 		}
 		if args[0] != `%50\%\_ok\\%` {
@@ -68,7 +68,7 @@ func TestTicketListConds(t *testing.T) {
 
 	t.Run("纯数字 keyword OR 工单 ID 精确匹配", func(t *testing.T) {
 		conds, args := ticketListConds(model.TicketListQuery{Keyword: "123"}, 0)
-		if len(conds) != 1 || conds[0] != `(title ILIKE $1 ESCAPE '\' OR id = $2)` {
+		if len(conds) != 1 || conds[0] != `(`+TicketSummaryTitleSQL+` ILIKE $1 ESCAPE '\' OR id = $2)` {
 			t.Fatalf("unexpected conds: %v", conds)
 		}
 		if args[1] != int64(123) {
@@ -78,7 +78,7 @@ func TestTicketListConds(t *testing.T) {
 
 	t.Run("含非数字字符不带 ID 分支", func(t *testing.T) {
 		conds, args := ticketListConds(model.TicketListQuery{Keyword: "1a"}, 0)
-		if len(conds) != 1 || strings.Contains(conds[0], "id =") {
+		if len(conds) != 1 || strings.Contains(conds[0], " OR id = ") {
 			t.Fatalf("非纯数字不应带 ID 条件: %v", conds)
 		}
 		if len(args) != 1 {

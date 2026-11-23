@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,6 +60,22 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 	if rule == nil {
 		return // 无规则=不通知（updated/commented 等）
 	}
+	var restrictedTicketID int64
+	if ev.BizType == domainevent.BizTicket || (ev.BizType == domainevent.BizOps && ev.Action == domainevent.ActionOpsActionFailed) {
+		ticketID, idErr := strconv.ParseInt(ev.BizID, 10, 64)
+		if idErr != nil || ticketID <= 0 {
+			h.logger.Warn("notify: missing ticket identity", "action", ev.Action)
+			return
+		}
+		restricted, scopeErr := h.ruleRepo.IsRiskTicketNotification(ctx, ticketID)
+		if scopeErr != nil {
+			h.logger.Warn("notify: ticket notification scope unavailable", "action", ev.Action, "ticket_id", ticketID, "err", scopeErr)
+			return
+		}
+		if restricted {
+			restrictedTicketID = ticketID
+		}
+	}
 	tplCode := rule.TemplateCode
 	// S3a B3-3 notify 动作的模板参数（EmitActionNotify 透传 template_code）：动作显式指定时
 	// 覆盖规则默认——**规则仍是开关**（无规则不发送）与兜底模板；码不存在走下方统一 not-found 拒发。
@@ -92,31 +109,18 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		return
 	}
 
-	// ② 组装变量（event payload 即变量源——ticket.* 前缀）
-	vars := buildEventVars(ev)
-
-	// ③ 渲染（四象限三分档——B6-3 增强批：内置键缺失=fail 拒发/动态键=skip+warn）
-	subjR := msgrender.RenderQuadrantEscaped(tpl.Subject, vars, tpl.Channel)
-	bodyR := msgrender.RenderQuadrantEscaped(tpl.Body, vars, tpl.Channel)
-	if subjR.Err != nil || bodyR.Err != nil {
-		err := subjR.Err
-		if err == nil {
-			err = bodyR.Err
+	var subject, body string
+	if restrictedTicketID > 0 {
+		// Normal notification recipients and templates do not confer risk
+		// object access. The ticket link checks authorization when opened.
+		subject = repository.NeutralTicketNotificationTitle
+		body = "/tickets/" + strconv.FormatInt(restrictedTicketID, 10)
+	} else {
+		var rendered bool
+		subject, body, rendered = h.renderNotification(ctx, ev, rule, tpl)
+		if !rendered {
+			return
 		}
-		h.logger.Warn("notify: render rejected (builtin key missing)",
-			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
-		failure := &model.MessageLog{TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID, Channel: tpl.Channel, Recipients: strings.Join(resolveRecipientsFromRule(ev, rule.RecipientType, rule.FixedRecipients), ","), Status: "failed", Error: "render rejected: " + err.Error()}
-		if ev.ActorID > 0 {
-			actor := ev.ActorID
-			failure.ActorID = &actor
-		}
-		h.recordDelivery(ctx, ev, failure)
-		return
-	}
-	subject := subjR.Text
-	body := bodyR.Text
-	for _, w := range append(subjR.Warnings, bodyR.Warnings...) {
-		h.logger.Info("notify: render warning", "detail", w, "action", ev.Action, "biz_id", ev.BizID)
 	}
 
 	// ④ 解析收件人（消费 message_rules 的 recipient_type/fixed_recipients——修复前旁路 DDL）
@@ -172,9 +176,12 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 	sendErr := ""
 	if err != nil {
 		status = "failed"
-		sendErr = err.Error()
+		sendErr = "channel send failed"
+		if restrictedTicketID == 0 {
+			sendErr = err.Error()
+		}
 		h.logger.Error("notify: send failed",
-			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
+			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", sendErr)
 		// 06 号 §5.4：Send 终败→进程内直调死信告警（与 /internal/notify/dead-letter 共用）
 		if h.notifySvc != nil {
 			if alertErr := h.notifySvc.NotifyDeadLetter(ctx, &model.DeadLetterNotifyPayload{
@@ -204,6 +211,31 @@ func (h *MessageDispatcher) Dispatch(ctx context.Context, ev domainevent.DomainE
 		Channel: h.sender.Channel(), Recipients: strings.Join(recipients, ","),
 		Subject: subject, Body: body, Status: status, Error: sendErr,
 	})
+}
+
+func (h *MessageDispatcher) renderNotification(ctx context.Context, ev domainevent.DomainEvent, rule *model.MessageRule, tpl *model.MessageTemplate) (string, string, bool) {
+	vars := buildEventVars(ev)
+	subject := msgrender.RenderQuadrantEscaped(tpl.Subject, vars, tpl.Channel)
+	body := msgrender.RenderQuadrantEscaped(tpl.Body, vars, tpl.Channel)
+	if subject.Err != nil || body.Err != nil {
+		err := subject.Err
+		if err == nil {
+			err = body.Err
+		}
+		h.logger.Warn("notify: render rejected (builtin key missing)",
+			"action", ev.Action, "biz_id", ev.BizID, "template", tpl.Code, "err", err)
+		failure := &model.MessageLog{TemplateCode: tpl.Code, BizType: string(ev.BizType), BizID: ev.BizID, Channel: tpl.Channel, Recipients: strings.Join(resolveRecipientsFromRule(ev, rule.RecipientType, rule.FixedRecipients), ","), Status: "failed", Error: "render rejected: " + err.Error()}
+		if ev.ActorID > 0 {
+			actor := ev.ActorID
+			failure.ActorID = &actor
+		}
+		h.recordDelivery(ctx, ev, failure)
+		return "", "", false
+	}
+	for _, w := range append(subject.Warnings, body.Warnings...) {
+		h.logger.Info("notify: render warning", "detail", w, "action", ev.Action, "biz_id", ev.BizID)
+	}
+	return subject.Text, body.Text, true
 }
 
 func (h *MessageDispatcher) recordDelivery(ctx context.Context, ev domainevent.DomainEvent, entry *model.MessageLog) {
