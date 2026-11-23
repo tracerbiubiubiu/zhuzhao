@@ -173,6 +173,7 @@ func activeLinkTicket(ctx context.Context, db Reader, riskID int64) (ticketID in
 type GroupReceiptItem struct {
 	RiskID int64            `json:"risk_id"`
 	Result ItemResult       `json:"result"`
+	Reason string           `json:"reason,omitempty"`
 	Ticket *TicketReference `json:"ticket,omitempty"`
 }
 
@@ -194,7 +195,7 @@ func (d *Dispatcher) viewTicket(ctx context.Context, actorUserID, ticketID int64
 	return &TicketReference{ID: ticketID, Ref: ref}
 }
 
-// GroupReceipt 成功组收据（同事务落库；重投原号读回）。
+// GroupReceipt 已终结组的不可变回执（completed 或 failed）。
 type GroupReceipt struct {
 	GroupOperationID   string             `json:"group_operation_id"`
 	Status             string             `json:"status"`
@@ -209,9 +210,8 @@ type GroupReceipt struct {
 	CompletedAt        time.Time          `json:"completed_at"`
 }
 
-// saveGroupReceiptTx 成功组回执与票/关联同事务（详设 §5.1）。
+// saveGroupReceiptTx 在持有 parent 行锁时写入终态回执。
 func saveGroupReceiptTx(ctx context.Context, tx pgx.Tx, actorID int64, operationID, groupKey string, receipt GroupReceipt) error {
-	receipt.Status = "completed"
 	body, err := json.Marshal(receipt)
 	if err != nil {
 		return fmt.Errorf("encode dispatch group receipt: %w", err)

@@ -48,7 +48,8 @@ func (s *stubAuthorizer) AuthorizeDispatch(_ context.Context, _ Reader, actorID 
 // ---------- 事实 stub：可见性 = allowlist；锁内升序读现势 ----------
 
 type stubFacts struct {
-	visible map[string]bool // "actor|riskID" → true
+	visible     map[string]bool // "actor|riskID" → true
+	basisByRisk map[int64]string
 }
 
 func (s *stubFacts) CurrentDispatchFacts(ctx context.Context, db Reader, actorID int64,
@@ -62,15 +63,15 @@ func (s *stubFacts) CurrentDispatchFacts(ctx context.Context, db Reader, actorID
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return readStubFacts(ctx, db, ids, false)
+	return s.readFacts(ctx, db, ids, false)
 }
 
 func (s *stubFacts) LockDispatchFacts(ctx context.Context, tx pgx.Tx, ids []int64) ([]RiskFact, error) {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-	return readStubFacts(ctx, tx, ids, true)
+	return s.readFacts(ctx, tx, ids, true)
 }
 
-func readStubFacts(ctx context.Context, db Reader, ids []int64, forUpdate bool) ([]RiskFact, error) {
+func (s *stubFacts) readFacts(ctx context.Context, db Reader, ids []int64, forUpdate bool) ([]RiskFact, error) {
 	placeholders := make([]string, len(ids))
 	args := make([]any, len(ids))
 	for i, id := range ids {
@@ -105,6 +106,10 @@ func readStubFacts(ctx context.Context, db Reader, ids []int64, forUpdate bool) 
 		}
 		fact.Priority = map[string]int{"urgent": 1, "high": 2, "medium": 3, "low": 4}[level]
 		fact.Deadline = deadline.UTC()
+		fact.DispatchBasis = "synthetic-basis-v1"
+		if basis, ok := s.basisByRisk[fact.ID]; ok {
+			fact.DispatchBasis = basis
+		}
 		facts = append(facts, fact)
 	}
 	return facts, rows.Err()

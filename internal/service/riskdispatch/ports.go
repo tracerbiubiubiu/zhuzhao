@@ -42,7 +42,8 @@ type RiskAuthorizer interface {
 // RiskExpected 预览请求携带的乐观版本（详设 §2 Mutation 语义）。
 type RiskExpected = model.RiskDispatchExpected
 
-// RiskFact is a verified risk projection provided by the owning risk service.
+// RiskFact is a visible risk projection from its owning service. DispatchBasis
+// is an opaque, stable version of the current verified basis. Empty means unavailable.
 type RiskFact = model.RiskDispatchFact
 
 // RiskFacts 风险域事实端口：预览按可见性投影，apply 在锁内取现势。

@@ -143,6 +143,7 @@ func (d *Dispatcher) planTx(ctx context.Context, tx pgx.Tx, actorID int64, input
 		candidates = append(candidates, Candidate{
 			RiskID:          fact.ID,
 			Revision:        fact.Revision,
+			DispatchBasis:   fact.DispatchBasis,
 			FindingKey:      fact.FindingKey,
 			AssetKey:        fact.AssetKey,
 			AssetRef:        fact.AssetRef,

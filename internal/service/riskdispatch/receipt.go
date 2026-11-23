@@ -77,22 +77,30 @@ func (d *Dispatcher) ReadOperation(ctx context.Context, actorID int64, operation
 	}
 	result := ApplyResult{
 		OperationID: operationID, PlanID: planID.String(),
-		Status: batchStatus(len(persisted), len(groups)),
 		Groups: make([]GroupOutcome, 0, len(persisted)),
 	}
 	for _, group := range persisted {
 		result.Groups = append(result.Groups, d.projectReceipt(ctx, actorID, group.key, group.receipt))
 	}
+	result.Status = batchStatus(result.Groups, len(groups))
 	return result, nil
 }
 
-func batchStatus(completedGroups, groupCount int) string {
-	switch completedGroups {
-	case groupCount:
+func batchStatus(outcomes []GroupOutcome, groupCount int) string {
+	completed := 0
+	for _, outcome := range outcomes {
+		if outcome.Status == groupCompleted {
+			completed++
+		}
+	}
+	switch {
+	case completed == groupCount:
 		return "completed"
-	case 0:
-		return "pending"
-	default:
+	case completed > 0:
 		return "partial"
+	case len(outcomes) == groupCount:
+		return "failed"
+	default:
+		return "pending"
 	}
 }

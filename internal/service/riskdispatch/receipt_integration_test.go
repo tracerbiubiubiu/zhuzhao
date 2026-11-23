@@ -69,9 +69,16 @@ func TestApplyReadsBackAlreadyLinkedAndRejectsMixedStaleGroup(t *testing.T) {
 	execMustNoError(t, db, ctx, `UPDATE risk_items SET revision = 2 WHERE id = $1`, riskB)
 	result, err := d.Apply(ctx, f.actorID, stale)
 	require.NoError(t, err)
-	require.Equal(t, "pending", result.Status)
+	require.Equal(t, "failed", result.Status)
 	require.Zero(t, countFixtureTickets(t, db, f.typeCode))
 	require.Equal(t, int64(1), requireRiskRevision(t, db, riskA))
+	failed, err := d.ReadOperation(ctx, f.actorID, stale.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, result, failed)
+	require.Equal(t, []ItemOutcome{
+		{RiskID: riskA, Result: ItemConflict, Reason: ReasonGroupRejected},
+		{RiskID: riskB, Result: ItemConflict, Reason: ReasonRevisionChanged},
+	}, failed.Groups[0].Items)
 
 	input := buildPlanInput(f, []int64{riskA}, map[int64]int64{riskA: 1})
 	created, err := d.Apply(ctx, f.actorID, applyPlan(t, d, f.actorID, input, "op-make-before-noop"))

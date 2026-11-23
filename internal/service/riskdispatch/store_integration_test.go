@@ -20,7 +20,7 @@ func TestPersistedPlanBindsActorAndOperationBeforeGroups(t *testing.T) {
 	now := time.Date(2026, 11, 22, 8, 0, 0, 0, time.UTC)
 	target := Target{OrganizationID: 30, TypeCode: "synthetic_remediation", DefinitionVersion: 1, DefinitionHash: "published"}
 	binding := BuildPlan(target, []Candidate{{
-		RiskID: 77, Revision: 2, FindingKey: "finding-001", AssetKey: "asset-1",
+		RiskID: 77, Revision: 2, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-1",
 		OwnerID: 21, ManagementOrgID: 20, ApprovedScope: "scope-1", Priority: 2, Deadline: now.Add(8 * time.Hour),
 	}})
 

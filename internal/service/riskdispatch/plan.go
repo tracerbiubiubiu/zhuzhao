@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -19,6 +20,7 @@ type Target = model.RiskDispatchTarget
 type Candidate struct {
 	RiskID          int64
 	Revision        int64
+	DispatchBasis   string // 风险域核实依据的稳定版本，仅保存于 plan 绑定
 	FindingKey      string
 	AssetKey        string
 	AssetRef        *model.RiskAssetRef `json:",omitempty"`
@@ -84,6 +86,10 @@ func BuildPlan(target Target, candidates []Candidate) Plan {
 			plan.Blocked = append(plan.Blocked, Block{RiskID: candidate.RiskID, Reason: MissingPersonalOwner})
 			continue
 		}
+		if !validDispatchBasis(candidate.DispatchBasis) {
+			plan.Blocked = append(plan.Blocked, Block{RiskID: candidate.RiskID, Reason: UnverifiedRisk})
+			continue
+		}
 		key := identity{findingKey: candidate.FindingKey, ownerID: candidate.OwnerID}
 		if len(buckets[key]) == 0 {
 			identities = append(identities, key)
@@ -112,6 +118,10 @@ func BuildPlan(target Target, candidates []Candidate) Plan {
 	}
 	sortBlocks(plan.Blocked)
 	return plan
+}
+
+func validDispatchBasis(basis string) bool {
+	return strings.TrimSpace(basis) != ""
 }
 
 func sortBlocks(blocks []Block) {

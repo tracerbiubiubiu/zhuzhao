@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
@@ -153,61 +154,91 @@ func TestApplyReplaySameOperationReturnsOriginalReceipt(t *testing.T) {
 }
 
 func TestApplyResumesOnlyUnfinishedGroups(t *testing.T) {
+	ctx := context.Background()
 	db := dispatchTestDB
 	f := setupDispatchFixture(t, db, "resume")
-	riskA := f.newRisk(t, db, "resume", "finding-A", "asset-a1", f.ownerA, "high", testDeadline, "assessed")
-	riskB := f.newRisk(t, db, "resume", "finding-B", "asset-b1", f.ownerB, "high", testDeadline, "assessed")
-	allowed := map[string]bool{fmtKey(f.actorID, riskA): true, fmtKey(f.actorID, riskB): true}
-	visible := map[string]bool{fmtKey(f.actorID, riskA): true, fmtKey(f.actorID, riskB): true}
-	defs := map[string]DefinitionRef{f.typeCode: {Version: 1, Hash: f.target.DefinitionHash}}
-	// B 组责任人先停用：首轮 A 成功、B 拒绝
-	execMustNoError(t, db, context.Background(), `UPDATE users SET status = 2 WHERE id = $1`, f.ownerB)
-	d := newTestDispatcher(db, &stubAuthorizer{allowed: allowed},
-		&stubFacts{visible: visible}, &stubTicketCreator{},
-		stubTicketViews{visible: map[int64]bool{}, all: true}, defs)
-
-	op := applyPlan(t, d, f.actorID,
-		buildPlanInput(f, []int64{riskA, riskB}, map[int64]int64{riskA: 1, riskB: 1}), "op-resume-1")
-	first, err := d.Apply(context.Background(), f.actorID, op)
-	require.NoError(t, err)
-	require.Equal(t, "partial", first.Status)
-	require.Len(t, first.Groups, 2)
-
-	ticketA := first.Groups[0].Ticket.ID
-	var completedKey string
-	for _, group := range first.Groups {
-		if group.Status == "completed" {
-			completedKey = group.GroupKey
-			require.Equal(t, ticketA, group.Ticket.ID)
-		} else {
-			require.Equal(t, "failed", group.Status)
-			for _, item := range group.Items {
-				require.Equal(t, ItemDenied, item.Result)
-				require.Equal(t, ReasonOwnerUnavailable, item.Reason)
-			}
-		}
+	riskA := f.newRisk(t, db, "resume", "finding-A", "asset-a", f.ownerA, "high", testDeadline, "assessed")
+	riskB := f.newRisk(t, db, "resume", "finding-B", "asset-b", f.ownerB, "high", testDeadline, "assessed")
+	riskC := f.newRisk(t, db, "resume", "finding-C", "asset-c", f.ownerA, "high", testDeadline, "assessed")
+	riskD := f.newRisk(t, db, "resume", "finding-D", "asset-d", f.ownerA, "high", testDeadline, "assessed")
+	ids := []int64{riskA, riskB, riskC, riskD}
+	visible := make(map[string]bool, len(ids))
+	revisions := make(map[int64]int64, len(ids))
+	for _, riskID := range ids {
+		visible[fmtKey(f.actorID, riskID)] = true
+		revisions[riskID] = 1
 	}
-	require.NotEmpty(t, completedKey)
+	execMustNoError(t, db, ctx, `UPDATE users SET status = 2 WHERE id = $1`, f.ownerB)
+	tickets := &stubTicketCreator{}
+	d := newTestDispatcher(db, &stubAuthorizer{allowed: visible}, &stubFacts{visible: visible}, tickets,
+		stubTicketViews{all: true}, map[string]DefinitionRef{f.typeCode: {Version: 1, Hash: f.target.DefinitionHash}})
+	d.deps.Commit = unavailableDispatchCommit{riskID: riskC}
+
+	op := applyPlan(t, d, f.actorID, buildPlanInput(f, ids, revisions), "op-resume-1")
+	_, err := d.Apply(ctx, f.actorID, op)
+	require.ErrorIs(t, err, errcode.ErrServiceUnavailable)
+
+	// A committed, B was rejected, C rolled back and D was never started.
+	before, err := d.ReadOperation(ctx, f.actorID, op.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, "partial", before.Status)
+	require.Len(t, before.Groups, 2)
+	require.Equal(t, "completed", before.Groups[0].Status)
+	require.Equal(t, ItemCreated, before.Groups[0].Items[0].Result)
+	rejected := before.Groups[1]
+	require.Equal(t, "failed", rejected.Status)
+	require.NotEmpty(t, rejected.GroupOperationID)
+	require.Equal(t, []ItemOutcome{{RiskID: riskB, Result: ItemDenied, Reason: ReasonOwnerUnavailable}}, rejected.Items)
 	require.Equal(t, int64(1), countFixtureTickets(t, db, f.typeCode))
+	require.Equal(t, 2, tickets.creates)
+	for _, riskID := range []int64{riskB, riskC, riskD} {
+		require.Equal(t, "assessed", requireRiskStatus(t, db, riskID))
+		require.Equal(t, int64(1), requireRiskRevision(t, db, riskID))
+		require.Zero(t, countRows(t, db, `SELECT COUNT(*) FROM risk_ticket_links WHERE risk_id = $1`, riskID))
+	}
+
+	// Even after B becomes eligible, the same operation resumes only C and D.
+	execMustNoError(t, db, ctx, `UPDATE users SET status = 1 WHERE id = $1`, f.ownerB)
+	d.deps.Commit = stubCommit{}
+	resumed, err := d.Apply(ctx, f.actorID, op)
+	require.NoError(t, err)
+	require.Equal(t, "partial", resumed.Status)
+	require.Len(t, resumed.Groups, 4)
+	require.Equal(t, before.Groups, resumed.Groups[:2])
+	for i, riskID := range []int64{riskC, riskD} {
+		require.Equal(t, "completed", resumed.Groups[i+2].Status)
+		require.Len(t, resumed.Groups[i+2].Items, 1)
+		require.Equal(t, riskID, resumed.Groups[i+2].Items[0].RiskID)
+		require.Equal(t, ItemCreated, resumed.Groups[i+2].Items[0].Result)
+	}
+	require.Equal(t, 4, tickets.creates)
+	require.Equal(t, int64(3), countFixtureTickets(t, db, f.typeCode))
 	require.Equal(t, "assessed", requireRiskStatus(t, db, riskB))
 
-	// 责任人复职后同号重投：A 读原回执，B 只续未完成组
-	execMustNoError(t, db, context.Background(), `UPDATE users SET status = 1 WHERE id = $1`, f.ownerB)
-	second, err := d.Apply(context.Background(), f.actorID, op)
+	// Replan B explicitly under a new operation. The previous result is immutable.
+	retry := applyPlan(t, d, f.actorID, buildPlanInput(f, []int64{riskB}, revisions), "op-resume-b")
+	retried, err := d.Apply(ctx, f.actorID, retry)
 	require.NoError(t, err)
-	require.Equal(t, "completed", second.Status)
-	for _, group := range second.Groups {
-		require.Equal(t, "completed", group.Status)
-		require.Len(t, group.Items, 1)
-		require.Equal(t, ItemCreated, group.Items[0].Result)
-		if group.GroupKey == completedKey {
-			require.Equal(t, ticketA, group.Ticket.ID) // 原回执原票，未重建
-		} else {
-			require.NotEqual(t, ticketA, group.Ticket.ID)
+	require.Equal(t, "completed", retried.Status)
+	require.NotEqual(t, rejected.GroupOperationID, retried.Groups[0].GroupOperationID)
+	require.Equal(t, "remediating", requireRiskStatus(t, db, riskB))
+	require.Equal(t, int64(4), countFixtureTickets(t, db, f.typeCode))
+	original, err := d.ReadOperation(ctx, f.actorID, op.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, resumed, original)
+}
+
+type unavailableDispatchCommit struct {
+	riskID int64
+}
+
+func (c unavailableDispatchCommit) CommitDispatched(ctx context.Context, tx pgx.Tx, items []DispatchCommitItem) error {
+	for _, item := range items {
+		if item.RiskID == c.riskID {
+			return errcode.ErrServiceUnavailable
 		}
 	}
-	require.Equal(t, int64(2), countFixtureTickets(t, db, f.typeCode))
-	require.Equal(t, "remediating", requireRiskStatus(t, db, riskB))
+	return (stubCommit{}).CommitDispatched(ctx, tx, items)
 }
 
 func TestApplyAppendChecksRemainingCapacity(t *testing.T) {
@@ -368,7 +399,7 @@ func TestApplyConflictsOnRevisionDrift(t *testing.T) {
 		`UPDATE risk_items SET revision = revision + 1 WHERE id = $1`, risk)
 	result, err := d.Apply(context.Background(), f.actorID, op)
 	require.NoError(t, err)
-	require.Equal(t, "pending", result.Status)
+	require.Equal(t, "failed", result.Status)
 	require.Equal(t, "failed", result.Groups[0].Status)
 	require.Equal(t, ItemConflict, result.Groups[0].Items[0].Result)
 	require.Equal(t, ReasonRevisionChanged, result.Groups[0].Items[0].Reason)
@@ -393,6 +424,11 @@ func TestApplyConflictsWhenPlanExpired(t *testing.T) {
 	require.Equal(t, ItemConflict, result.Groups[0].Items[0].Result)
 	require.Equal(t, ReasonPlanExpired, result.Groups[0].Items[0].Reason)
 	require.Equal(t, int64(0), countFixtureTickets(t, db, f.typeCode))
+	require.Equal(t, "failed", result.Status)
+	require.NotEmpty(t, result.Groups[0].GroupOperationID)
+	readback, err := d.ReadOperation(context.Background(), f.actorID, op.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, result, readback)
 }
 
 func TestApplyDeniesWholeGroupWhenInTxAuthorizationRevoked(t *testing.T) {
@@ -475,6 +511,34 @@ func TestApplyConcurrentSameGroupCreatesSingleTicket(t *testing.T) {
 		}
 	}
 	require.Equal(t, 1, created)
+}
+
+func TestConcurrentReplayReturnsOneCommittedGroupReceipt(t *testing.T) {
+	ctx := context.Background()
+	db := dispatchTestDB
+	f := setupDispatchFixture(t, db, "same_op_concurrent")
+	risk := f.newRisk(t, db, "same_op_concurrent", "finding", "asset", f.ownerA, "high", testDeadline, "assessed")
+	defs := map[string]DefinitionRef{f.typeCode: {Version: 1, Hash: f.target.DefinitionHash}}
+	newDispatcher := func() *Dispatcher { return newAggregateTestDispatcher(f, defs, risk) }
+	op := applyPlan(t, newDispatcher(), f.actorID, buildPlanInput(f, []int64{risk}, map[int64]int64{risk: 1}), "op-concurrent")
+	var wg sync.WaitGroup
+	var results [2]ApplyResult
+	var errs [2]error
+	for i := range results {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results[i], errs[i] = newDispatcher().Apply(ctx, f.actorID, op)
+		}()
+	}
+	wg.Wait()
+	require.NoError(t, errs[0])
+	require.NoError(t, errs[1])
+	require.Equal(t, "completed", results[0].Status)
+	require.Equal(t, results[0], results[1])
+	require.Equal(t, int64(1), countFixtureTickets(t, db, f.typeCode))
+	require.Equal(t, int64(1), countRows(t, db,
+		`SELECT COUNT(*) FROM risk_dispatch_group_receipts WHERE actor_id = $1 AND operation_id = $2`, f.actorID, op.OperationID))
 }
 
 func TestPlanOmitsInvisibleRisksAndReportsBlockers(t *testing.T) {

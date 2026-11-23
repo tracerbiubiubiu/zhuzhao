@@ -25,7 +25,7 @@ func TestApplyAppendWaitsForRetestReworkAndKeepsOriginalReceipt(t *testing.T) {
 	execMustNoError(t, db, ctx, `UPDATE tickets SET status='pending_verify' WHERE id=$1`, ticket)
 	result, err := d.Apply(ctx, f.actorID, op2)
 	require.NoError(t, err)
-	require.Equal(t, "pending", result.Status)
+	require.Equal(t, "failed", result.Status)
 	require.Equal(t, "failed", result.Groups[0].Status)
 	require.Len(t, result.Groups[0].Items, 2)
 	require.Equal(t, ItemAlreadyLinked, result.Groups[0].Items[0].Result)
@@ -42,9 +42,26 @@ func TestApplyAppendWaitsForRetestReworkAndKeepsOriginalReceipt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "completed", recovered.Status)
 	require.Equal(t, ticket, recovered.Groups[0].Ticket.ID)
-	// Existing reject/rework path restores appendability; same operation can retry.
+	failed, err := d.ReadOperation(ctx, f.actorID, op2.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, result, failed)
+	require.NotNil(t, failed.Groups[0].Items[0].Ticket)
+	d.deps.TicketViews = stubTicketViews{}
+	masked, err := d.ReadOperation(ctx, f.actorID, op2.OperationID)
+	require.NoError(t, err)
+	require.Equal(t, "failed", masked.Status)
+	require.Equal(t, ItemAlreadyLinked, masked.Groups[0].Items[0].Result)
+	require.Nil(t, masked.Groups[0].Items[0].Ticket)
+	require.Equal(t, failed.Groups[0].Items[1], masked.Groups[0].Items[1])
+	d.deps.TicketViews = stubTicketViews{all: true}
+
+	// Existing reject/rework restores appendability for a new plan and operation.
 	execMustNoError(t, db, ctx, `UPDATE tickets SET status='in_progress' WHERE id=$1`, ticket)
-	result, err = d.Apply(ctx, f.actorID, op2)
+	replay, err = d.Apply(ctx, f.actorID, op2)
+	require.NoError(t, err)
+	require.Equal(t, failed, replay)
+	op3 := applyPlan(t, d, f.actorID, buildPlanInput(f, []int64{nextRisk}, map[int64]int64{nextRisk: 1}), "stage-rework")
+	result, err = d.Apply(ctx, f.actorID, op3)
 	require.NoError(t, err)
 	require.Equal(t, "completed", result.Status)
 	require.Equal(t, ticket, result.Groups[0].Ticket.ID)

@@ -11,10 +11,10 @@ func TestBuildPlanGroupsByFindingAndPersonalOwner(t *testing.T) {
 	deadline := time.Date(2026, 11, 22, 17, 0, 0, 0, time.UTC)
 	target := Target{OrganizationID: 30, TypeCode: "synthetic_remediation", DefinitionVersion: 1, DefinitionHash: "published"}
 	candidates := []Candidate{
-		{RiskID: 4, Revision: 7, FindingKey: "finding-002", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
-		{RiskID: 2, Revision: 5, FindingKey: "finding-001", AssetKey: "asset-b", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
-		{RiskID: 3, Revision: 6, FindingKey: "finding-001", AssetKey: "asset-c", OwnerID: 12, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
-		{RiskID: 1, Revision: 4, FindingKey: "finding-001", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline.Add(-time.Hour)},
+		{RiskID: 4, Revision: 7, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-002", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
+		{RiskID: 2, Revision: 5, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-b", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
+		{RiskID: 3, Revision: 6, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-c", OwnerID: 12, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 3, Deadline: deadline},
+		{RiskID: 1, Revision: 4, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline.Add(-time.Hour)},
 	}
 	plan := BuildPlan(target, candidates)
 
@@ -36,9 +36,9 @@ func TestBuildPlanBlocksUnknownOwnerAndIncompatibleGroupScope(t *testing.T) {
 	deadline := time.Date(2026, 11, 22, 17, 0, 0, 0, time.UTC)
 	target := Target{OrganizationID: 30, TypeCode: "synthetic_remediation", DefinitionVersion: 1, DefinitionHash: "published"}
 	candidates := []Candidate{
-		{RiskID: 1, Revision: 1, FindingKey: "finding-001", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline},
-		{RiskID: 2, Revision: 1, FindingKey: "finding-001", AssetKey: "asset-b", OwnerID: 11, ManagementOrgID: 20, ApprovedScope: "scope-2", Priority: 2, Deadline: deadline},
-		{RiskID: 3, Revision: 1, FindingKey: "finding-001", AssetKey: "asset-c", ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline},
+		{RiskID: 1, Revision: 1, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-a", OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline},
+		{RiskID: 2, Revision: 1, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-b", OwnerID: 11, ManagementOrgID: 20, ApprovedScope: "scope-2", Priority: 2, Deadline: deadline},
+		{RiskID: 3, Revision: 1, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-c", ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline},
 	}
 
 	plan := BuildPlan(target, candidates)
@@ -57,7 +57,7 @@ func TestBuildPlanDoesNotSplitFullGroup(t *testing.T) {
 	var candidates []Candidate
 	for index := range 21 {
 		candidates = append(candidates, Candidate{
-			RiskID: int64(index + 1), Revision: 1, FindingKey: "finding-001", AssetKey: string(rune('a' + index)),
+			RiskID: int64(index + 1), Revision: 1, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: string(rune('a' + index)),
 			OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline,
 		})
 	}
@@ -80,7 +80,7 @@ func TestBuildPlanRejectsDuplicateRiskIDBeforeGrouping(t *testing.T) {
 	deadline := time.Date(2026, 11, 22, 17, 0, 0, 0, time.UTC)
 	target := Target{OrganizationID: 30, TypeCode: "synthetic_remediation", DefinitionVersion: 1, DefinitionHash: "published"}
 	original := Candidate{
-		RiskID: 1, Revision: 4, FindingKey: "finding-001", AssetKey: "asset-a",
+		RiskID: 1, Revision: 4, DispatchBasis: "synthetic-basis-v1", FindingKey: "finding-001", AssetKey: "asset-a",
 		OwnerID: 11, ManagementOrgID: 10, ApprovedScope: "scope-1", Priority: 2, Deadline: deadline,
 	}
 	conflicting := original
