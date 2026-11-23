@@ -2034,6 +2034,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/risk-items/remediation-accept-rework": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "接续在办工单的到期风险接受",
+                "parameters": [
+                    {
+                        "description": "原批准、关联和当前修订",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowAcceptanceRework"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/risk-items/remediation-assign-handler": {
             "post": {
                 "consumes": [
@@ -2139,6 +2184,51 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/internal_handler.riskWorkflowSubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-handoff": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "交接整组未决风险复测",
+                "parameters": [
+                    {
+                        "description": "复测交接请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowHandoffRequest"
                         }
                     }
                 ],
@@ -4542,7 +4632,7 @@ const docTemplate = `{
         },
         "/api/v1/tickets/{id}/attachments": {
             "get": {
-                "description": "L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size",
+                "description": "L2 read 面（工单可见性——不可见单 404 同形）；当前风险不可见的整改证据省略；条目含 object_key/file_name/mime/size",
                 "produces": [
                     "application/json"
                 ],
@@ -6045,6 +6135,9 @@ const docTemplate = `{
                 },
                 "source_severity": {
                     "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSourceSeverity"
+                },
+                "valid_until": {
+                    "type": "string"
                 }
             }
         },
@@ -6494,6 +6587,9 @@ const docTemplate = `{
                 "deadline": {
                     "type": "string"
                 },
+                "dispatch_basis_valid_until": {
+                    "type": "string"
+                },
                 "expected_revision": {
                     "type": "string"
                 },
@@ -6566,6 +6662,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "0"
                 },
+                "asset_ref": {
+                    "description": "资产键身份；与 FindingKey 成对",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef"
+                        }
+                    ]
+                },
                 "attributes": {
                     "type": "object"
                 },
@@ -6581,6 +6685,11 @@ const docTemplate = `{
                 "expected_revision": {
                     "description": "新建恒 \"0\"",
                     "type": "string"
+                },
+                "finding_key": {
+                    "description": "稳定漏洞键；与 AssetRef 成对",
+                    "type": "string",
+                    "maxLength": 200
                 },
                 "operation_id": {
                     "type": "string",
@@ -6784,6 +6893,14 @@ const docTemplate = `{
             "properties": {
                 "can_manage_risk": {
                     "type": "boolean"
+                },
+                "expired_acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expired_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
                 },
                 "is_risk_owner": {
                     "type": "boolean"
@@ -8256,6 +8373,72 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.riskWorkflowAcceptanceRework": {
+            "type": "object",
+            "required": [
+                "acceptance_id",
+                "definition_version",
+                "expected_acceptance_revision",
+                "expected_link_revision",
+                "expected_risk_revision",
+                "expected_ticket_revision",
+                "link_id",
+                "operation_id",
+                "reason",
+                "risk_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
         "internal_handler.riskWorkflowAssigneeRequest": {
             "type": "object",
             "required": [
@@ -8286,6 +8469,75 @@ const docTemplate = `{
                 },
                 "operation_id": {
                     "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowHandoffItemWire": {
+            "type": "object",
+            "required": [
+                "expected_link_revision",
+                "expected_proposal_version",
+                "expected_risk_revision",
+                "link_id"
+            ],
+            "properties": {
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowHandoffRequest": {
+            "type": "object",
+            "required": [
+                "definition_version",
+                "expected_ticket_revision",
+                "items",
+                "operation_id",
+                "reason",
+                "successor_user_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.riskWorkflowHandoffItemWire"
+                    }
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "successor_user_id": {
+                    "type": "string",
+                    "example": "0"
                 },
                 "ticket_id": {
                     "type": "string",
@@ -8406,6 +8658,10 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "successor_user_id": {
+                    "type": "string",
+                    "example": "0"
                 },
                 "terminal_allowed": {
                     "type": "boolean"

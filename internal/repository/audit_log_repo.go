@@ -254,6 +254,9 @@ func archiveFetchBatch(ctx context.Context, db archiveDB, table string, cutoff t
 		if path, ok := obj["path"].(string); table == "audit_logs" && ok && audit.IsRiskRoute(path) {
 			obj["request_body"] = ""
 			obj["response_summary"] = ""
+			if route := audit.RiskEvidenceRoutePath(path); route != "" {
+				obj["path"] = route
+			}
 		}
 		line, err := json.Marshal(obj)
 		if err != nil {

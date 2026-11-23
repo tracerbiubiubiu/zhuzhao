@@ -124,6 +124,9 @@ func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery, em
 			log.RequestBody = ""
 			log.ResponseSummary = ""
 		}
+		if route := audit.RiskEvidenceRoutePath(log.Path); route != "" {
+			log.Path = route
+		}
 	}
 	return &model.AuditLogListResponse{
 		List:     list,

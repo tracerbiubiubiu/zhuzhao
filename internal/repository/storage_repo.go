@@ -308,13 +308,14 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, b
 }
 
 // ListAttachmentsByTicket 附件列表视图（JOIN file_objects——B5-3 批3）。
-func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
-	rows, err := r.db.Query(ctx, `
+func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID, actorID int64) ([]*model.TicketAttachmentView, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
 		SELECT ta.id, ta.ticket_id, fo.object_key, fo.file_name, fo.mime_type, fo.size_bytes, ta.uploaded_by, ta.created_at,
 		       CASE WHEN fo.status = 'confirmed' AND fo.confirmed_at IS NOT NULL THEN NULLIF(fo.etag, '') END
 		FROM ticket_attachments ta
 		JOIN file_objects fo ON fo.id = ta.file_object_id
-		WHERE ta.ticket_id = $1 ORDER BY ta.id`, ticketID)
+		WHERE ta.ticket_id = $1 AND NOT `+hiddenRiskEvidenceSQL("fo.object_key", "$2")+`
+		ORDER BY ta.id`, ticketID, actorID)
 	if err != nil {
 		return nil, err
 	}

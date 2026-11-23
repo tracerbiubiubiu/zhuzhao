@@ -68,7 +68,8 @@ type Service struct {
 	// ticketCmd C04 撤权提交顺序边界：票态附件写入的 IAM 共同共享守卫+
 	// 锁票重认证由 ticket 域实现（域间零 import——装配层结构化注入，A.7
 	// handler 编排先例）。nil = 既有直连契约（非 HTTP 调用方/既有测试）。
-	ticketCmd TicketAttachmentCommand
+	ticketCmd          TicketAttachmentCommand
+	riskEvidenceRoutes func(context.Context, int64, []int64) (map[int64]bool, error)
 }
 
 // TicketAttachmentCommand ticket 域守卫边界（实现方=ticket.Service）。fn 在
@@ -347,6 +348,22 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, callerU
 				return nil, err
 			}
 		}
+		hidden, err := s.repo.IsHiddenRiskEvidence(ctx, key, callerUserID)
+		if err != nil {
+			s.logger.Error("storage evidence authorization", "err", err)
+			return nil, errcode.ErrInternal
+		}
+		if hidden {
+			return nil, errcode.ErrFileNotFound
+		}
+		hiddenRoutes, err := s.hiddenEvidenceRoutes(ctx, callerUserID, []string{key})
+		if err != nil {
+			s.logger.Error("storage evidence route authorization", "err", err)
+			return nil, errcode.ErrInternal
+		}
+		if hiddenRoutes[key] {
+			return nil, errcode.ErrFileNotFound
+		}
 	}
 	if ifNoneMatch != "" && f.ETag != nil && ifNoneMatch == *f.ETag {
 		return nil, ErrNotModified
@@ -413,16 +430,31 @@ func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64
 }
 
 // ListTicketAttachments 附件列表视图（B5-3 批3；L2 read 面由 handler 编排）。
-func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
+func (s *Service) ListTicketAttachments(ctx context.Context, ticketID, actorID int64) ([]*model.TicketAttachmentView, error) {
 	if s.repo == nil {
 		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
-	list, err := s.repo.ListAttachmentsByTicket(ctx, ticketID)
+	list, err := s.repo.ListAttachmentsByTicket(ctx, ticketID, actorID)
 	if err != nil {
 		s.logger.Error("storage list attachments", "err", err)
 		return nil, errcode.ErrInternal
 	}
-	return list, nil
+	keys := make([]string, 0, len(list))
+	for _, attachment := range list {
+		keys = append(keys, attachment.ObjectKey)
+	}
+	hidden, err := s.hiddenEvidenceRoutes(ctx, actorID, keys)
+	if err != nil {
+		s.logger.Error("storage evidence route authorization", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	visible := list[:0]
+	for _, attachment := range list {
+		if !hidden[attachment.ObjectKey] {
+			visible = append(visible, attachment)
+		}
+	}
+	return visible, nil
 }
 
 // DeleteTicketAttachment checks current references and atomically unlinks and

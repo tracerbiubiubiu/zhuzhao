@@ -134,6 +134,7 @@ raw正文保留180天后可清理；稳定幂等身份/hash、源checkpoint、�
 `POST /risk-items/remediation-finish`：`{operation_id,ticket_id,expected_ticket_revision,results:[{link_id,expected_link_revision,expected_risk_revision,resolution,evidence_refs,note}]}` → `{ticket_ref,items:[{link_id,result:applied|pending_confirmation|conflict|rejected,risk_ref?,receipt_ref}],pending_effects}`。命令走工单共享转换/字段采集与风险validator；不伪造普通transition事件。
 
 - gate=off走已发布 `in_progress→closed` 的合法完成边；gate=on走 `in_progress→pending_verify`，当前risk_owner再按合法边复核。缺边/字段/当前资格则预检或提交拒绝，不能靠临时auto边绕过。
+- 普通工单附件列表和文件代理会对已引用的整改证据额外复核当前风险详情入口及每条关联风险的可见性。该规则覆盖历史引用，也先于缓存命中。工单普通附件仍按既有资格读取。附件与文件审计仅留操作元数据。
 - gate=on 的处理人 finish 此时只保存逐项整改 proposal/evidence，并将待复核项置 pending_verify；**不先把风险 closed 或 link resolved**。候选 `POST /risk-items/remediation-review` 收 `{operation_id,ticket_id,expected_ticket_revision,items:[{link_id,expected_link_revision,expected_risk_revision,decision:approve|reject,note,evidence_refs}]}`，当前 risk_owner 按票合法复核边及风险资格判定；approve 才落实已核修复结论，reject 要理由并回合法整改状态、保留原证据。接受类 proposal 仍须接受申请/非自确认流程，复核不能代替接受批准。部分复核先保存逐项结果，所有 active 项均有生效结论/合法detach才允许票终态。普通 risk.close、票 transition、自动边和任务回贴也必须经同一桥 validator，不能换入口绕过 review gate；紧急管理纠正另有明确权限/理由及历史，不默认让管理员跳过。
 - 已修复逐项写措施、证据、复测人/时间；接受由当前owner本人申请且主锚确认后才resolved；处理人非owner只能提出接受建议。误报/重复须主锚资格，E10 merge未启用时不能“重复”直接吞并风险，保留proposal待处理；取消回assessed并释放该link。
 - 在办票的未决项需要交接复测时，当前获权管理者使用 `POST /risk-items/remediation-handoff` 提交一位后继、理由、钉版与全部未决项修订。后继须能读取相关风险并按该票钉版执行复测。保留原建单人、派单时责任和已生效项，交接事实追加留档。
