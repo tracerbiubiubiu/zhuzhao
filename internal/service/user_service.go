@@ -624,9 +624,9 @@ type UserOperationResultView struct {
 	UpdatedAt         string `json:"updated_at,omitempty"`
 }
 
-// GetOperationResult 按原操作号受权核查（开工计划 §5.1 结果映射）：原操作者本人
-// 或当前对目标有敏感管理权者可查；非授权查询拒绝；查不到 K 维持 not_found
-// （调用方按「待核查」处理，不复发自动重做）。
+// GetOperationResult 按原操作号受权核查。自助改密只允许本人查询，管理回执要求
+// 当前具备原命令权限和目标管理权。已获查询准入的 HTTP 调用对缺失或不可见的
+// 回执统一返回 not_found，调用方按「待核查」处理。
 func (s *UserService) GetOperationResult(ctx context.Context, operationID string, actorUserID int64) (*UserOperationResultView, error) {
 	var view *UserOperationResultView
 	err := repository.WithIAMCommandGuard(ctx, s.db, func(ctx context.Context, tx pgx.Tx) error {
@@ -634,31 +634,53 @@ func (s *UserService) GetOperationResult(ctx context.Context, operationID string
 		view, readErr = s.readOperationResult(ctx, tx, operationID, actorUserID)
 		return readErr
 	})
-	return view, err
+	if err != nil {
+		return nil, err
+	}
+	return view, nil
 }
 
 func (s *UserService) readOperationResult(ctx context.Context, tx pgx.Tx, operationID string, actorUserID int64) (*UserOperationResultView, error) {
 	internal := trustedIAMInternal(ctx)
 	purpose, admitted := middleware.IAMRequestFromContext(ctx)
-	if !internal && (!admitted || !purpose.SelfService || purpose.UserID != actorUserID || purpose.Method != "GET" || purpose.Path != "/api/v1/users/status/result") {
-		return nil, errcode.ErrNoPermission
+	var roles []string
+	var policies [][]string
+	if !internal {
+		if !admitted || !purpose.SelfService || purpose.UserID != actorUserID || purpose.Method != "GET" || purpose.Path != "/api/v1/users/status/result" {
+			return nil, errcode.ErrNoPermission
+		}
+		if err := freshC05Credential(ctx, s.userRepo, purpose); err != nil {
+			return nil, err
+		}
+		var err error
+		roles, policies, err = currentIAMAuthorization(ctx, s.userRepo, actorUserID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	notFound := &UserOperationResultView{OperationID: operationID, Status: "not_found"}
+	hide := func(err error) (*UserOperationResultView, error) {
+		if internal {
+			return nil, err
+		}
+		return notFound, nil
 	}
 	op, err := s.opsRepo.FindOperationByID(ctx, operationID)
 	if errors.Is(err, errcode.ErrNotFound) {
-		return &UserOperationResultView{OperationID: operationID, Status: "not_found"}, nil
+		return notFound, nil
 	}
 	if err != nil {
 		return nil, err
 	}
 	if op.Namespace != "http" {
-		return nil, errcode.ErrNoPermission
+		return hide(errcode.ErrNoPermission)
 	}
 	var command string
 	var requestedStatus *int
 	switch op.Command {
 	case SessionCmdChangePassword:
 		if op.ActorUserID != actorUserID || op.TargetUserID != actorUserID {
-			return nil, errcode.ErrNoPermission
+			return hide(errcode.ErrNoPermission)
 		}
 	case SessionCmdUserDisable, SessionCmdUserEnable:
 		command = "user.status"
@@ -672,15 +694,18 @@ func (s *UserService) readOperationResult(ctx context.Context, tx pgx.Tx, operat
 	case SessionCmdUserResetPwd:
 		command = "user.reset"
 	default:
-		return nil, errcode.ErrNoPermission
+		return hide(errcode.ErrNoPermission)
 	}
 	if command != "" {
 		if !internal {
-			if err := authorizeIAMCurrentRoute(ctx, s.userRepo, actorUserID, iamPurposes[command], "POST", purpose.Model); err != nil {
-				return nil, err
+			if err := authorizeIAMRoute(roles, policies, iamPurposes[command], "POST", purpose.Model); err != nil {
+				return hide(err)
 			}
 		}
 		if err := s.ensureSensitiveCanManage(ctx, actorUserID, op.TargetUserID); err != nil {
+			if errors.Is(err, errcode.ErrCannotManageHigher) {
+				return hide(err)
+			}
 			return nil, err
 		}
 	}

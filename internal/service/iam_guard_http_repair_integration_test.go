@@ -54,9 +54,15 @@ func TestIAMGuard_HTTPMenuRevocationAfterMiddlewareDeniesWithoutEffects(t *testi
 			_, err = enforcer.AddPolicy("role::protect_actor", path, "POST")
 			require.NoError(t, err)
 			rbac := service.NewRBACService(repository.NewRoleRepo(testPool), repository.NewUserRepo(testPool), repository.NewMenuRepo(testPool), enforcer)
+			actor, err := repository.NewUserRepo(testPool).SecuritySnapshot(ctx, f.actor)
+			require.NoError(t, err)
 			admitted, release := make(chan struct{}), make(chan struct{})
 			r := gin.New()
-			r.Use(func(c *gin.Context) { c.Set("userID", f.actor); c.Next() }, middleware.CasbinAuth(enforcer, rbac, nil))
+			r.Use(func(c *gin.Context) {
+				c.Set("userID", f.actor)
+				c.Set("session_epoch", actor.SessionEpoch)
+				c.Next()
+			}, middleware.CasbinAuth(enforcer, rbac, nil))
 			r.POST(path, func(c *gin.Context) {
 				close(admitted)
 				select {

@@ -76,24 +76,76 @@ func authorizeIAMCommand(ctx context.Context, command string, actorID int64, use
 	if !ok || !known || purpose.Method != "POST" || purpose.Path != expected.path || purpose.SelfService != expected.self || (actorID != 0 && purpose.UserID != actorID) {
 		return errcode.ErrNoPermission
 	}
-	return authorizeIAMCurrentRoute(ctx, users, purpose.UserID, expected, purpose.Method, purpose.Model)
-}
-
-func authorizeIAMCurrentRoute(ctx context.Context, users *repository.UserRepo, actorID int64, expected iamPurpose, method, modelText string) error {
-	actor, err := users.FindByID(ctx, actorID)
+	switch command {
+	case "user.status", "user.delete", "user.reset":
+		if err := freshC05Credential(ctx, users, purpose); err != nil {
+			return err
+		}
+	default:
+		actor, err := users.FindByID(ctx, purpose.UserID)
+		if err != nil {
+			return err
+		}
+		if actor.Status != 1 {
+			return errcode.ErrNoPermission
+		}
+	}
+	roles, policies, err := currentIAMAuthorization(ctx, users, purpose.UserID)
 	if err != nil {
 		return err
 	}
-	if actor.Status != 1 {
+	return authorizeIAMRoute(roles, policies, expected, purpose.Method, purpose.Model)
+}
+
+// freshC05Credential rechecks the credential admitted by middleware using the
+// same transaction as the C05 management command or receipt lookup.
+func freshC05Credential(ctx context.Context, users *repository.UserRepo, purpose middleware.IAMRequestPurpose) error {
+	if purpose.UserID <= 0 {
 		return errcode.ErrNoPermission
 	}
+	account, err := users.IAMAccountSecuritySnapshot(ctx, purpose.UserID)
+	if err != nil {
+		return err
+	}
+	if !currentC05AccountCredential(purpose, account) {
+		return errcode.ErrNoPermission
+	}
+	if purpose.PATID == 0 {
+		return nil
+	}
+	active, err := repository.NewPatRepo(users.Pool()).IsActiveForUser(ctx, purpose.PATID, purpose.UserID)
+	if err != nil {
+		return fmt.Errorf("current C05 PAT: %w", err)
+	}
+	if !active {
+		return errcode.ErrNoPermission
+	}
+	return nil
+}
+
+func currentC05AccountCredential(purpose middleware.IAMRequestPurpose, account repository.AccountSecuritySnapshot) bool {
+	if account.Deleted || account.Status != 1 {
+		return false
+	}
+	if purpose.PATID > 0 {
+		// PAT lifetime is independent of the account's JWT epoch and Redis projection.
+		return purpose.SessionEpoch == nil
+	}
+	return purpose.PATID == 0 && purpose.SessionEpoch != nil && account.SessionEpoch > 0 && *purpose.SessionEpoch == account.SessionEpoch
+}
+
+func currentIAMAuthorization(ctx context.Context, users *repository.UserRepo, actorID int64) ([]string, [][]string, error) {
 	roles, policies, err := users.CurrentIAMAuthorization(ctx, actorID)
 	if err != nil {
-		return fmt.Errorf("fresh IAM authorization: %w", err)
+		return nil, nil, fmt.Errorf("fresh IAM authorization: %w", err)
 	}
 	if len(roles) == 0 {
-		return errcode.ErrNoRoles
+		return nil, nil, errcode.ErrNoRoles
 	}
+	return roles, policies, nil
+}
+
+func authorizeIAMRoute(roles []string, policies [][]string, expected iamPurpose, method, modelText string) error {
 	if expected.self {
 		return nil
 	}

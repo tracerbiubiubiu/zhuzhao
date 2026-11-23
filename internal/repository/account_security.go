@@ -38,10 +38,20 @@ func (l *AccountSecurityLookup) AccountSecuritySnapshot(ctx context.Context, use
 	if l == nil || l.db == nil {
 		return AccountSecuritySnapshot{}, fmt.Errorf("account security snapshot: database unavailable")
 	}
+	return scanAccountSecuritySnapshot(l.db.QueryRow(ctx, accountSecuritySnapshotSQL, userID))
+}
+
+const accountSecuritySnapshotSQL = `SELECT status, (deleted_at IS NOT NULL), session_epoch, session_projection_epoch
+		FROM users WHERE id = $1`
+
+// IAMAccountSecuritySnapshot reads only the account facts needed by the IAM guard.
+func (r *UserRepo) IAMAccountSecuritySnapshot(ctx context.Context, userID int64) (AccountSecuritySnapshot, error) {
+	return scanAccountSecuritySnapshot(IAMDB(ctx, r.db).QueryRow(ctx, accountSecuritySnapshotSQL, userID))
+}
+
+func scanAccountSecuritySnapshot(row pgx.Row) (AccountSecuritySnapshot, error) {
 	var s AccountSecuritySnapshot
-	err := l.db.QueryRow(ctx, `
-		SELECT status, (deleted_at IS NOT NULL), session_epoch, session_projection_epoch
-		FROM users WHERE id = $1`, userID).Scan(&s.Status, &s.Deleted, &s.SessionEpoch, &s.ProjectionEpoch)
+	err := row.Scan(&s.Status, &s.Deleted, &s.SessionEpoch, &s.ProjectionEpoch)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AccountSecuritySnapshot{Deleted: true}, nil
 	}
