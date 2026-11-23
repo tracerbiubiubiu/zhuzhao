@@ -88,7 +88,7 @@ func newPGFixture(t *testing.T, riskCount int) *pgFixture {
 	_, currentFile, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	root := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "../../.."))
-	for _, name := range []string{"000089_risk_registration.up.sql", "000090_risk_personal_dispatch.up.sql", "000092_risk_remediation.up.sql"} {
+	for _, name := range []string{"000089_risk_registration.up.sql", "000090_risk_personal_dispatch.up.sql", "000092_risk_remediation.up.sql", "000095_risk_retest_handoff.up.sql"} {
 		migration, readErr := os.ReadFile(filepath.Join(root, "migrations", name))
 		require.NoError(t, readErr, "required original migration %s", name)
 		_, err = pool.Exec(ctx, string(migration))
@@ -108,6 +108,22 @@ func newPGFixture(t *testing.T, riskCount int) *pgFixture {
 		f.links = append(f.links, link)
 	}
 	return f
+}
+
+func TestRetestHandoffMigrationRoundtripUnused(t *testing.T) {
+	f := newPGFixture(t, 0)
+	_, currentFile, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+	tx, err := f.pool.Begin(f.ctx)
+	require.NoError(t, err)
+	defer tx.Rollback(f.ctx)
+	for _, migration := range []string{"000095_risk_retest_handoff.down.sql", "000095_risk_retest_handoff.up.sql"} {
+		contents, err := os.ReadFile(filepath.Join(filepath.Dir(currentFile), "../../../migrations", migration))
+		require.NoError(t, err)
+		_, err = tx.Exec(f.ctx, string(contents))
+		require.NoError(t, err, migration)
+	}
+	require.NoError(t, tx.Commit(f.ctx))
 }
 
 // Only this disposable synthetic database is traced. Failure diagnostics are

@@ -26,6 +26,7 @@ var workflowContextActions = []struct {
 	{"accept_rework", "/api/v1/risk-items/remediation-accept-rework", "/api/v1/tickets/transition"},
 	{"assign_handler", assignHandlerPath, "/api/v1/tickets/assign"},
 	{"accept_assignment", acceptAssignmentPath, "/api/v1/tickets/transition"},
+	{"handoff", ticket.RiskRetestHandoffPath, ""},
 }
 
 // Current reads actionable versions under the same IAM barrier as original
@@ -160,6 +161,9 @@ func (s *ReceiptService) Current(ctx context.Context, actorID, ticketID int64) (
 					allowed = allowed && grants[cursor]
 					cursor++
 				}
+				if action.name == "handoff" {
+					allowed = allowed && canHandoffContext(result)
+				}
 				if allowed {
 					result.AllowedActions = append(result.AllowedActions, action.name)
 				}
@@ -171,6 +175,22 @@ func (s *ReceiptService) Current(ctx context.Context, actorID, ticketID int64) (
 		return model.RiskWorkflowContext{}, err
 	}
 	return result, nil
+}
+
+func canHandoffContext(current model.RiskWorkflowContext) bool {
+	if current.Status != "in_progress" && current.Status != "pending_verify" {
+		return false
+	}
+	var pending bool
+	for _, item := range current.Items {
+		if item.RemediationState != "resolved" {
+			pending = true
+			if !item.CanManageRisk || (item.RemediationState == "pending_acceptance" && item.ProposalVersion == 0) {
+				return false
+			}
+		}
+	}
+	return pending
 }
 
 func readWorkflowSubmissions(ctx context.Context, tx pgx.Tx, linkID int64) ([]model.RiskWorkflowSubmission, error) {

@@ -33,10 +33,20 @@ type scope struct {
 }
 
 func (s *Service) guard(ctx context.Context, tx pgx.Tx) error {
+	if err := s.guardAccess(ctx, tx); err != nil {
+		return err
+	}
+	if s.callbacks.TicketPolicy == nil || s.callbacks.Evidence == nil || s.callbacks.ApplyTicket == nil {
+		return errcode.ErrServiceUnavailable
+	}
+	return nil
+}
+
+func (s *Service) guardAccess(ctx context.Context, tx pgx.Tx) error {
 	if s == nil || s.pool == nil || tx == nil || !repository.IAMGuardActive(ctx) || repository.IAMDB(ctx, s.pool) != tx {
 		return errcode.ErrServiceUnavailable
 	}
-	if s.callbacks.Admit == nil || s.callbacks.Prelock == nil || s.callbacks.Authorize == nil || s.callbacks.TicketPolicy == nil || s.callbacks.Evidence == nil || s.callbacks.ApplyTicket == nil {
+	if s.callbacks.Admit == nil || s.callbacks.Prelock == nil || s.callbacks.Authorize == nil {
 		return errcode.ErrServiceUnavailable
 	}
 	return nil
@@ -236,12 +246,17 @@ func saveReceipt(ctx context.Context, tx pgx.Tx, c Command, command string, inpu
 	return storageError(err)
 }
 func recordFact(ctx context.Context, tx pgx.Tx, c Command, riskID, revision, linkID, resolutionVersion int64, kind string, payload any) error {
-	body, _ := json.Marshal(payload)
-	_, err := tx.Exec(ctx, `INSERT INTO risk_events(risk_id,aggregate_revision,event_kind,ordinal,actor_id,operation_id,payload) VALUES($1,$2,$3,0,$4,$5,$6)`, riskID, revision, kind, c.ActorID, c.OperationID, body)
+	return recordFactPayloads(ctx, tx, c, riskID, revision, linkID, resolutionVersion, kind, payload, payload)
+}
+
+func recordFactPayloads(ctx context.Context, tx pgx.Tx, c Command, riskID, revision, linkID, resolutionVersion int64, kind string, event, intent any) error {
+	eventBody, _ := json.Marshal(event)
+	_, err := tx.Exec(ctx, `INSERT INTO risk_events(risk_id,aggregate_revision,event_kind,ordinal,actor_id,operation_id,payload) VALUES($1,$2,$3,0,$4,$5,$6)`, riskID, revision, kind, c.ActorID, c.OperationID, eventBody)
 	if err != nil {
 		return storageError(err)
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO risk_remediation_intents(risk_id,link_id,ticket_id,aggregate_revision,resolution_version,event_kind,operation_id,actor_id,payload) VALUES($1,NULLIF($2,0),NULLIF($3,0),$4,$5,$6,$7,$8,$9)`, riskID, linkID, c.TicketID, revision, resolutionVersion, kind, c.OperationID, c.ActorID, body)
+	intentBody, _ := json.Marshal(intent)
+	_, err = tx.Exec(ctx, `INSERT INTO risk_remediation_intents(risk_id,link_id,ticket_id,aggregate_revision,resolution_version,event_kind,operation_id,actor_id,payload) VALUES($1,NULLIF($2,0),NULLIF($3,0),$4,$5,$6,$7,$8,$9)`, riskID, linkID, c.TicketID, revision, resolutionVersion, kind, c.OperationID, c.ActorID, intentBody)
 	return storageError(err)
 }
 

@@ -9,9 +9,8 @@ import (
 )
 
 // RiskTicketLinkBinding is an ordered identity snapshot, not authorization.
-// OwnerAtLink/OwnerUserID preserve the original dispatch/group owner, not the
-// current risk reviewer or ticket handler. The risk owner must lock/revalidate
-// CURRENT risk responsibility and permissions before ticket locks.
+// OwnerAtLink preserves the original link owner. OwnerUserID follows the live
+// group owner. RetestReviewerID is set only by an explicit group handoff.
 type RiskTicketLinkBinding struct {
 	LinkID            int64  `json:"link_id"`
 	RiskID            int64  `json:"risk_id"`
@@ -19,6 +18,7 @@ type RiskTicketLinkBinding struct {
 	Revision          int64  `json:"revision"`
 	OwnerAtLink       int64  `json:"owner_at_link"`
 	OwnerUserID       int64  `json:"owner_user_id"`
+	RetestReviewerID  int64  `json:"retest_reviewer_id,omitempty"`
 	TargetOrgID       int64  `json:"target_org_id"`
 	TypeCode          string `json:"type_code"`
 	DefinitionVersion int64  `json:"definition_version"`
@@ -45,10 +45,11 @@ func (r *TicketRepo) ReadActiveRiskTicketBindingTx(ctx context.Context, tx pgx.T
 	err := tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(jsonb_build_object(
   'link_id',l.id,'risk_id',l.risk_id,'group_id',l.group_id,'revision',l.revision,
   'owner_at_link',l.owner_at_link,'owner_user_id',g.owner_user_id,
+  'retest_reviewer_id',COALESCE(t.risk_retest_reviewer_id,0),
   'target_org_id',g.target_org_id,'type_code',g.type_code,
   'definition_version',g.definition_version,'group_active',g.ended_at IS NULL)
   ORDER BY l.id),'[]'::jsonb)
-  FROM risk_ticket_links l JOIN risk_dispatch_groups g ON g.id=l.group_id
+  FROM risk_ticket_links l JOIN risk_dispatch_groups g ON g.id=l.group_id JOIN tickets t ON t.id=g.ticket_id
   WHERE g.ticket_id=$1 AND l.ended_at IS NULL`, ticketID).Scan(&raw)
 	if err != nil {
 		return nil, err

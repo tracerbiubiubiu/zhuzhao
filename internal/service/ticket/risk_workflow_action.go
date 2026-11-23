@@ -20,14 +20,16 @@ import (
 // It grants no risk action; only the trusted kernel adapter may consume it after
 // validating current risk responsibility on that exact transaction.
 type RiskWorkflowScope struct {
-	service    *Service
-	tx         pgx.Tx
-	actor      int64
-	before     model.Ticket
-	binding    []repository.RiskTicketLinkBinding
-	sm         *StateMachine
-	definition *model.TicketDefinitionSnapshot
-	used       atomic.Bool
+	service        *Service
+	tx             pgx.Tx
+	actor          int64
+	before         model.Ticket
+	binding        []repository.RiskTicketLinkBinding
+	sm             *StateMachine
+	definition     *model.TicketDefinitionSnapshot
+	definitionHash string
+	retestReview   bool
+	used           atomic.Bool
 }
 
 func (p *RiskWorkflowScope) Status() string {
@@ -48,6 +50,13 @@ func (p *RiskWorkflowScope) Revision() int64 {
 	}
 	return p.before.Revision
 }
+
+func (p *RiskWorkflowScope) DefinitionHash() string {
+	if p == nil {
+		return ""
+	}
+	return p.definitionHash
+}
 func (p *RiskWorkflowScope) Allows(to string) bool {
 	return p != nil && p.sm != nil && p.sm.CanTransition(p.before.Status, to)
 }
@@ -67,6 +76,10 @@ func (p *RiskWorkflowScope) HasEdge(from, to string) bool {
 // of later draft edits or the type's current publication pointer. Invoke inside
 // WithRiskWorkflowAuthorizationTx on the kernel's exact IAM savepoint context.
 func (s *Service) PrelockRiskWorkflowTx(ctx context.Context, tx pgx.Tx, ticketID, actor int64, organizationIDs ...int64) (*RiskWorkflowScope, error) {
+	return s.prelockRiskWorkflowTx(ctx, tx, ticketID, actor, false, organizationIDs...)
+}
+
+func (s *Service) prelockRiskWorkflowTx(ctx context.Context, tx pgx.Tx, ticketID, actor int64, handoff bool, organizationIDs ...int64) (*RiskWorkflowScope, error) {
 	if s == nil || s.ticketRepo == nil || s.orgRepo == nil || ticketID <= 0 || actor <= 0 {
 		return nil, errcode.ErrInvalidParams
 	}
@@ -79,15 +92,7 @@ func (s *Service) PrelockRiskWorkflowTx(ctx context.Context, tx pgx.Tx, ticketID
 		return nil, err
 	}
 	purpose, _ := middleware.IAMRequestFromContext(ctx)
-	roles, err := s.freshCommandRoles(ctx, actor, purpose.Model, ticketPolicyRoute{path: "/api/v1/tickets/transition", method: "POST"})
-	if err != nil {
-		return nil, err
-	}
-	current := context.WithValue(ctx, ticketCommandRolesKey{}, ticketCommandRoles{actor: actor, roles: roles})
-	if err := s.authorizeCheck(current, actor, "transition", strconv.FormatInt(ticketID, 10)); err != nil {
-		return nil, err
-	}
-	before, err := s.ticketRepo.GetByID(current, ticketID)
+	before, err := s.ticketRepo.GetByID(ctx, ticketID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +104,7 @@ func (s *Service) PrelockRiskWorkflowTx(ctx context.Context, tx pgx.Tx, ticketID
 	if err != nil {
 		return nil, err
 	}
-	snapshot, _, err := s.ticketRepo.BoundTicketDefinitionTx(ctx, tx, before.TypeCode, before.DefinitionVersion)
+	snapshot, ref, err := s.ticketRepo.BoundTicketDefinitionTx(ctx, tx, before.TypeCode, before.DefinitionVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +128,28 @@ func (s *Service) PrelockRiskWorkflowTx(ctx context.Context, tx pgx.Tx, ticketID
 	if err := validateRiskTicketActionBinding(before, binding); err != nil {
 		return nil, err
 	}
+	retest := !handoff && purpose.Path == riskRetestReviewPath && purpose.Method == "POST" &&
+		before.Status == StatusPendingVerify && binding[0].RetestReviewerID == actor
+	if !handoff {
+		roles, err := s.freshCommandRoles(ctx, actor, purpose.Model, ticketPolicyRoute{path: "/api/v1/tickets/transition", method: "POST"})
+		if err != nil {
+			return nil, err
+		}
+		current := context.WithValue(ctx, ticketCommandRolesKey{}, ticketCommandRoles{actor: actor, roles: roles})
+		if err := s.authorizeCheck(current, actor, "transition", strconv.FormatInt(ticketID, 10)); err != nil && !(retest && errors.Is(err, errcode.ErrNoPermission)) {
+			return nil, err
+		}
+	}
 	sm, err := FromTicketType(&snapshot.Type)
 	if err != nil {
 		return nil, errcode.ErrServiceUnavailable
 	}
-	return &RiskWorkflowScope{service: s, tx: tx, actor: actor, before: cloneTicketSnapshot(before), binding: binding, sm: sm, definition: snapshot}, nil
+	p := &RiskWorkflowScope{service: s, tx: tx, actor: actor, before: cloneTicketSnapshot(before), binding: binding, sm: sm, definition: snapshot,
+		definitionHash: ref.DefinitionHash, retestReview: retest}
+	if handoff {
+		p.used.Store(true)
+	}
+	return p, nil
 }
 
 // ApplyRiskWorkflowTx runs only after the kernel has locked/revalidated the
@@ -192,7 +214,10 @@ func (s *Service) ApplyRiskWorkflowTx(ctx context.Context, tx pgx.Tx, p *RiskWor
 		return nil, errcode.ErrConcurrentModification
 	}
 	cmd.hash = riskTicketActionHash(cmd.hash, binding)
-	scope := &LockedRiskTicketAction{service: s, tx: tx, actor: p.actor, command: cmd, binding: binding}
+	if p.retestReview && (!riskRetestEdge(p.before.Status, cmd.to) || binding[0].RetestReviewerID != p.actor) {
+		return nil, errcode.ErrNoPermission
+	}
+	scope := &LockedRiskTicketAction{service: s, tx: tx, actor: p.actor, command: cmd, binding: binding, retestReview: p.retestReview}
 	return s.applyRiskTicketActionTx(ctx, tx, scope, func(_ context.Context, _ pgx.Tx, candidate *model.Ticket, _ string, _ []repository.RiskTicketLinkBinding) error {
 		if candidate.TypeCode != p.before.TypeCode || candidate.OrgID != p.before.OrgID || candidate.Status != p.before.Status || candidate.DefinitionVersion == nil || *candidate.DefinitionVersion != p.DefinitionVersion() {
 			return errcode.ErrConcurrentModification

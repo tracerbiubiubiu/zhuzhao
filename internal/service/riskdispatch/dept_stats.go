@@ -184,7 +184,7 @@ ORDER BY 1`
 
 // deptHistorySQLTemplate 历史聚合：派单记录 × 可见票 × 派单时点冻结责任人/部门。
 const deptHistorySQLTemplate = `
-SELECT g.owner_user_id,
+SELECT COALESCE(g.owner_at_dispatch, g.owner_user_id),
        COALESCE(NULLIF(u.real_name, ''), u.username, '') AS owner_name,
        COALESCE(g.owner_org_at_dispatch, 0)              AS dept_id,
        COALESCE(o.name, '')                              AS dept_name,
@@ -194,7 +194,7 @@ SELECT g.owner_user_id,
 FROM risk_dispatch_groups g
 JOIN tickets ON tickets.id = g.ticket_id /*visibility*/
 JOIN visible_links l ON l.group_id = g.id
-LEFT JOIN users u ON u.id = g.owner_user_id AND u.deleted_at IS NULL
+LEFT JOIN users u ON u.id = COALESCE(g.owner_at_dispatch, g.owner_user_id) AND u.deleted_at IS NULL
 LEFT JOIN organizations o ON o.id = g.owner_org_at_dispatch
-GROUP BY g.owner_user_id, u.real_name, u.username, g.owner_org_at_dispatch, o.name
+GROUP BY COALESCE(g.owner_at_dispatch, g.owner_user_id), u.real_name, u.username, g.owner_org_at_dispatch, o.name
 ORDER BY 3, 1`

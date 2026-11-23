@@ -357,9 +357,9 @@ func (s *Service) Assign(ctx context.Context, req model.RiskAssignRequest, actor
 		// The risk row already serializes all proposal writers; do not acquire
 		// group/ticket/link locks here in the reverse workflow lock order.
 		reviewStarted, err := repository.TxBool(ctx, tx, `SELECT EXISTS(
-			SELECT 1 FROM risk_ticket_links l
+			SELECT 1 FROM risk_ticket_links l JOIN risk_dispatch_groups g ON g.id=l.group_id
 			WHERE l.risk_id=$1 AND l.ended_at IS NULL
-			AND (l.remediation_state='pending_verify' OR l.proposal_version>0))`, req.ID)
+			AND (l.remediation_state='pending_verify' OR l.proposal_version>0 OR g.owner_at_dispatch IS NOT NULL))`, req.ID)
 		if err != nil {
 			return err
 		}

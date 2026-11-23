@@ -34,14 +34,18 @@ func NewRiskWorkflowHandler(commands RiskWorkflowCommands) *RiskWorkflowHandler 
 	return &RiskWorkflowHandler{commands: commands}
 }
 
+type riskWorkflowVersionedRequest struct {
+	OperationID       string `json:"operation_id" binding:"required"`
+	TicketID          int64  `json:"ticket_id,string" binding:"required"`
+	ExpectedRevision  int64  `json:"expected_ticket_revision,string" binding:"required"`
+	DefinitionVersion int64  `json:"definition_version,string" binding:"required"`
+}
+
 type riskWorkflowRequest struct {
-	OperationID       string            `json:"operation_id" binding:"required"`
-	TicketID          int64             `json:"ticket_id,string" binding:"required"`
-	ExpectedRevision  int64             `json:"expected_ticket_revision,string" binding:"required"`
-	DefinitionVersion int64             `json:"definition_version,string" binding:"required"`
-	CustomDataPatch   riskWorkflowPatch `json:"custom_data_patch,omitempty"`
-	Comment           string            `json:"comment,omitempty"`
-	patchJSON         json.RawMessage
+	riskWorkflowVersionedRequest
+	CustomDataPatch riskWorkflowPatch `json:"custom_data_patch,omitempty"`
+	Comment         string            `json:"comment,omitempty"`
+	patchJSON       json.RawMessage
 }
 
 type riskWorkflowPatch map[string]any
@@ -87,17 +91,7 @@ func riskWorkflowInput(c *gin.Context) (riskWorkflowSubmitRequest, bool) {
 }
 
 func decodeRiskWorkflowInput(c *gin.Context, value any, common *riskWorkflowRequest) bool {
-	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		response.BadRequest(c, "整改请求格式错误")
-		return false
-	}
-	var extra json.RawMessage
-	id, idErr := uuid.Parse(common.OperationID)
-	if decoder.Decode(&extra) != io.EOF || idErr != nil || id.String() != common.OperationID ||
-		common.TicketID <= 0 || common.ExpectedRevision <= 0 || common.DefinitionVersion <= 0 {
-		response.BadRequest(c, "整改请求参数错误")
+	if !decodeRiskWorkflowBody(c, value, &common.riskWorkflowVersionedRequest) {
 		return false
 	}
 	if common.CustomDataPatch != nil {
@@ -111,10 +105,31 @@ func decodeRiskWorkflowInput(c *gin.Context, value any, common *riskWorkflowRequ
 	return true
 }
 
-func (v riskWorkflowRequest) inputs(actor int64) (riskremediation.Command, ticket.RiskWorkflowTicketInput) {
+func decodeRiskWorkflowBody(c *gin.Context, value any, common *riskWorkflowVersionedRequest) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(value); err != nil {
+		response.BadRequest(c, "整改请求格式错误")
+		return false
+	}
+	var extra json.RawMessage
+	id, idErr := uuid.Parse(common.OperationID)
+	if decoder.Decode(&extra) != io.EOF || idErr != nil || id.String() != common.OperationID ||
+		common.TicketID <= 0 || common.ExpectedRevision <= 0 || common.DefinitionVersion <= 0 {
+		response.BadRequest(c, "整改请求参数错误")
+		return false
+	}
+	return true
+}
+
+func (v riskWorkflowVersionedRequest) command(actor int64) riskremediation.Command {
 	return riskremediation.Command{
 		ActorID: actor, OperationID: v.OperationID, TicketID: v.TicketID, ExpectedTicketRevision: v.ExpectedRevision,
-	}, ticket.RiskWorkflowTicketInput{DefinitionVersion: v.DefinitionVersion, CustomDataPatch: v.patchJSON, Comment: v.Comment}
+	}
+}
+
+func (v riskWorkflowRequest) inputs(actor int64) (riskremediation.Command, ticket.RiskWorkflowTicketInput) {
+	return v.command(actor), ticket.RiskWorkflowTicketInput{DefinitionVersion: v.DefinitionVersion, CustomDataPatch: v.patchJSON, Comment: v.Comment}
 }
 
 type riskWorkflowOutcome struct {
@@ -123,6 +138,7 @@ type riskWorkflowOutcome struct {
 	TicketRevision     int64                    `json:"ticket_revision,string"`
 	DefinitionVersion  int64                    `json:"definition_version,string,omitempty"`
 	AssignedToUserID   int64                    `json:"assigned_to_user_id,string,omitempty"`
+	SuccessorUserID    int64                    `json:"successor_user_id,string,omitempty"`
 	Generation         int64                    `json:"assignment_generation,string,omitempty"`
 	Status             string                   `json:"status,omitempty"`
 	Items              []riskWorkflowItemResult `json:"items"`
@@ -157,7 +173,7 @@ func riskWorkflowReply(c *gin.Context, operationID string, result riskremediatio
 	response.OK(c, riskWorkflowOutcome{
 		OperationID: operationID,
 		TicketID:    result.TicketID, TicketRevision: result.TicketRevision, Items: items, TerminalAllowed: result.TerminalAllowed,
-		DefinitionVersion: result.DefinitionVersion, AssignedToUserID: result.AssignedToUserID, Generation: result.Generation, Status: result.Status,
+		DefinitionVersion: result.DefinitionVersion, AssignedToUserID: result.AssignedToUserID, SuccessorUserID: result.SuccessorUserID, Generation: result.Generation, Status: result.Status,
 		AcceptanceID: result.AcceptanceID, AcceptanceRevision: result.AcceptanceRevision, AcceptanceStatus: result.AcceptanceStatus,
 	})
 }

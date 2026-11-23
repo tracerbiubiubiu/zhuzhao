@@ -170,3 +170,9 @@ func groupIdentityKey(findingKey string, ownerUserID, managementOrgID int64, app
 		target.OrganizationID, target.TypeCode, target.DefinitionVersion, target.DefinitionHash)
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
 }
+
+// HandoffGroupKey computes the current dispatch compatibility key without
+// overwriting the original dispatch identity and receipts.
+func HandoffGroupKey(findingKey string, ownerUserID, managementOrgID int64, approvedScope string, target Target) string {
+	return groupIdentityKey(findingKey, ownerUserID, managementOrgID, approvedScope, target)
+}

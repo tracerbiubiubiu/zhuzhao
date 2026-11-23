@@ -80,6 +80,7 @@ type Result struct {
 	TicketRevision     int64
 	DefinitionVersion  int64  `json:",omitempty"`
 	AssignedToUserID   int64  `json:",omitempty"`
+	SuccessorUserID    int64  `json:",omitempty"`
 	Generation         int64  `json:",omitempty"`
 	Status             string `json:",omitempty"`
 	Items              []ItemResult

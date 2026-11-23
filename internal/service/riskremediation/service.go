@@ -17,6 +17,10 @@ func (s *Service) ticketCommand(ctx context.Context, tx pgx.Tx, c Command, comma
 	if err := s.guard(ctx, tx); err != nil {
 		return Result{}, err
 	}
+	return s.withTicketCommand(ctx, tx, c, command, input, run)
+}
+
+func (s *Service) withTicketCommand(ctx context.Context, tx pgx.Tx, c Command, command string, input any, run func(context.Context, pgx.Tx, *scope) (Result, error)) (Result, error) {
 	if err := validCommand(c, true); err != nil {
 		return Result{}, err
 	}
@@ -181,6 +185,15 @@ func (s *Service) ReviewTx(ctx context.Context, tx pgx.Tx, c ReviewCommand) (Res
 				return Result{}, storageError(err)
 			}
 			matchesProposal := baseline == r.revision || (returnExpired && baseline < r.revision)
+			if awaitingReview && proposed == "fixed" && (owner != r.owner || !matchesProposal) {
+				matchesProposal, err = carriedRetestProposal(ctx, tx, l, r, submission)
+				if err != nil {
+					return Result{}, err
+				}
+				if matchesProposal {
+					owner = r.owner
+				}
+			}
 			if owner != r.owner || !matchesProposal || proposed != "fixed" {
 				res.Items = append(res.Items, itemResult(l, r, "conflict"))
 				continue

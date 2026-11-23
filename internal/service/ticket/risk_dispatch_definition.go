@@ -11,6 +11,10 @@ import (
 // creating a ticket. Current authorization and evidence are checked at execution.
 // It does not publish, alter or grant permission to use the supplied definition.
 func ValidateRiskDispatchDefinition(typ *model.TicketType, fields []*model.TicketTypeField) error {
+	return validateRiskWorkflowDefinition(typ, fields, true)
+}
+
+func validateRiskWorkflowDefinition(typ *model.TicketType, fields []*model.TicketTypeField, checkAssignment bool) error {
 	if typ == nil || validateTypeGraph(typ.States, typ.Transitions) != nil {
 		return errcode.ErrServiceUnavailable
 	}
@@ -35,9 +39,11 @@ func ValidateRiskDispatchDefinition(typ *model.TicketType, fields []*model.Ticke
 		return errcode.ErrServiceUnavailable
 	}
 	edges := [][2]string{
-		{StatusOpen, StatusAssigned}, {StatusAssigned, StatusInProgress},
 		{StatusInProgress, StatusPendingVerify}, {StatusPendingVerify, StatusPendingVerify},
 		{StatusPendingVerify, StatusClosed}, {StatusPendingVerify, StatusInProgress},
+	}
+	if checkAssignment {
+		edges = append(edges, [2]string{StatusOpen, StatusAssigned}, [2]string{StatusAssigned, StatusInProgress})
 	}
 	for _, edge := range edges {
 		if !sm.CanTransition(edge[0], edge[1]) {

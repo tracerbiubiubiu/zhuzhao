@@ -68,6 +68,23 @@ func advisoryGroupKey(findingKey string, ownerUserID int64) int64 {
 	return int64(binary.BigEndian.Uint64(sum[:8]) & (1<<63 - 1))
 }
 
+// LockHandoffGroupIdentities serializes handoff with dispatch on both owners.
+// Acquire the same keys in stable order before either command locks group rows.
+func LockHandoffGroupIdentities(ctx context.Context, tx pgx.Tx, findingKey string, previous, successor int64) error {
+	a, b := advisoryGroupKey(findingKey, previous), advisoryGroupKey(findingKey, successor)
+	if a > b {
+		a, b = b, a
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, a); err != nil {
+		return err
+	}
+	if a == b {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, b)
+	return err
+}
+
 // LiveGroup 存活在办组行（同一漏洞同一责任人最多一张在办票）。
 type LiveGroup struct {
 	ID                 int64
@@ -80,7 +97,7 @@ type LiveGroup struct {
 }
 
 const liveGroupColumns = `
-	g.id, g.group_key, g.ticket_id, g.ticket_ref_snapshot,
+	g.id, COALESCE(g.retest_group_key, g.group_key), g.ticket_id, g.ticket_ref_snapshot,
 	g.business_due_at, COALESCE(g.owner_org_at_dispatch, 0),
 	(SELECT COUNT(*) FROM risk_ticket_links l WHERE l.group_id = g.id AND l.ended_at IS NULL)
 `

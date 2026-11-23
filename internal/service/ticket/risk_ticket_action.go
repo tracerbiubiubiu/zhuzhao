@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strconv"
 	"sync/atomic"
@@ -19,8 +20,8 @@ import (
 // RiskTicketScopeLocker must lock/revalidate group/family then all linked risks,
 // including credential, risk permission, lifecycle, versions and link identity.
 // Current handling/retest responsibility MUST come from the locked risk facts.
-// Group owner/owner_at_link and ticket creator are historical facts; neither
-// they nor the current ticket assignee proves current risk review authority.
+// The group owner, owner_at_link and ticket creator alone do not prove current
+// risk review authority, and neither does the current ticket assignee.
 // It runs BEFORE any ticket lock. Return every error to the owning IAM guard.
 // Binding is a copied observation, never proof of risk authorization or locks.
 type RiskTicketScopeLocker func(context.Context, pgx.Tx, int64, int64, []repository.RiskTicketLinkBinding) error
@@ -36,12 +37,13 @@ type RiskTicketEvidenceGuard func(context.Context, pgx.Tx, *model.Ticket, string
 // bound. It carries no generic Close/Transition capability and cannot be supplied
 // to either ordinary endpoint. Allocate it before locking any ticket rows.
 type LockedRiskTicketAction struct {
-	service *Service
-	tx      pgx.Tx
-	actor   int64
-	command evidenceTransitionRequest
-	binding []repository.RiskTicketLinkBinding
-	used    atomic.Bool
+	retestReview bool
+	service      *Service
+	tx           pgx.Tx
+	actor        int64
+	command      evidenceTransitionRequest
+	binding      []repository.RiskTicketLinkBinding
+	used         atomic.Bool
 }
 
 func riskLifecycleAction(action string) bool {
@@ -139,8 +141,14 @@ func validateRiskTicketActionBinding(t *model.Ticket, binding []repository.RiskT
 		return errcode.ErrConcurrentModification
 	}
 	group := binding[0].GroupID
+	owner, reviewer := binding[0].OwnerUserID, binding[0].RetestReviewerID
+	if owner <= 0 || (reviewer != 0 && reviewer != owner) {
+		return errcode.ErrConcurrentModification
+	}
 	for _, b := range binding {
-		if b.LinkID <= 0 || b.RiskID <= 0 || b.GroupID <= 0 || b.Revision <= 0 || !b.GroupActive || b.GroupID != group || b.OwnerUserID <= 0 || b.OwnerUserID != binding[0].OwnerUserID || b.OwnerAtLink != b.OwnerUserID || b.TargetOrgID != t.OrgID || b.TypeCode != t.TypeCode || b.DefinitionVersion != *t.DefinitionVersion {
+		if b.LinkID <= 0 || b.RiskID <= 0 || b.GroupID <= 0 || b.Revision <= 0 || !b.GroupActive || b.GroupID != group ||
+			b.OwnerUserID != owner || b.OwnerAtLink <= 0 || b.RetestReviewerID != reviewer || (b.OwnerAtLink != owner && reviewer == 0) ||
+			b.TargetOrgID != t.OrgID || b.TypeCode != t.TypeCode || b.DefinitionVersion != *t.DefinitionVersion {
 			return errcode.ErrConcurrentModification
 		}
 	}
@@ -163,7 +171,7 @@ func (s *Service) ApplyRiskTicketActionTx(ctx context.Context, tx pgx.Tx, scope 
 
 func (s *Service) applyRiskTicketActionTx(ctx context.Context, tx pgx.Tx, scope *LockedRiskTicketAction, guard RiskTicketEvidenceGuard) (*model.Ticket, error) {
 	cmd := scope.command
-	if err := s.authorizeCheck(ctx, scope.actor, "transition", strconv.FormatInt(cmd.ticketID, 10)); err != nil {
+	if err := s.authorizeCheck(ctx, scope.actor, "transition", strconv.FormatInt(cmd.ticketID, 10)); err != nil && !(scope.retestReview && errors.Is(err, errcode.ErrNoPermission)) {
 		return nil, err
 	}
 	before, err := s.ticketRepo.GetByIDForUpdateTx(ctx, tx, cmd.ticketID)
@@ -196,6 +204,12 @@ func (s *Service) applyRiskTicketActionTx(ctx context.Context, tx pgx.Tx, scope 
 		return ticketFromEvidenceReceipt(before.ID, originalRef, *replay), nil
 	}
 	_, err = s.checkTransitionCondition(ctx, before, cmd.to, scope.actor, &snapshot.Type)
+	if scope.retestReview && errors.Is(err, errcode.ErrNoPermission) && riskRetestEdge(before.Status, cmd.to) {
+		meta, metaErr := parseTransitionMeta(snapshot.Type.TransitionMeta, before.Status, cmd.to)
+		if metaErr == nil && checkCondition(meta, transitionActor{IsCreator: true}) {
+			err = nil
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
