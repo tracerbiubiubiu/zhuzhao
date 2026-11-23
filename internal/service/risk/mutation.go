@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -36,8 +37,28 @@ type createFingerprint struct {
 	AffectedOrgID *int64                  `json:"affected_org_id,omitempty"`
 	OwnerUserID   *int64                  `json:"owner_user_id,omitempty"`
 	SystemRef     string                  `json:"system_ref,omitempty"`
+	FindingKey    string                  `json:"finding_key,omitempty"`
+	AssetRef      *model.RiskAssetRef     `json:"asset_ref,omitempty"`
 	EvidenceRefs  []model.RiskEvidenceRef `json:"evidence_refs,omitempty"`
 	Attributes    any                     `json:"attributes,omitempty"`
+}
+
+// validateManualFindingIdentity 人工登记的稳定漏洞/资产身份成对校验
+// （B2 第 6 项 P1：二者成对、后兼容；结构化字段直收，自由 attributes
+// 不充当来源）。长度沿 risk_items 列宽：finding_key 200 / provider 100 / external_id 200。
+func validateManualFindingIdentity(findingKey string, ref *model.RiskAssetRef) error {
+	if findingKey == "" && ref == nil {
+		return nil
+	}
+	if findingKey == "" || ref == nil {
+		return errcode.ErrInvalidParams
+	}
+	if len([]rune(findingKey)) > 200 || strings.TrimSpace(findingKey) == "" ||
+		len([]rune(ref.Provider)) > 100 || strings.TrimSpace(ref.Provider) == "" ||
+		len([]rune(ref.ExternalID)) > 200 || strings.TrimSpace(ref.ExternalID) == "" {
+		return errcode.ErrInvalidParams
+	}
+	return nil
 }
 
 func parseExpectedRevision(s string, allowNew bool) (int64, error) {
@@ -89,13 +110,17 @@ func (s *Service) Create(ctx context.Context, req model.RiskCreateRequest, actor
 	if req.Title == "" || req.OrgID <= 0 {
 		return nil, errcode.ErrInvalidParams
 	}
+	if err := validateManualFindingIdentity(req.FindingKey, req.AssetRef); err != nil {
+		return nil, err
+	}
 	if _, err := parseExpectedRevision(req.ExpectedRevision, true); err != nil {
 		return nil, err
 	}
 	hash := canonicalHash(createFingerprint{
 		Command: "create", Title: req.Title, Description: req.Description,
 		OrgID: req.OrgID, AffectedOrgID: req.AffectedOrgID, OwnerUserID: req.OwnerUserID,
-		SystemRef: req.SystemRef, EvidenceRefs: req.EvidenceRefs, Attributes: normalizeJSON(req.Attributes),
+		SystemRef: req.SystemRef, FindingKey: req.FindingKey, AssetRef: req.AssetRef,
+		EvidenceRefs: req.EvidenceRefs, Attributes: normalizeJSON(req.Attributes),
 	})
 	var result *model.RiskMutationResult
 	humanKey, allocationErr := s.humanKeys.Next(ctx)
@@ -158,15 +183,28 @@ func (s *Service) Create(ctx context.Context, req model.RiskCreateRequest, actor
 			HumanKey: humanKey, FamilyID: familyID, Status: "new",
 			OrgID: req.OrgID, AffectedOrgID: req.AffectedOrgID, OwnerUserID: req.OwnerUserID,
 			Title: req.Title, Description: nilIfEmpty(req.Description), SystemRef: nilIfEmpty(req.SystemRef),
+			FindingKey:   nilIfEmpty(req.FindingKey),
 			EvidenceRefs: jsonArrayBytes(req.EvidenceRefs), Attributes: jsonBytes(normalizeJSON(req.Attributes)),
 			CreatedBy: actor,
+		}
+		if req.AssetRef != nil {
+			row.AssetProvider = &req.AssetRef.Provider
+			row.AssetExternalID = &req.AssetRef.ExternalID
 		}
 		itemID, err := repository.InsertRiskItemTx(ctx, tx, row)
 		if err != nil {
 			return err
 		}
+		createdPayload := map[string]any{"title": req.Title, "origin": "manual"}
+		if req.FindingKey != "" && req.AssetRef != nil {
+			// 申报的漏洞/资产身份随创建留痕（仍为人工源，不落来源镜像/台账）。
+			createdPayload["finding_key"] = req.FindingKey
+			createdPayload["asset_ref"] = map[string]any{
+				"provider": req.AssetRef.Provider, "external_id": req.AssetRef.ExternalID,
+			}
+		}
 		if err := repository.InsertEventTx(ctx, tx, itemID, 1, "created", 0, actor,
-			req.OperationID, jsonBytes(map[string]any{"title": req.Title, "origin": "manual"})); err != nil {
+			req.OperationID, jsonBytes(createdPayload)); err != nil {
 			return err
 		}
 		if err := repository.CompleteOperationTx(ctx, tx, actor, req.OperationID,

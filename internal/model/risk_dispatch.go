@@ -48,6 +48,13 @@ type RiskDispatchFact struct {
 	Title           string
 	Description     string
 	SystemRef       string
+	// DispatchBasis 当前有效派单依据的稳定核实事实版本，空 = 不可派
+	// （未评估 / 漏洞-资产身份缺失 / 来源镜像撤回或缺失）。
+	// 人工源 = man1:<risk_id>:<最近 assessed 事件 revision>（owner 确认不使依据失效）；
+	// 合成来源 = src1:<现势镜像 content_hash>（新断言换版本、撤回即空）。
+	// 由 risk/dispatch_port.go 读/锁两路径从现势事实填入；
+	// Candidate 绑定与预览/提交比较归派单助手（riskdispatch）。
+	DispatchBasis string
 }
 
 // RiskDispatchCommitItem is a dispatch write owned by the risk service.

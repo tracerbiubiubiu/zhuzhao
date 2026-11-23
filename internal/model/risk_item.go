@@ -66,6 +66,8 @@ type RiskCreateRequest struct {
 	AffectedOrgID    *int64            `json:"affected_org_id,string,omitempty"`
 	OwnerUserID      *int64            `json:"owner_user_id,string,omitempty"`
 	SystemRef        string            `json:"system_ref,omitempty,max=200"`
+	FindingKey       string            `json:"finding_key,omitempty" binding:"omitempty,max=200"` // 稳定漏洞键；与 AssetRef 成对
+	AssetRef         *RiskAssetRef     `json:"asset_ref,omitempty"`                               // 资产键身份；与 FindingKey 成对
 	EvidenceRefs     []RiskEvidenceRef `json:"evidence_refs,omitempty"`
 	ExpectedRevision string            `json:"expected_revision,omitempty"` // 新建恒 "0"
 	Attributes       json.RawMessage   `json:"attributes,omitempty" swaggertype:"object"`

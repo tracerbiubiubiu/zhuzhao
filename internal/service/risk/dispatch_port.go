@@ -81,7 +81,7 @@ func (s *Service) CurrentDispatchFacts(ctx context.Context, reader repository.Ri
 		}
 		facts = append(facts, dispatchFact(row))
 	}
-	return facts, nil
+	return fillDispatchBases(ctx, q, facts)
 }
 
 func (s *Service) LockDispatchFacts(ctx context.Context, tx pgx.Tx, ids []int64) ([]model.RiskDispatchFact, error) {
@@ -94,6 +94,30 @@ func (s *Service) LockDispatchFacts(ctx context.Context, tx pgx.Tx, ids []int64)
 			return nil, err
 		}
 		facts = append(facts, dispatchFact(row))
+	}
+	// 依据在 risk 行锁之后按纯快照读补齐（不加来源侧锁——report 应用路径
+	// 先锁来源镜像再锁 risk 行，此处反向加锁会构成锁序反转；并发来源变更
+	// 与派单由已持有的 risk 行锁串行，撤回先提交则本读已见失效依据）。
+	return fillDispatchBases(ctx, tx, facts)
+}
+
+// fillDispatchBases 批量填入现势派单依据（空 = 不可派；语义见
+// repository/risk_dispatch_basis.go）。锁/读两路径共用，保证预览与提交
+// 对同一现势得到同一依据版本。
+func fillDispatchBases(ctx context.Context, q repository.IAMDBTX, facts []model.RiskDispatchFact) ([]model.RiskDispatchFact, error) {
+	if len(facts) == 0 {
+		return facts, nil
+	}
+	ids := make([]int64, 0, len(facts))
+	for _, fact := range facts {
+		ids = append(ids, fact.ID)
+	}
+	bases, err := repository.DispatchBases(ctx, q, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range facts {
+		facts[i].DispatchBasis = bases[facts[i].ID]
 	}
 	return facts, nil
 }
