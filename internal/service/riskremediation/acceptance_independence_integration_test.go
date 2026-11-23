@@ -92,7 +92,8 @@ func TestAcceptanceReworkReturnsExpiredApprovalToRework(t *testing.T) {
 	var acceptedUntil *time.Time
 	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT accepted_until FROM risk_items WHERE id=$1`, f.risks[0]).Scan(&acceptedUntil))
 	require.NotNil(t, acceptedUntil)
-	submissionsBefore := f.snapshot()
+	var approvalBefore string
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT to_jsonb(a)::text FROM risk_acceptances a WHERE id=$1`, approved.AcceptanceID).Scan(&approvalBefore))
 	siblingBefore := f.riskLinkSnapshot(1)
 
 	rework := reworkCommand(t, f, fixtureManager, "expired-rework", approved)
@@ -121,8 +122,10 @@ func TestAcceptanceReworkReturnsExpiredApprovalToRework(t *testing.T) {
 	require.Equal(t, "approved", approvalStatus, "the original approval record must be preserved")
 	require.Equal(t, approved.AcceptanceRevision, approvalRevision)
 	require.NotEmpty(t, decidedBy)
+	var approvalAfter string
+	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT to_jsonb(a)::text FROM risk_acceptances a WHERE id=$1`, approved.AcceptanceID).Scan(&approvalAfter))
+	require.Equal(t, approvalBefore, approvalAfter)
 	sibling := f.riskLinkSnapshot(1)
-	require.Contains(t, submissionsBefore, `"resolution_version":1`)
 	var submissionCount, reviewCount, siblingLinks int
 	require.NoError(t, f.pool.QueryRow(f.ctx, `SELECT (SELECT count(*) FROM risk_remediation_submissions WHERE link_id=$1),(SELECT count(*) FROM risk_remediation_reviews), (SELECT count(*) FROM risk_ticket_links WHERE id=$2 AND remediation_state='resolved')`, f.links[0], f.links[1]).Scan(&submissionCount, &reviewCount, &siblingLinks))
 	require.Equal(t, 1, submissionCount, "original evidence submissions must be preserved")
@@ -194,9 +197,11 @@ func TestAcceptanceReworkNeverReopensClosedTickets(t *testing.T) {
 	// Mirror the owning workflow's closed dispatch scope: the group and its
 	// links are historical facts after the ticket really closed.
 	_, err := f.pool.Exec(f.ctx, `
-		UPDATE risk_dispatch_groups SET ended_at=clock_timestamp() WHERE ticket_id=$1;
+		WITH g AS (
+			UPDATE risk_dispatch_groups SET ended_at=clock_timestamp() WHERE ticket_id=$1 RETURNING id, ended_at
+		)
 		UPDATE risk_ticket_links l SET ended_at=g.ended_at, end_reason='ticket_closed', revision=l.revision+1
-		FROM risk_dispatch_groups g WHERE l.group_id=g.id AND g.ticket_id=$1 AND l.ended_at IS NULL;
+		FROM g WHERE l.group_id=g.id AND l.ended_at IS NULL
 	`, f.ticket)
 	require.NoError(t, err)
 	rework := reworkCommand(t, f, fixtureManager, "closed-rework-command", approved)
