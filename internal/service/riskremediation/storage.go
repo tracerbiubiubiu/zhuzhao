@@ -25,11 +25,12 @@ type linkState struct {
 	resolvedRevision, effectiveOwner                *int64
 }
 type scope struct {
-	group, ticket, revision int64
-	closedHistory           bool
-	risks                   map[int64]*riskState
-	links                   map[int64]*linkState
-	order                   []int64
+	group, ticket, revision   int64
+	closedHistory, groupEnded bool
+	ticketStatus              string
+	risks                     map[int64]*riskState
+	links                     map[int64]*linkState
+	order                     []int64
 }
 
 func (s *Service) guard(ctx context.Context, tx pgx.Tx) error {
@@ -109,7 +110,7 @@ func lockScope(ctx context.Context, tx pgx.Tx, ticketID int64, includeClosedHist
 	for _, p := range pairs {
 		riskIDs = append(riskIDs, p.risk)
 	}
-	sc := &scope{group: group, ticket: ticketID, closedHistory: closedHistory, risks: map[int64]*riskState{}, links: map[int64]*linkState{}}
+	sc := &scope{group: group, ticket: ticketID, closedHistory: closedHistory, groupEnded: ended, risks: map[int64]*riskState{}, links: map[int64]*linkState{}}
 	rows, err = tx.Query(ctx, `SELECT id,org_id,COALESCE(owner_user_id,0),revision,status FROM risk_items WHERE id=ANY($1) ORDER BY id FOR UPDATE`, riskIDs)
 	if err != nil {
 		return nil, storageError(err)
@@ -125,7 +126,7 @@ func lockScope(ctx context.Context, tx pgx.Tx, ticketID int64, includeClosedHist
 	for _, r := range risks {
 		sc.risks[r.id] = r
 	}
-	err = tx.QueryRow(ctx, `SELECT revision FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&sc.revision)
+	err = tx.QueryRow(ctx, `SELECT revision, status FROM tickets WHERE id=$1 FOR UPDATE`, ticketID).Scan(&sc.revision, &sc.ticketStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errcode.ErrNotFound
 	}

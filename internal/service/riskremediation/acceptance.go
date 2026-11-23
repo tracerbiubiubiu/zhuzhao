@@ -164,6 +164,16 @@ func (s *Service) RequestAcceptanceTx(ctx context.Context, tx pgx.Tx, c Acceptan
 				return Result{}, err
 			}
 		}
+		// Independence precedes every pending write, including recovery: a
+		// creator-only scope must be rejected with zero writes instead of opening
+		// an application nobody else could ever decide. The decision rechecks
+		// identity, current qualification and every version at its own instant.
+		if s.callbacks.IndependentApprover == nil {
+			return Result{}, errcode.ErrServiceUnavailable
+		}
+		if err = s.callbacks.IndependentApprover(ctx, tx, acceptanceAccess("accept_independence", c.Command, r, l)); err != nil {
+			return Result{}, err
+		}
 		pending, err := recoverPendingAcceptance(ctx, tx, c.Command, r, l)
 		if err != nil {
 			return Result{}, err
@@ -333,5 +343,89 @@ func (s *Service) DecideAcceptanceTx(ctx context.Context, tx pgx.Tx, c Acceptanc
 			return Result{}, err
 		}
 		return res, nil
+	})
+}
+
+// ReworkAcceptanceTx is the controlled continuation for one approved acceptance
+// whose validity has lapsed on an active ticket. A currently qualified manager
+// returns exactly that item to submittable remediation. The original approval
+// record, its evidence trail, and every sibling conclusion are preserved; the
+// kernel never reopens a closed dispatch scope. Linked flows only.
+func (s *Service) ReworkAcceptanceTx(ctx context.Context, tx pgx.Tx, c AcceptanceRework) (Result, error) {
+	if err := s.guard(ctx, tx); err != nil {
+		return Result{}, err
+	}
+	if err := validCommand(c.Command, true); err != nil {
+		return Result{}, err
+	}
+	if c.RiskID <= 0 || c.ExpectedRiskRevision <= 0 || c.LinkID <= 0 || c.ExpectedLinkRevision <= 0 || c.AcceptanceID <= 0 || c.ExpectedAcceptanceRevision <= 0 || strings.TrimSpace(c.Reason) == "" || len(c.Reason) > 16000 {
+		return Result{}, errcode.ErrInvalidParams
+	}
+	return s.atomic(ctx, tx, func(ctx context.Context, tx pgx.Tx) (Result, error) {
+		if err := s.callbacks.Admit(ctx, tx, Access{Action: "accept_rework", ActorID: c.ActorID, TicketID: c.TicketID, RiskID: c.RiskID}); err != nil {
+			return Result{}, err
+		}
+		if err := operationLock(ctx, tx, c.Command); err != nil {
+			return Result{}, err
+		}
+		if res, found, err := s.tryReplay(ctx, tx, c.Command, "accept_rework", c); found || err != nil {
+			return res, err
+		}
+		if err := s.callbacks.Prelock(ctx, tx, Access{Action: "accept_rework", ActorID: c.ActorID, TicketID: c.TicketID, RiskID: c.RiskID}); err != nil {
+			return Result{}, err
+		}
+		sc, r, l, err := acceptanceScope(ctx, tx, c.Command, c.RiskID)
+		if err != nil {
+			return Result{}, err
+		}
+		if err = s.callbacks.Authorize(ctx, tx, acceptanceAccess("receipt", c.Command, r, l)); err != nil {
+			return Result{}, err
+		}
+		if err = s.callbacks.Authorize(ctx, tx, acceptanceAccess("accept_rework", c.Command, r, l)); err != nil {
+			return Result{}, err
+		}
+		if sc.groupEnded || (sc.ticketStatus != "in_progress" && sc.ticketStatus != "pending_verify") {
+			return Result{}, errcode.ErrConflict
+		}
+		if l == nil || l.id != c.LinkID || r.revision != c.ExpectedRiskRevision ||
+			l.revision != c.ExpectedLinkRevision ||
+			l.state != "resolved" || l.resolution == nil || *l.resolution != "accepted" ||
+			sc.revision != c.ExpectedTicketRevision || r.status != "accepted" ||
+			!advance(r.revision) || !advance(l.revision) {
+			return Result{}, errcode.ErrConflict
+		}
+		// Match the original approval to the currently effective expiry. Approval
+		// advances the live revisions past the application's stored baselines.
+		var acceptanceRevision int64
+		err = tx.QueryRow(ctx, `
+			SELECT a.revision FROM risk_acceptances a JOIN risk_items r ON r.id=a.risk_id
+			WHERE a.id=$1 AND r.id=$2 AND a.link_id=$3 AND a.status='approved'
+			  AND r.accepted_until=a.valid_until AND r.accepted_until<=clock_timestamp()
+			FOR UPDATE OF a`, c.AcceptanceID, r.id, l.id).Scan(&acceptanceRevision)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && acceptanceRevision != c.ExpectedAcceptanceRevision) {
+			return Result{}, errcode.ErrConflict
+		}
+		if err != nil {
+			return Result{}, storageError(err)
+		}
+		if _, err = s.callbacks.TicketPolicy(ctx, tx, TicketCheck{Action: "accept_rework", ActorID: c.ActorID, TicketID: c.TicketID, ExpectedRevision: sc.revision}); err != nil {
+			return Result{}, err
+		}
+		if err = setRisk(ctx, tx, r, "remediating"); err != nil {
+			return Result{}, err
+		}
+		_, err = tx.Exec(ctx, `UPDATE risk_items SET accepted_until=NULL WHERE id=$1`, r.id)
+		if err != nil {
+			return Result{}, storageError(err)
+		}
+		if err = persistLink(ctx, tx, l, r, "open", nil); err != nil {
+			return Result{}, err
+		}
+		item := itemResult(l, r, "reworked")
+		res := Result{AcceptanceID: c.AcceptanceID, AcceptanceRevision: acceptanceRevision, AcceptanceStatus: "reworked", Items: []ItemResult{item}}
+		if err = recordFact(ctx, tx, c.Command, r.id, r.revision, item.LinkID, item.ResolutionVersion, "acceptance_reworked", map[string]any{"acceptance_id": c.AcceptanceID, "acceptance_revision": acceptanceRevision, "reason": c.Reason, "item": item}); err != nil {
+			return Result{}, err
+		}
+		return s.complete(ctx, tx, sc, c.Command, "accept_rework", c, res)
 	})
 }

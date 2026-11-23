@@ -66,6 +66,21 @@ type AcceptanceDecision struct {
 	Decision                   string
 	Reason                     string
 }
+
+// AcceptanceRework is the controlled manager path that returns one expired
+// approved acceptance on an active ticket to submittable remediation. The
+// original approval record, its evidence trail and every sibling conclusion
+// are preserved; closed dispatch scopes are never reopened. Linked flows only.
+type AcceptanceRework struct {
+	Command
+	RiskID                     int64
+	ExpectedRiskRevision       int64
+	LinkID                     int64
+	ExpectedLinkRevision       int64
+	AcceptanceID               int64
+	ExpectedAcceptanceRevision int64
+	Reason                     string
+}
 type ItemResult struct {
 	LinkID            int64
 	RiskID            int64
@@ -157,6 +172,14 @@ type Callbacks struct {
 	TicketPolicy func(context.Context, pgx.Tx, TicketCheck) (Policy, error)
 	Evidence     func(context.Context, pgx.Tx, EvidenceCheck) error
 	ApplyTicket  func(context.Context, pgx.Tx, TicketEffect) (int64, error)
+	// IndependentApprover must report, read-only and before any pending
+	// acceptance write, whether at least one active subject other than the
+	// applicant (Access.ActorID) can currently walk the ticket's pinned decision
+	// exits (approve-close/reject) and authorize the risk object (Access.RiskID).
+	// The kernel rejects the request with zero writes when the adapter reports no
+	// such subject; the decision itself still rechecks identity, qualification
+	// and every version at its own effective instant.
+	IndependentApprover func(context.Context, pgx.Tx, Access) error
 }
 type Service struct {
 	pool      *pgxpool.Pool

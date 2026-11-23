@@ -156,7 +156,7 @@ func (f *pgFixture) callbacks() Callbacks {
 		if strings.Contains(a.Action, "accept") && strings.Contains(a.Action, "request") && a.ActorID != a.OwnerID {
 			return errcode.ErrNoPermission
 		}
-		if strings.Contains(a.Action, "accept") && (strings.Contains(a.Action, "decid") || strings.Contains(a.Action, "confirm")) && !anchor {
+		if strings.Contains(a.Action, "accept") && (strings.Contains(a.Action, "decid") || strings.Contains(a.Action, "confirm") || strings.Contains(a.Action, "rework")) && !anchor {
 			return errcode.ErrNoPermission
 		}
 		return nil
@@ -171,8 +171,20 @@ func (f *pgFixture) callbacks() Callbacks {
 		},
 		// This synthetic organization/definition adapter deliberately acquires
 		// no domain locks; real adapters must honor the kernel lock order.
-		Prelock:   func(context.Context, pgx.Tx, Access) error { return nil },
+		Prelock: func(context.Context, pgx.Tx, Access) error { return nil },
 		Authorize: check,
+		// Synthetic independence: another enabled manager with decision
+		// qualification must exist beyond the applicant, or no request may open.
+		IndependentApprover: func(ctx context.Context, tx pgx.Tx, a Access) error {
+			var any bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM fixture_actors WHERE enabled AND manage AND main_anchor AND id<>$1)`, a.ActorID).Scan(&any); err != nil {
+				return err
+			}
+			if !any {
+				return errcode.ErrConflict
+			}
+			return nil
+		},
 		TicketPolicy: func(ctx context.Context, tx pgx.Tx, c TicketCheck) (Policy, error) {
 			var revision int64
 			if err := tx.QueryRow(ctx, `SELECT revision FROM tickets WHERE id=$1`, c.TicketID).Scan(&revision); err != nil {
@@ -254,6 +266,14 @@ func (f *pgFixture) requestAcceptance(c AcceptanceRequest) (result Result, err e
 func (f *pgFixture) decideAcceptance(c AcceptanceDecision) (result Result, err error) {
 	err = f.guarded(func(ctx context.Context, tx pgx.Tx) error {
 		result, err = f.svc.DecideAcceptanceTx(ctx, tx, c)
+		return err
+	})
+	return result, err
+}
+
+func (f *pgFixture) reworkAcceptance(c AcceptanceRework) (result Result, err error) {
+	err = f.guarded(func(ctx context.Context, tx pgx.Tx) error {
+		result, err = f.svc.ReworkAcceptanceTx(ctx, tx, c)
 		return err
 	})
 	return result, err
