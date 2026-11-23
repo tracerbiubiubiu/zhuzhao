@@ -34,7 +34,7 @@ SELECT ri.id,
 			OR NULLIF(btrim(ri.asset_external_id), '') IS NULL
 		THEN ''
 		WHEN fam.fingerprint_scope = 'manual' THEN COALESCE((
-			SELECT CASE WHEN NULLIF(btrim(e.payload ->> 'note', E' \\t\\n\\r'), '') IS NOT NULL
+			SELECT CASE WHEN (e.payload ->> 'note') ~ '[^[:space:]]'
 				AND ((e.payload ->> 'dispatch_basis_valid_until') IS NULL
 					OR (e.payload ->> 'dispatch_basis_valid_until')::timestamptz > statement_timestamp())
 				THEN 'man1:' || ri.id::text || ':' || e.aggregate_revision::text ELSE '' END
