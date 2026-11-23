@@ -23,6 +23,7 @@ var workflowContextActions = []struct {
 	{"review", "/api/v1/risk-items/remediation-review", "/api/v1/tickets/transition"},
 	{"accept_request", acceptRequestPath, ""},
 	{"accept_decision", acceptDecisionPath, ""},
+	{"accept_rework", "/api/v1/risk-items/remediation-accept-rework", "/api/v1/tickets/transition"},
 	{"assign_handler", assignHandlerPath, "/api/v1/tickets/assign"},
 	{"accept_assignment", acceptAssignmentPath, "/api/v1/tickets/transition"},
 }
@@ -121,6 +122,21 @@ func (s *ReceiptService) Current(ctx context.Context, actorID, ticketID int64) (
 					}
 					if !item.AcceptanceRecoverable && (item.CanManageRisk || item.IsRiskOwner) {
 						item.AcceptanceID, item.AcceptanceRevision = acceptanceID, acceptanceRevision
+					}
+				}
+				if item.RemediationState == "resolved" && risk.Status == "accepted" && manage &&
+					(result.Status == "pending_verify" || result.Status == "in_progress") {
+					err = tx.QueryRow(ctx, `
+						SELECT a.id, a.revision
+						FROM risk_acceptances a
+						JOIN risk_items r ON r.id = a.risk_id
+						WHERE a.risk_id = $1 AND a.link_id = $2 AND a.status = 'approved'
+						  AND a.risk_revision = r.revision AND a.link_revision = $3
+						  AND a.owner_at_request = r.owner_user_id AND r.accepted_until <= statement_timestamp()
+						ORDER BY a.id DESC LIMIT 1
+					`, item.RiskID, item.LinkID, item.LinkRevision).Scan(&item.ExpiredAcceptanceID, &item.ExpiredAcceptanceRevision)
+					if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+						return err
 					}
 				}
 			}

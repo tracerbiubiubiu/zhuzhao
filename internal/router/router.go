@@ -568,8 +568,10 @@ func New(deps Deps) *gin.Engine {
 					riskItems.GET("/remediation-operations/:id", deps.RiskWorkflowHandler.Receipt)
 					riskItems.POST("/remediation-finish", deps.RiskWorkflowHandler.Finish)
 					riskItems.POST("/remediation-review", deps.RiskWorkflowHandler.Review)
+					riskItems.POST("/remediation-handoff", deps.RiskWorkflowHandler.Handoff)
 					riskItems.POST("/remediation-accept-request", deps.RiskWorkflowHandler.RequestAcceptance)
 					riskItems.POST("/remediation-accept-decision", deps.RiskWorkflowHandler.DecideAcceptance)
+					riskItems.POST("/remediation-accept-rework", deps.RiskWorkflowHandler.ReworkAcceptance)
 					riskItems.POST("/remediation-assign-handler", deps.RiskWorkflowHandler.AssignHandler)
 					riskItems.POST("/remediation-accept-assignment", deps.RiskWorkflowHandler.AcceptAssignment)
 				}

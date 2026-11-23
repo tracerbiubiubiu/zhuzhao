@@ -84,6 +84,22 @@ func (s riskWorkflowPorts) DecideAcceptance(ctx context.Context, cmd riskremedia
 	return service.DecideAcceptance(ctx, riskworkflow.AcceptanceDecisionCommand{AcceptanceDecision: cmd, TicketInput: input})
 }
 
+func (s riskWorkflowPorts) Handoff(ctx context.Context, cmd riskremediation.HandoffCommand) (riskremediation.Result, error) {
+	service, err := s.writes()
+	if err != nil {
+		return riskremediation.Result{}, err
+	}
+	return service.Handoff(ctx, cmd)
+}
+
+func (s riskWorkflowPorts) ReworkAcceptance(ctx context.Context, cmd riskremediation.AcceptanceRework, input ticket.RiskWorkflowTicketInput) (riskremediation.Result, error) {
+	service, err := s.writes()
+	if err != nil {
+		return riskremediation.Result{}, err
+	}
+	return service.ReworkAcceptance(ctx, cmd, input)
+}
+
 func (s riskWorkflowPorts) AssignHandler(ctx context.Context, cmd riskremediation.Command, assignee int64, input ticket.RiskWorkflowTicketInput) (riskremediation.Result, error) {
 	if !s.enabled || s.assignment == nil {
 		return riskremediation.Result{}, errcode.ErrServiceUnavailable

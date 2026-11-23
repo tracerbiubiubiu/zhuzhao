@@ -15,19 +15,21 @@ type RiskWorkflowContext struct {
 }
 
 type RiskWorkflowItem struct {
-	LinkID                int64                    `json:"link_id,string"`
-	RiskID                int64                    `json:"risk_id,string"`
-	RiskRevision          int64                    `json:"risk_revision,string"`
-	LinkRevision          int64                    `json:"link_revision,string"`
-	ProposalVersion       int64                    `json:"proposal_version,string"`
-	RemediationState      string                   `json:"remediation_state"`
-	Title                 string                   `json:"title"`
-	IsRiskOwner           bool                     `json:"is_risk_owner"`
-	CanManageRisk         bool                     `json:"can_manage_risk"`
-	AcceptanceID          int64                    `json:"pending_acceptance_id,string,omitempty"`
-	AcceptanceRevision    int64                    `json:"pending_acceptance_revision,string,omitempty"`
-	AcceptanceRecoverable bool                     `json:"pending_acceptance_recoverable,omitempty"`
-	Submissions           []RiskWorkflowSubmission `json:"submissions,omitempty"`
+	LinkID                    int64                    `json:"link_id,string"`
+	RiskID                    int64                    `json:"risk_id,string"`
+	RiskRevision              int64                    `json:"risk_revision,string"`
+	LinkRevision              int64                    `json:"link_revision,string"`
+	ProposalVersion           int64                    `json:"proposal_version,string"`
+	RemediationState          string                   `json:"remediation_state"`
+	Title                     string                   `json:"title"`
+	IsRiskOwner               bool                     `json:"is_risk_owner"`
+	CanManageRisk             bool                     `json:"can_manage_risk"`
+	AcceptanceID              int64                    `json:"pending_acceptance_id,string,omitempty"`
+	AcceptanceRevision        int64                    `json:"pending_acceptance_revision,string,omitempty"`
+	AcceptanceRecoverable     bool                     `json:"pending_acceptance_recoverable,omitempty"`
+	ExpiredAcceptanceID       int64                    `json:"expired_acceptance_id,string,omitempty"`
+	ExpiredAcceptanceRevision int64                    `json:"expired_acceptance_revision,string,omitempty"`
+	Submissions               []RiskWorkflowSubmission `json:"submissions,omitempty"`
 }
 
 type RiskWorkflowSubmission struct {
