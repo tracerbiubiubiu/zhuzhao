@@ -279,8 +279,8 @@ func TestWorkflowRiskOwnerCanReturnExpiredAcceptanceToRemediation(t *testing.T) 
 	pending, err := f.requestAcceptance(t, f.acceptanceRequest(t, f.riskA))
 	require.NoError(t, err)
 	// Exercise recovery after the pending request loses its only independent approver.
-	_, err = workflowPool.Exec(f.ctx, `UPDATE tickets SET created_by=$1 WHERE id=$2`, f.other, f.ticket)
-	require.NoError(t, err)
+	require.NoError(t, workflowPool.QueryRow(f.ctx, `UPDATE tickets SET created_by=$1 WHERE id=$2 RETURNING revision`,
+		f.other, f.ticket).Scan(&pending.TicketRevision))
 	run := func(c ReviewCommand) (riskremediation.Result, error) {
 		return f.admittedWrite(t, c.ActorID, reviewPath, nil, func(ctx context.Context) (riskremediation.Result, error) {
 			return f.service.Review(ctx, c)
@@ -474,7 +474,8 @@ func TestWorkflowFinalReviewRechecksAcceptedRiskAfterTicketWrite(t *testing.T) {
 	name := "wf_review_expiry_" + strconv.FormatInt(f.ticket, 10)
 	_, err = workflowPool.Exec(f.ctx, `CREATE FUNCTION `+name+`() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
 		IF NEW.id=`+strconv.FormatInt(f.ticket, 10)+` AND NEW.status='closed' THEN
-			PERFORM pg_sleep(0.02+GREATEST(0,EXTRACT(EPOCH FROM ((SELECT accepted_until FROM risk_items WHERE id=`+strconv.FormatInt(f.riskA, 10)+`)-clock_timestamp()))));
+				UPDATE risk_items SET accepted_until=clock_timestamp()-interval '1 second'
+				WHERE id=`+strconv.FormatInt(f.riskA, 10)+`;
 		END IF; RETURN NEW; END $$`)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -482,8 +483,6 @@ func TestWorkflowFinalReviewRechecksAcceptedRiskAfterTicketWrite(t *testing.T) {
 		require.NoError(t, err)
 	})
 	_, err = workflowPool.Exec(f.ctx, `CREATE TRIGGER `+name+` BEFORE UPDATE OF status ON tickets FOR EACH ROW EXECUTE FUNCTION `+name+`() `)
-	require.NoError(t, err)
-	_, err = workflowPool.Exec(f.ctx, `UPDATE risk_items SET accepted_until=clock_timestamp()+interval '1 second' WHERE id=$1`, f.riskA)
 	require.NoError(t, err)
 	before := f.acceptanceSnapshot(t)
 	got, err := f.admittedWrite(t, f.actor, reviewPath, nil, func(ctx context.Context) (riskremediation.Result, error) { return f.service.Review(ctx, review) })
