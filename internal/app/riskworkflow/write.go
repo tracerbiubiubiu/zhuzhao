@@ -145,6 +145,7 @@ func (s *Service) writeCallbacks(actor int64, path string, input ticket.RiskWork
 		return nil
 	}
 	return riskremediation.Callbacks{
+		IndependentApprover: denyIndependentAcceptanceApprover,
 		Admit: func(ctx context.Context, tx pgx.Tx, a riskremediation.Access) error {
 			if a.ActorID != actor || !repository.IAMGuardActive(ctx) || repository.IAMDB(ctx, s.pool) != tx {
 				return errcode.ErrNoPermission

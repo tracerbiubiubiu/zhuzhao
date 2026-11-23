@@ -27,7 +27,11 @@ func newAcceptanceFixture(t *testing.T) *writeFixture {
 
 func seedAcceptanceFixture(t *testing.T, reviewSecondAsCreator bool) *writeFixture {
 	t.Helper()
-	f := newWriteFixture(t)
+	return prepareAcceptanceFixture(t, newWriteFixture(t), reviewSecondAsCreator)
+}
+
+func prepareAcceptanceFixture(t *testing.T, f *writeFixture, reviewSecondAsCreator bool) *writeFixture {
+	t.Helper()
 	_, err := workflowPool.Exec(f.ctx, `UPDATE risk_items SET owner_user_id=$1 WHERE id=ANY($2)`, f.other, []int64{f.riskA, f.riskB})
 	require.NoError(t, err)
 	_, err = workflowPool.Exec(f.ctx, `UPDATE risk_ticket_links SET owner_at_link=$1 WHERE risk_id=ANY($2)`, f.other, []int64{f.riskA, f.riskB})
@@ -272,10 +276,10 @@ func TestWorkflowAcceptanceRejectUsesExistingRule(t *testing.T) {
 
 func TestWorkflowRiskOwnerCanReturnExpiredAcceptanceToRemediation(t *testing.T) {
 	f := newAcceptanceFixture(t)
-	// Match a dispatched ticket where the risk owner is the creator.
-	_, err := workflowPool.Exec(f.ctx, `UPDATE tickets SET created_by=$1 WHERE id=$2`, f.other, f.ticket)
-	require.NoError(t, err)
 	pending, err := f.requestAcceptance(t, f.acceptanceRequest(t, f.riskA))
+	require.NoError(t, err)
+	// Exercise recovery after the pending request loses its only independent approver.
+	_, err = workflowPool.Exec(f.ctx, `UPDATE tickets SET created_by=$1 WHERE id=$2`, f.other, f.ticket)
 	require.NoError(t, err)
 	run := func(c ReviewCommand) (riskremediation.Result, error) {
 		return f.admittedWrite(t, c.ActorID, reviewPath, nil, func(ctx context.Context) (riskremediation.Result, error) {

@@ -33,12 +33,17 @@ type writeFixture struct {
 func newWriteFixture(t *testing.T) *writeFixture { return newWriteFixtureWithCondition(t, "assignee") }
 func newWriteFixtureWithCondition(t *testing.T, condition string) *writeFixture {
 	t.Helper()
+	return newWriteFixtureWithRoles(t, condition, "creator", "creator")
+}
+
+func newWriteFixtureWithRoles(t *testing.T, finishRole, approveRole, rejectRole string) *writeFixture {
+	t.Helper()
 	f := newPreparedReceiptFixture(t, func(f *receiptFixture, code string) {
 		_, err := f.tickets.ReplaceTicketTypeFields(f.ctx, code, &model.ReplaceTypeFieldsRequest{Fields: []model.TicketTypeFieldInput{{FieldKey: "review_mark", FieldLabel: "Review mark", FieldType: "input"}}})
 		require.NoError(t, err)
 		_, err = f.tickets.UpdateTicketType(f.ctx, code, &model.UpdateTicketTypeRequest{Code: code,
 			Transitions:    json.RawMessage(`{"open":["assigned"],"assigned":["in_progress"],"in_progress":["pending_verify"],"pending_verify":["pending_verify","closed","in_progress"],"closed":[]}`),
-			TransitionMeta: json.RawMessage(`{"in_progress>pending_verify":{"roles":["` + condition + `"],"comment_required":true},"pending_verify>pending_verify":{"roles":["creator"],"collect_fields":[{"key":"review_mark","required":true}]},"pending_verify>closed":{"roles":["creator"],"collect_fields":[{"key":"review_mark","required":true}]},"pending_verify>in_progress":{"roles":["creator"],"collect_fields":[{"key":"review_mark","required":true}]}}`),
+			TransitionMeta: json.RawMessage(`{"in_progress>pending_verify":{"roles":["` + finishRole + `"],"comment_required":true},"pending_verify>pending_verify":{"roles":["creator"],"collect_fields":[{"key":"review_mark","required":true}]},"pending_verify>closed":{"roles":["` + approveRole + `"],"collect_fields":[{"key":"review_mark","required":true}]},"pending_verify>in_progress":{"roles":["` + rejectRole + `"],"collect_fields":[{"key":"review_mark","required":true}]}}`),
 		})
 		require.NoError(t, err)
 	}, func(f *receiptFixture, tk *model.Ticket) {

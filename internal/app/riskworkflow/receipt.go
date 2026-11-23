@@ -69,7 +69,8 @@ func (s *ReceiptService) receiptCallbacks() riskremediation.Callbacks {
 		return nil
 	}
 	return riskremediation.Callbacks{
-		Admit: exact,
+		Admit:               exact,
+		IndependentApprover: denyIndependentAcceptanceApprover,
 		// Receipt does not evaluate or change a definition/organization. Its ticket
 		// access is checked before group/risk/ticket/link locks, and again on every
 		// original member. No earlier domain lock is acquired after the kernel locks.

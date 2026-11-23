@@ -79,6 +79,7 @@ func TestFinishKernelCallbackUsesChildAndRollsBackFailure(t *testing.T) {
 	err := repository.WithIAMCommandGuard(f.ctx, workflowPool, func(ctx context.Context, outer pgx.Tx) error {
 		unavailable := func(context.Context, pgx.Tx, riskremediation.Access) error { return stop }
 		callbacks := riskremediation.Callbacks{
+			IndependentApprover: denyIndependentAcceptanceApprover,
 			Admit: func(ctx context.Context, child pgx.Tx, _ riskremediation.Access) error {
 				called = true
 				require.NotSame(t, outer, child)

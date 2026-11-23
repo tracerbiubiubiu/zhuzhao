@@ -17,6 +17,7 @@ import (
 const (
 	acceptRequestPath  = "/api/v1/risk-items/remediation-accept-request"
 	acceptDecisionPath = "/api/v1/risk-items/remediation-accept-decision"
+	acceptReworkPath   = "/api/v1/risk-items/remediation-accept-rework"
 )
 
 // Acceptance commands are an in-process, linked-ticket slice. Routing and menu
@@ -138,7 +139,15 @@ func (s *Service) acceptanceCallbacks(actor int64, path string, input ticket.Ris
 			if a.Action == "receipt" {
 				return nil // replay reads the original scope without consuming an edge
 			}
-			if a.Action != "accept_request" && a.Action != "accept_confirm" {
+			switch a.Action {
+			case "accept_request", "accept_confirm":
+			case "accept_rework":
+				// Check current risk management before the kernel looks up the
+				// approval. Authorize repeats it with the locked risk row.
+				if err := requireAcceptanceManagement(current, tx, a.RiskID, actor); err != nil {
+					return err
+				}
+			default:
 				return errcode.ErrServiceUnavailable
 			}
 			rows, err := tx.Query(current, `SELECT DISTINCT r.org_id FROM risk_items r JOIN risk_ticket_links l ON l.risk_id=r.id JOIN risk_dispatch_groups g ON g.id=l.group_id WHERE g.ticket_id=$1 AND l.ended_at IS NULL ORDER BY r.org_id`, a.TicketID)
@@ -180,15 +189,8 @@ func (s *Service) acceptanceCallbacks(actor int64, path string, input ticket.Ris
 					return errcode.ErrNoPermission
 				}
 				return nil
-			case "accept_confirm":
-				manage, err := repository.CanManageRiskItem(current, tx, a.RiskID, actor)
-				if err != nil {
-					return errcode.ErrServiceUnavailable
-				}
-				if !manage {
-					return errcode.ErrNoPermission
-				}
-				return nil // kernel additionally rejects the original applicant
+			case "accept_confirm", "accept_rework":
+				return requireAcceptanceManagement(current, tx, a.RiskID, actor)
 			default:
 				return errcode.ErrServiceUnavailable
 			}
@@ -197,10 +199,11 @@ func (s *Service) acceptanceCallbacks(actor int64, path string, input ticket.Ris
 			if err := exact(ctx, tx); err != nil {
 				return riskremediation.Policy{}, err
 			}
-			if c.ActorID != actor || (c.Action != "accept_request" && c.Action != "accept_confirm") || scope == nil || scope.Revision() != c.ExpectedRevision {
+			if c.ActorID != actor || scope == nil || scope.Revision() != c.ExpectedRevision {
 				return riskremediation.Policy{}, errcode.ErrConflict
 			}
-			if c.Action == "accept_request" {
+			switch c.Action {
+			case "accept_request":
 				if scope.Status() != "pending_verify" {
 					return riskremediation.Policy{}, errcode.ErrConflict
 				}
@@ -209,8 +212,25 @@ func (s *Service) acceptanceCallbacks(actor int64, path string, input ticket.Ris
 				if !scope.Allows("closed") || !scope.Allows("in_progress") {
 					return riskremediation.Policy{}, errcode.ErrTicketInvalidTransition
 				}
+			case "accept_confirm":
+			case "accept_rework":
+				if err := s.tickets.CheckRiskAcceptanceReworkTx(current, tx, scope, c.TicketID, actor, c.ExpectedRevision); err != nil {
+					return riskremediation.Policy{}, err
+				}
+			default:
+				return riskremediation.Policy{}, errcode.ErrServiceUnavailable
 			}
 			return riskremediation.Policy{ReviewGate: true}, nil
+		},
+		IndependentApprover: func(ctx context.Context, tx pgx.Tx, a riskremediation.Access) error {
+			if err := exact(ctx, tx); err != nil {
+				return err
+			}
+			if path != acceptRequestPath || a.Action != "accept_independence" || a.ActorID != actor ||
+				a.RiskID <= 0 || !orgs[a.OrgID] || scope == nil {
+				return errcode.ErrNoPermission
+			}
+			return s.requireIndependentAcceptanceApprover(current, tx, scope, a)
 		},
 		Evidence: func(context.Context, pgx.Tx, riskremediation.EvidenceCheck) error {
 			return errcode.ErrServiceUnavailable
@@ -242,6 +262,11 @@ func (s *Service) acceptanceCallbacks(actor int64, path string, input ticket.Ris
 						}
 					}
 				}
+			case "accept_rework":
+				if e.TerminalAllowed {
+					return 0, errcode.ErrConflict
+				}
+				return s.tickets.ApplyRiskAcceptanceReworkTx(current, tx, scope, e.TicketID, actor, e.ExpectedRevision, input)
 			default:
 				return 0, errcode.ErrServiceUnavailable
 			}

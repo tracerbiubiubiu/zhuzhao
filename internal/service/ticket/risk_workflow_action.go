@@ -180,26 +180,11 @@ func (s *Service) ApplyRiskWorkflowTx(ctx context.Context, tx pgx.Tx, p *RiskWor
 	if !cmd.versioned() || cmd.version != p.DefinitionVersion() || cmd.revision != p.Revision() {
 		return nil, errcode.ErrConcurrentModification
 	}
-	if !p.Allows(cmd.to) {
-		return nil, errcode.ErrTicketInvalidTransition
+	if err := p.checkSupportedEdge(cmd.to); err != nil {
+		return nil, err
 	}
-	if p.definition == nil || len(ExtractFileRefs(cmd.comment)) > 0 {
+	if len(ExtractFileRefs(cmd.comment)) > 0 {
 		return nil, errcode.ErrServiceUnavailable
-	}
-	meta, err := parseTransitionMeta(p.definition.Type.TransitionMeta, p.before.Status, cmd.to)
-	if err != nil || (meta != nil && len(meta.PostActions) > 0) {
-		return nil, errcode.ErrServiceUnavailable
-	}
-	collect, err := transitionCollectFields(p.definition.Type.TransitionMeta, p.before.Status, cmd.to)
-	if err != nil {
-		return nil, errcode.ErrServiceUnavailable
-	}
-	for _, item := range collect {
-		for _, field := range p.definition.Fields {
-			if field != nil && field.FieldKey == item.Key && (field.FieldType == "file" || field.FieldType == "richtext") {
-				return nil, errcode.ErrServiceUnavailable
-			}
-		}
 	}
 	if !p.used.CompareAndSwap(false, true) {
 		return nil, errcode.ErrNoPermission
@@ -224,6 +209,32 @@ func (s *Service) ApplyRiskWorkflowTx(ctx context.Context, tx pgx.Tx, p *RiskWor
 		}
 		return nil
 	})
+}
+
+// checkSupportedEdge is shared by read-only workflow eligibility and execution.
+func (p *RiskWorkflowScope) checkSupportedEdge(to string) error {
+	if !p.Allows(to) {
+		return errcode.ErrTicketInvalidTransition
+	}
+	if p.definition == nil {
+		return errcode.ErrServiceUnavailable
+	}
+	meta, err := parseTransitionMeta(p.definition.Type.TransitionMeta, p.before.Status, to)
+	if err != nil || (meta != nil && len(meta.PostActions) > 0) {
+		return errcode.ErrServiceUnavailable
+	}
+	collect, err := transitionCollectFields(p.definition.Type.TransitionMeta, p.before.Status, to)
+	if err != nil {
+		return errcode.ErrServiceUnavailable
+	}
+	for _, item := range collect {
+		for _, field := range p.definition.Fields {
+			if field != nil && field.FieldKey == item.Key && (field.FieldType == "file" || field.FieldType == "richtext") {
+				return errcode.ErrServiceUnavailable
+			}
+		}
+	}
+	return nil
 }
 
 func sameRiskWorkflowTopology(before, after []repository.RiskTicketLinkBinding) bool {
