@@ -34,6 +34,7 @@ type RiskDispatchExpected struct {
 type RiskDispatchFact struct {
 	ID              int64
 	Revision        int64
+	DispatchBasis   string // 风险域核实依据的稳定版本，空值表示不可派
 	HumanKey        string
 	Status          string
 	OwnerID         int64 // 0 = 责任待确认（不可派）
