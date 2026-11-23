@@ -81,7 +81,12 @@ DB_CREATED=1
 "$MIG" -path migrations -database "$DSN" up >/dev/null
 LAST=$("$MIG" -path migrations -database "$DSN" version 2>&1 | awk '/^[0-9]+$/{print $1}')
 [ -n "$LAST" ] || { echo "❌ 无法解析 migrate version（stderr 未输出数字）" >&2; exit 1; }
-if [ "$N" = "999" ]; then N=$LAST; fi
+if [ "$N" = "999" ]; then
+  # Migration versions can reserve unused numbers. The down limit is a count
+  # of applied files, rather than the latest version number.
+  applied_migrations=(migrations/*.up.sql)
+  N="${#applied_migrations[@]}"
+fi
 
 # 28 批 SYS-2：内容级快照——逐行投影+稳定排序，等量互换/内容改写均可 diff 出
 snapshot() {
