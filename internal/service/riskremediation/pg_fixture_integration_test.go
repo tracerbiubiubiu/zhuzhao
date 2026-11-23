@@ -171,7 +171,7 @@ func (f *pgFixture) callbacks() Callbacks {
 		},
 		// This synthetic organization/definition adapter deliberately acquires
 		// no domain locks; real adapters must honor the kernel lock order.
-		Prelock: func(context.Context, pgx.Tx, Access) error { return nil },
+		Prelock:   func(context.Context, pgx.Tx, Access) error { return nil },
 		Authorize: check,
 		// Synthetic independence: another enabled manager with decision
 		// qualification must exist beyond the applicant, or no request may open.
