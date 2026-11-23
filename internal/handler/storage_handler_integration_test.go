@@ -316,7 +316,8 @@ func TestStorageHandler_Contract(t *testing.T) {
 		require.Equal(t, http.StatusOK, w2.Code)
 		require.Len(t, rec.entries, 1, "ticket 态 200 恰落一行")
 		assert.Equal(t, http.MethodGet, rec.entries[0].Method)
-		assert.Contains(t, rec.entries[0].Path, akey, "审计行含对象键（A.7 谁/何时/key/结果）")
+		assert.Equal(t, "/api/v1/files/*key", rec.entries[0].Path)
+		assert.NotContains(t, rec.entries[0].Path, akey, "审计路径使用模板保护历史证据对象键")
 	})
 
 	t.Run("代理下载——If-None-Match 304（零审计行）", func(t *testing.T) {
