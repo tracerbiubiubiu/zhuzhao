@@ -52,6 +52,8 @@ B2 隔离实施的本机执行材料登记为 `g04-it1-20261122/stage3` 和 `g04
 
 ## 后续新增材料
 
+B2 固定候选签收的本地材料 ID 为 `evidence/phase6-b2-signoff-20261125/`，登记复用收据的 SHA256、运行镜像身份、补跑结果、合成提醒读回和所有者签收记录。正式结论见[固定候选签收证据](review/reports/phase6-b2-candidate-signoff-2026-11-25.md)。
+
 2026-11-20 两轮 Web 易用性复验使用材料 ID `evidence/phase6-web-ux-20261120/`，选定的合成渲染截图与测试收据按轮保存，并核对 SHA-256。受控结论与复现条件见[正式报告](review/reports/phase6-web-ux-audit-2026-11-20.md)。
 
 2026-11-18错对象写入修复批使用材料ID `maintenance/pass8-target-write-20261118/`，保存合成错序红绿证据、候选基线、适用门禁及被隔离资源的回收记录。分批处置归[存量修复前移计划](planning/audit-repair-plan-2026-11-17.md#6-2026-11-18-同类复核与分批承接)，原始运行材料留本机。
