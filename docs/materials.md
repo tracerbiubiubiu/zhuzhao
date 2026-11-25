@@ -74,4 +74,12 @@ pass8复审后所有者明确要求按建议补修，材料ID`maintenance/audit-
 
 同日后继产品实现与组合验收使用独立材料ID`maintenance/audit-baseline-repair-20261117/`：保存主批`repair-implementation-20261117`及相关工作树原始专项、首次失败与修正、冻结源码/运行产物manifest、门禁命令/退出码、浏览器、恢复、精确清理及本地提交收据。正式结论归[前置修复与组合验收](review/reports/audit-baseline-repair-2026-11-17.md)。归档逐文件核SHA，下载缓存/依赖安装目录不作为证据复制，具体排除及副本清单由本地索引记载；目录/文件收紧权限，不随Git上传，ignored工作区可保留执行副本。该归档为同机保留，不等于异机备份。
 
+2026-11-25 Claude 两轮只读审计使用材料 ID `evidence/project-audit-claude-20261125/`。该目录包含：
+- 第 1 轮 5 份分项原文（Phase 6 规划专项）；
+- 第 2 轮 9 份分项原文（五仓全面审计）；
+- 基线与来源会话说明；
+- SHA256。
+
+受控结论与主会话的复核修正见[审计报告](review/reports/phase6-plan-and-five-repo-audit-2026-11-25.md)。原文只在本机保存，不是异机备份。
+
 先判断它是否是必须共同维护的事实/输入。是则进入归属仓`docs/`并挂到已有入口；否则使用本地档案相应分类和明确批次ID。短期执行产物可先留ignored `.codex/`，正式交付提炼结论并登记材料ID，避免在`src`下持续新增散落报告目录。
