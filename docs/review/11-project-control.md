@@ -303,7 +303,9 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 ### 2026-11-25 B2 Core 合入前门禁复验
 
-Core 短分支更新了触发 GO-2026-6974 的 OpenTelemetry 依赖，并将串行竞态集成测试的包级时限从 10 分钟调至 15 分钟。原超时的 `internal/service` 在本机用时 8 分 45 秒，源码和 Linux amd64 二进制扫描通过。GitHub Actions 的集成作业仍限 30 分钟，草稿 PR 尚待承接候选并复验。 [Core PR #39](https://github.com/tracerbiubiubiu/zhuzhao/pull/39)
+Core 短分支更新了触发 GO-2026-6974 的 OpenTelemetry 依赖，并将串行竞态集成测试的包级时限从 10 分钟调至 15 分钟，GitHub Actions 作业仍限 30 分钟。首次远端复验通过 Core 源码和 Linux amd64 二进制扫描，33 个集成测试包通过，原超时包 `internal/service` 用时 10 分 38 秒。 [Core 草稿 PR #40](https://github.com/tracerbiubiubiu/zhuzhao/pull/40)
+
+同次复验中，rclone 辅助工具的源码与镜像二进制扫描均在独立模块所选的 OpenTelemetry Trace `v1.45.0` 命中同一公告。本次将该模块的 Trace 和所需的 Log API 固定到 `v1.47.0`，保留 rclone `v1.76.0` 与 Go `1.27.4`。本机复跑源码扫描，并从按原 Dockerfile 重建的 Linux amd64 镜像提取二进制完成扫描，两项均通过。 [首次 rclone 扫描](https://github.com/tracerbiubiubiu/zhuzhao/actions/runs/45616549528/job/139213464516)
 
 ### 2026-11-22 B2 隔离联合验收与工单规则接续
 
