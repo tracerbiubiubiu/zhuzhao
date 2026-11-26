@@ -70,9 +70,10 @@ func (s *Service) Read(ctx context.Context, cred middleware.ReadCredential, id s
 		return referencequery.QueryPage{}, err
 	}
 	if len(allowed.Parameters.OwnerOrgRefs) == 0 {
+		// The timestamps describe this local decision. No source was queried.
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		return referencequery.QueryPage{Items: []map[string]any{}, Complete: true, SourceID: s.config.SourceID,
-			ObservedAt: now, FetchedAt: now, MappingVersion: "local-scope-v1", Warnings: []string{}}, nil
+			ObservedAt: now, FetchedAt: now, MappingVersion: "local-scope-v1", Warnings: []string{"source_not_queried"}}, nil
 	}
 	inv := referencequery.Invocation{RequestRef: newReferenceToken(), Audience: referencequery.ExtensionID,
 		CapabilityID: referencequery.QueryID, ContractVersion: referencequery.Version, ConfigRevision: s.config.ConfigRevision,
@@ -153,6 +154,9 @@ func (s *Service) prepare(ctx context.Context, cred middleware.ReadCredential, q
 	if err != nil {
 		return referencequery.QueryRequest{}, err
 	}
+	if len(orgs) == 0 || len(orgs) > 256 {
+		return referencequery.QueryRequest{}, denied
+	}
 	requested := query.Parameters.OwnerOrgRefs
 	allowed := query
 	allowed.Parameters.OwnerOrgRefs = nil
@@ -160,9 +164,6 @@ func (s *Service) prepare(ctx context.Context, cred middleware.ReadCredential, q
 		if len(requested) == 0 || slices.Contains(requested, org) {
 			allowed.Parameters.OwnerOrgRefs = append(allowed.Parameters.OwnerOrgRefs, org)
 		}
-	}
-	if len(orgs) > 256 {
-		return referencequery.QueryRequest{}, denied
 	}
 	allowed.RequestedFields = slices.Clone(query.RequestedFields)
 	for _, field := range []string{"owner_org_ref", "device_id"} {
