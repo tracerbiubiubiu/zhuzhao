@@ -378,6 +378,27 @@ Phase 6 第 10 项第一切片使用本地命令 `directory-sync-mock`。执行�
 - `transfer-receipt <scope_ref> <operation_id>` 独立查询已提交回执。回执包含运行 ID、作用域、操作号、提交的来源修订、结果和适用的问题码。同号同输入返回原回执。同号不同内容拒绝。缺少有效目标时以 `target_department_unresolved` 留下 `held` 回执，任职及成功来源修订均保持原值。修正输入由新操作号提交。业务写入、成功来源修订及回执共用一个 IAM 事务。
 - 提交返回 `0` 表示 `applied`，`3` 表示已持久化的 `held`。查询到任一已提交回执返回 `0`。输入、操作号冲突或查不到回执返回 `2`，数据库或输出未确认返回 `1`。迁移 `000098` 回退删除模拟绑定和回执表。需要还原隔离任职事实时恢复调动前的独占库快照。分工和用例见[切片计划](../planning/phase6-d06-mock-primary-transfer-plan.md)。
 
+### 7.8 模拟直属主管解析
+
+第 10 项第三切片使用同一隔离二进制的 `resolve-manager`。命令从标准输入读取一条预登记合成员工的直属主管引用，按同一作用域、指定身份世代和租户核对双方。双方须为启用的非系统合成账号。
+
+```json
+{
+  "provider_ref": "mock-directory",
+  "scope_ref": "synthetic-demo",
+  "operation_id": "manager-001",
+  "employee_external_id": "employee-001",
+  "identity_generation": 1,
+  "manager_external_id": "employee-002",
+  "manager_identity_generation": 1
+}
+```
+
+- 已登记且有效的主管返回 `resolved`。作用域内尚无主管绑定时返回 `unresolved` / `manager_not_registered`，保留外部引用。已存在但失效或世代、租户不符的绑定返回 `rejected` / `manager_link_invalid`。指向本人返回 `rejected` / `manager_self_reference`。员工自身绑定无效时返回 `rejected` / `employee_unresolved`。
+- 主管晚到后，用新的操作号重提交原引用。相同操作号与内容重放返回当时的结果和运行 ID，操作号相同但内容变更时拒绝。`manager-receipt <scope_ref> <operation_id>` 查询已提交回执。回执只包含合成标识、身份世代、操作号、运行 ID、状态与适用的问题码。
+- 复用 `000098` 的员工绑定及操作回执表。主管回执使用保留的内部 `manager/` 键，调动回执使用既有键。解析只写回执，保留员工绑定的来源修订和全部 IAM 业务事实。结果描述一条直接引用在运行时是否可解析。
+- 解析成功退出 `0`，已持久化的待解析或拒绝结果退出 `3`。查询到回执退出 `0`，输入或操作号冲突、回执不存在退出 `2`，数据库或输出故障退出 `1`。分工和用例见[切片计划](../planning/phase6-d06-mock-manager-plan.md)。
+
 ## 8. D08–D10：风险来源、周期和处置闭环
 
 ### 8.1 规范化来源合同与唯一写主

@@ -83,7 +83,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
 | **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；MyOrg名册与写入保护见[本地验证](#2026-11-18-ui错对象写入修复) | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
 | **模拟目录批次（D06）** | 合成部门分页应用、部署独占 PG 的基线和游标、持久回执及重放冲突识别 | 第 10 项首切片已合入（Core #42） | `cmd/directory-sync-mock/main.go` 的 `run`、`internal/service/directorymock/batch.go` 的 `Apply`；[合同](../design/business-lifecycle-contracts.md#76-模拟部门批次与运行回执) |
-| **模拟员工主部门调动（D06）** | 单一合成人员 A 到 B、来源写主、当前可见性、历史归属及可查回执 | 第 10 项第二个隔离候选 | `cmd/directory-sync-mock/transfer.go` 的 `runTransfer`、`internal/service/directorymock/transfer.go` 的 `ApplyPrimaryTransfer`；[合同](../design/business-lifecycle-contracts.md#77-模拟员工主部门调动) |
+| **模拟员工主部门调动（D06）** | 单一合成人员 A 到 B、来源写主、当前可见性、历史归属及可查回执 | 第 10 项第二切片已合入（Core #43） | `cmd/directory-sync-mock/transfer.go` 的 `runTransfer`、`internal/service/directorymock/transfer.go` 的 `ApplyPrimaryTransfer`；[合同](../design/business-lifecycle-contracts.md#77-模拟员工主部门调动) |
+| **模拟直属主管解析（D06）** | 单一合成员工的直接引用解析、晚到后补解、断链和自环回执 | 第 10 项第三个隔离候选 | `cmd/directory-sync-mock/manager.go` 的 `runManager`、`internal/service/directorymock/manager.go` 的 `ResolveManager`；[合同](../design/business-lifecycle-contracts.md#78-模拟直属主管解析) |
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
@@ -186,7 +187,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 <a id="4-数据库迁移地图82-对"></a>
 
-## 4. 数据库迁移地图（D06 第二切片候选 96 对）
+## 4. 数据库迁移地图（96 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -283,7 +284,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000095 | 复测继任写入入口、当前复测责任、交接逐项历史及票修订 | B2 P1 隔离候选 |
 | 000096 | 在办票到期风险接受接续按钮与写入目录 | B2 P1 隔离候选 |
 | 000097 | 模拟目录批次水位、部门投影和运行回执 | D06 首切片已合入 |
-| 000098 | 模拟员工和部门绑定及主部门调动运行回执 | D06 第二个隔离候选 |
+| 000098 | 模拟员工和部门绑定及操作回执 | D06 第二切片已合入，第三切片复用 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 

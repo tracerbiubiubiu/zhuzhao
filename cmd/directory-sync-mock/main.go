@@ -26,6 +26,8 @@ func run(ctx context.Context, args []string, databaseURL string, input io.Reader
 		switch args[0] {
 		case "transfer-primary", "transfer-receipt":
 			return runTransfer(ctx, args, databaseURL, input, stdout, stderr)
+		case "resolve-manager", "manager-receipt":
+			return runManager(ctx, args, databaseURL, input, stdout, stderr)
 		}
 	}
 	if len(args) != 0 || databaseURL == "" {
