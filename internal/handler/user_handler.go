@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -455,7 +456,11 @@ func errcodeInvalidParams(c *gin.Context) string {
 // @Security BearerAuth
 // @Router /api/v1/operations/receipt [get]
 func (h *UserHandler) IAMReceipt(c *gin.Context) {
-	q := c.Request.URL.Query()
+	q, err := url.ParseQuery(c.Request.URL.RawQuery)
+	if err != nil {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
 	ids, keys := q["operation_id"], q["idempotency_key"]
 	if len(ids)+len(keys) != 1 {
 		response.BadRequest(c, errcodeInvalidParams(c))

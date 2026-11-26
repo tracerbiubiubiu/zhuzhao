@@ -125,6 +125,15 @@ func (s *UserService) IAMReceipt(ctx context.Context, actor int64, id string) (*
 		if err != nil {
 			return err
 		}
+		if r.PolicyChanged {
+			r.LocalPolicyProjection = "unknown"
+			if s.localPolicyAvailable != nil {
+				r.LocalPolicyProjection = "pending"
+				if s.localPolicyAvailable() {
+					r.LocalPolicyProjection = "available"
+				}
+			}
+		}
 		result = r
 		return nil
 	})

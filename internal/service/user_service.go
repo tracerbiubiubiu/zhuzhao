@@ -23,16 +23,17 @@ import (
 
 // UserService 用户管理服务
 type UserService struct {
-	auditCollector string
-	storageConfig  *pkgstorage.ConfigStore
-	storageBucket  string
-	db             *pgxpool.Pool
-	userRepo       *repository.UserRepo
-	roleRepo       *repository.RoleRepo
-	opsRepo        *repository.SessionOperationRepo
-	orgService     *OrgService
-	rdb            *goredis.Client
-	jwtManager     *jwtpkg.Manager
+	auditCollector       string
+	localPolicyAvailable func() bool
+	storageConfig        *pkgstorage.ConfigStore
+	storageBucket        string
+	db                   *pgxpool.Pool
+	userRepo             *repository.UserRepo
+	roleRepo             *repository.RoleRepo
+	opsRepo              *repository.SessionOperationRepo
+	orgService           *OrgService
+	rdb                  *goredis.Client
+	jwtManager           *jwtpkg.Manager
 }
 
 func NewUserService(

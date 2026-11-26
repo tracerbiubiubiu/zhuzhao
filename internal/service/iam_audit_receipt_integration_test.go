@@ -116,6 +116,10 @@ func TestIAMAuditLostResponseAndReplay(t *testing.T) {
 				require.Equal(t, map[string]any{"operation_id": k, "command": name, "target_id": fmt.Sprint(tc.objectID), "status": "domain_committed", "changed": wantChanged}, envelope.Data)
 			}
 			checkReceipt("idempotency_key", key, true)
+			malformed, err := server.Client().Get(server.URL + "/api/v1/operations/receipt?operation_id=" + key + "&idempotency_key=%zz")
+			require.NoError(t, err)
+			malformed.Body.Close()
+			require.Equal(t, 400, malformed.StatusCode)
 			checkReceipt("operation_id", key+"-revoke", true)
 			noopKey := key + "-noop"
 			resp, err = send(noopKey, "[]", false)

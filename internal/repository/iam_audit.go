@@ -25,7 +25,9 @@ type IAMOperation struct {
 func FindIAMReceipt(ctx context.Context, db IAMDBTX, actor int64, id string) (*model.IAMReceipt, []byte, error) {
 	r := model.IAMReceipt{OperationID: id, Status: "domain_committed"}
 	var hash []byte
-	err := db.QueryRow(ctx, `SELECT command,target_id,input_hash,record_id IS NOT NULL FROM iam_command_receipts WHERE actor_id=$1 AND operation_id=$2`, actor, id).Scan(&r.Command, &r.Target, &hash, &r.Changed)
+	err := db.QueryRow(ctx, `SELECT r.command,r.target_id,r.input_hash,r.record_id IS NOT NULL,COALESCE(f.policy_changed,false)
+ FROM iam_command_receipts r LEFT JOIN iam_audit_facts f USING(record_id)
+ WHERE r.actor_id=$1 AND r.operation_id=$2`, actor, id).Scan(&r.Command, &r.Target, &hash, &r.Changed, &r.PolicyChanged)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, nil
 	}
