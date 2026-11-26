@@ -1,35 +1,26 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
-	"net/http"
-	"net/url"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type IAMAuditDelivery struct {
-	pool          *pgxpool.Pool
-	endpoint, key string
-	client        *http.Client
+type IAMAuditCollector interface {
+	Key() string
+	Deliver(context.Context, string, []byte) error
 }
 
-func NewIAMAuditDelivery(pool *pgxpool.Pool, endpoint string) (*IAMAuditDelivery, error) {
-	u, err := url.Parse(endpoint)
-	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "https" && !(u.Scheme == "http" && net.ParseIP(u.Hostname()).IsLoopback())) {
-		return nil, errors.New("invalid IAM audit collector configuration")
-	}
-	client := &http.Client{
-		Timeout:       5 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}
-	return &IAMAuditDelivery{pool: pool, endpoint: endpoint, key: collectorKey(endpoint), client: client}, nil
+type IAMAuditDelivery struct {
+	pool      *pgxpool.Pool
+	collector IAMAuditCollector
+}
+
+func NewIAMAuditDelivery(pool *pgxpool.Pool, collector IAMAuditCollector) *IAMAuditDelivery {
+	return &IAMAuditDelivery{pool: pool, collector: collector}
 }
 
 // Handle claims one original record. available_at doubles as the lease expiry;
@@ -54,26 +45,15 @@ func (w *IAMAuditDelivery) Handle(ctx context.Context, _ json.RawMessage) error 
             'occurred_at', to_char(f.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
             'actor_id', f.actor_id::text, 'target_id', f.target_id::text,
             'added_ids', f.added_ids::text[], 'removed_ids', f.removed_ids::text[], 'outcome', 'success','policy_changed',f.policy_changed
-        ) FROM claim c JOIN iam_audit_facts f USING (record_id)`, w.key).Scan(&id, &fence, &payload)
+        ) FROM claim c JOIN iam_audit_facts f USING (record_id)`, w.collector.Key()).Scan(&id, &fence, &payload)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.endpoint, bytes.NewReader(payload))
-	if err != nil {
-		return errors.New("IAM audit request construction failed")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotency-Key", id)
-	resp, err := w.client.Do(req)
-	if err != nil {
-		return errors.New("IAM audit delivery unavailable")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errors.New("IAM audit delivery rejected")
+	if err := w.collector.Deliver(ctx, id, payload); err != nil {
+		return err
 	}
 	confirmed, err := w.pool.Exec(ctx, `UPDATE iam_audit_deliveries SET delivered_at = clock_timestamp()
         WHERE record_id = $1 AND fence = $2 AND available_at > clock_timestamp() AND delivered_at IS NULL`, id, fence)

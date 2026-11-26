@@ -131,10 +131,11 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	// ReentrantJob 契约见 cron_scheduler.go）
 	var iamAuditDelivery *service.CronScheduler
 	if cfg.Audit.IAMCollectorURL != "" {
-		worker, err := service.NewIAMAuditDelivery(pool, cfg.Audit.IAMCollectorURL)
+		collector, err := audit.NewHTTPCollector(cfg.Audit.IAMCollectorURL)
 		if err != nil {
 			return nil, err
 		}
+		worker := service.NewIAMAuditDelivery(pool, collector)
 		iamAuditDelivery = service.NewCronScheduler(pool, "iam_audit_delivery", worker, time.Second*5, logger)
 		cronReg.Register("iam_audit_delivery", iamAuditDelivery)
 	}

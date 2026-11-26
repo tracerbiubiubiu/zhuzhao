@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
@@ -48,7 +49,7 @@ func TestIAMStrongAuditAtomic(t *testing.T) {
 	}
 	require.Equal(t, initial+2, count("SELECT count(*) FROM iam_audit_facts"))
 	require.Equal(t, initialDeliveries, count("SELECT count(*) FROM iam_audit_deliveries"))
-	service.ConfigureIAMAuditDelivery(users, roles, "http://127.0.0.1")
+	service.ConfigureIAMAuditDelivery(users, roles, audit.CollectorKey("http://127.0.0.1"))
 	for _, table := range []string{"iam_audit_facts", "iam_audit_deliveries", "iam_command_receipts"} {
 		t.Run(table, func(t *testing.T) {
 			_, err := testPool.Exec(ctx, `CREATE FUNCTION reject_iam_fact() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected failure'; END $$; CREATE TRIGGER reject_insert BEFORE INSERT ON `+table+` FOR EACH ROW EXECUTE FUNCTION reject_iam_fact()`)
@@ -108,14 +109,14 @@ func TestIAMStrongAuditCollector(t *testing.T) {
 	defer server.Close()
 	releaseOld := sync.OnceFunc(func() { close(release) })
 	defer releaseOld()
-	service.ConfigureIAMAuditDelivery(users, roles, server.URL)
+	service.ConfigureIAMAuditDelivery(users, roles, audit.CollectorKey(server.URL))
 	require.NoError(t, users.SetRoles(ctx, &model.SetUserRolesRequest{UserID: target, RoleIDs: []int64{viewer.ID, viewer.ID}}, actor))
 	// A later administrator removes the binding. Replaying this original grant would reinstate it.
 	require.NoError(t, userRepo.SetRoles(ctx, target, nil))
 	worker := func() *service.IAMAuditDelivery {
-		w, err := service.NewIAMAuditDelivery(testPool, server.URL)
+		collector, err := audit.NewHTTPCollector(server.URL)
 		require.NoError(t, err)
-		return w
+		return service.NewIAMAuditDelivery(testPool, collector)
 	}
 	require.Error(t, worker().Handle(ctx, nil))
 	first := <-requests
