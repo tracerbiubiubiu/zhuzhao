@@ -326,6 +326,36 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 
 固定样例覆盖：正常全量/重复批、组织先晚到、manager 延迟/自环/断链、员工换主部门但 local 虚拟组/角色保留、同工号不同外部人、external_id 重用、乱序 active/terminated/tombstone、分页失败/缩小scope/错误 complete、撤部带虚拟组和 org_roles、移树带既有工单、禁用后旧 AT 拒绝、撤会话暂失败补偿、离职交接部分成功/重跑/复职。每例声明预期业务状态/授权可见集和 run receipt；这证明 mock/contract，不证明真实 HR 身份或分页语义已验证。
 
+### 7.6 模拟部门批次与运行回执
+
+Phase 6 第 10 项第一切片使用本地命令 `directory-sync-mock`。执行者从仓库根目录运行 `go build -o /path/to/isolated/bin/directory-sync-mock ./cmd/directory-sync-mock`，显式设置 `D06_MOCK_DATABASE_URL` 指向独占的已迁移 PostgreSQL，再执行该二进制并从标准输入提交一份合成 JSON。命令使用专用表处理平面部门名称、来源修订和回执，业务组织、成员、权限及会话由现有入口管理。实施分工和验收范围见[切片计划](../planning/phase6-d06-mock-directory-batch-plan.md)。
+
+```json
+{
+  "provider_ref": "mock-directory",
+  "domain": "departments",
+  "mode": "full",
+  "scope_ref": "synthetic-demo",
+  "batch_id": "demo-001",
+  "expected_baseline": "",
+  "success_cursor": "snapshot-001",
+  "pages": [
+    {
+      "cursor": "",
+      "done": true,
+      "records": [
+        {"external_id": "dept-001", "display_name": "合成部门甲", "source_revision": 1}
+      ]
+    }
+  ]
+}
+```
+
+- 第一页游标为空。每页的 `next_cursor` 指向下一页，终页显式带 `done=true` 并且无下一页。模拟拉取失败页使用 `error=fetch_failed`，仅提供该页游标。缺页、游标不连贯及坏记录会停止应用，保留已通过的页。字段名、标识、大小和页数都有输入约束，详见 `internal/service/directorymock/input.go` 的 `ReadBatch`。
+- 同一 scope 串行写入。成功页和运行回执同一事务持久化，单页遇到来源修订冲突时回滚该页。已通过的页数、逐条结果、最后应用页的下一游标、成功基线及失败分类可从回执读回。只有完整成功才推进成功基线和游标。缺失部门保留原投影。
+- `batch_id` 与规范化内容绑定。重启后重新提交同一输入返回原 `run_id` 和原 JSON 回执，即使该 scope 之后已有更新。内容变更时同号拒绝。运行未确认或输出中断时使用原输入核对，修正输入时使用新批号。
+- 退出码 `0` 表示完整成功，`3` 返回已持久化的 `partial` 或 `failed` 回执，`2` 表示输入、批号内容或基线冲突，`1` 表示数据库或输出故障。迁移 `000097` 的回退删除专用合成投影、水位和回执表，需保留的合成验收证据应先导出。
+
 ## 8. D08–D10：风险来源、周期和处置闭环
 
 ### 8.1 规范化来源合同与唯一写主
