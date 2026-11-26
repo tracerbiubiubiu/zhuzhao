@@ -12,6 +12,9 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 )
 
+// MockDirectorySource marks facts pre-registered for the offline D06 exercise.
+const MockDirectorySource = "mock-directory"
+
 const orgSelectColumns = `
 	id, code, name, COALESCE(description, '') AS description,
 	parent_id, path::text AS path, is_virtual, status, is_system,
@@ -123,6 +126,9 @@ func (r *OrgRepo) AddMember(ctx context.Context, orgID, userID int64, isPrimary 
 	defer tx.Rollback(ctx)
 
 	if isPrimary {
+		if err := guardMockDirectoryAppointment(ctx, tx, userID, orgID, true); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE user_orgs SET is_primary = false WHERE user_id = $1`, userID); err != nil {
 			return err
@@ -175,6 +181,9 @@ func (r *OrgRepo) AddMemberWithRole(ctx context.Context, orgID, userID int64, is
 	defer tx.Rollback(ctx)
 
 	if isPrimary {
+		if err := guardMockDirectoryAppointment(ctx, tx, userID, orgID, true); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `
 			UPDATE user_orgs SET is_primary = false WHERE user_id = $1`, userID); err != nil {
 			return err
@@ -217,6 +226,9 @@ func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
 	}
 	defer tx.Rollback(ctx)
 
+	if err := guardMockDirectoryAppointment(ctx, tx, userID, orgID, false); err != nil {
+		return err
+	}
 	tag, err := tx.Exec(ctx, `
 		DELETE FROM user_orgs WHERE org_id = $1 AND user_id = $2`, orgID, userID)
 	if err != nil {
@@ -232,6 +244,23 @@ func (r *OrgRepo) RemoveMember(ctx context.Context, orgID, userID int64) error {
 		return fmt.Errorf("sync owner_user_ids on remove: %w", err)
 	}
 	return tx.Commit(ctx)
+}
+
+// Local add cannot replace the directory primary. Local removal cannot
+// delete the directory-owned row. Explicit local role/scope metadata remains
+// subject to the existing authorization paths.
+func guardMockDirectoryAppointment(ctx context.Context, tx pgx.Tx, userID, orgID int64, settingPrimary bool) error {
+	var managed bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM user_orgs WHERE user_id=$1 AND source=$3
+		AND (org_id=$2 OR ($4 AND is_primary))
+	)`, userID, orgID, MockDirectorySource, settingPrimary).Scan(&managed); err != nil {
+		return fmt.Errorf("read mock directory appointment ownership: %w", err)
+	}
+	if managed {
+		return errcode.New(errcode.ErrForbidden.Code, "模拟目录受管的主部门关系不能由本地修改")
+	}
+	return nil
 }
 
 // SetUserOrgs 全量覆盖用户组织

@@ -13,12 +13,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/directorymock"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/ticket"
 )
 
@@ -187,15 +189,20 @@ func cleanupDeptStatsFixture(t *testing.T, db *pgxpool.Pool, tag string) {
 
 func (f dsFixture) insertTicket(t *testing.T, db *pgxpool.Pool, title string) int64 {
 	t.Helper()
+	return f.insertTicketInOrg(t, db, title, f.ownerU, f.targetOrg)
+}
+
+func (f dsFixture) insertTicketInOrg(t *testing.T, db *pgxpool.Pool, title string, creator, orgID int64) int64 {
+	t.Helper()
 	ctx := context.Background()
 	var orgPath string
 	require.NoError(t, db.QueryRow(ctx,
-		`SELECT path::text FROM organizations WHERE id = $1`, f.targetOrg).Scan(&orgPath))
+		`SELECT path::text FROM organizations WHERE id = $1`, orgID).Scan(&orgPath))
 	var id int64
 	require.NoError(t, db.QueryRow(ctx, `
 		INSERT INTO tickets (type_code, title, priority, status, created_by, org_id, org_path)
 		VALUES ($1, $2, 1, 'open', $3, $4, $5) RETURNING id
-	`, f.typeCode, title, f.ownerU, f.targetOrg, orgPath).Scan(&id))
+	`, f.typeCode, title, creator, orgID, orgPath).Scan(&id))
 	return id
 }
 
@@ -307,20 +314,43 @@ func requireHistoryRows(t *testing.T, rows []DeptHistoryRow, want []dsHistoryWan
 
 // ---------- 用例 ----------
 
-// 阶段 7 运行实测核心样例：同一人从甲部门调到乙部门后，
-// 在办工单计入乙部门当前待办，原派单记录仍计甲部门历史，工单目标组织不随迁。
+// The D06 transfer changes live ticket scope and current workload attribution.
+// The linked dispatch history remains attributed to the dispatch-time department.
 func TestDeptStats_CurrentTodoFollowsTransferredDept(t *testing.T) {
 	db := dispatchTestDB
-	tag := "transfer"
-	f := newDeptStatsFixture(t, db, tag)
-	stats := newDeptStatsReader(db)
+	f := newDeptStatsFixture(t, db, "transfer_"+uuid.NewString()[:8])
+	event, directRole := seedDeptStatsPrimaryTransfer(t, db, f)
+	tickets := repository.NewTicketRepo(db)
+	resource := ticket.NewResource(tickets, ticket.NewPgxScopeResolver(db), dsDenyDelegation{}, dsDenyCC{})
+	stats := NewDeptStats(dsGetFilterAdapter{res: resource})
 
 	ticketID := f.insertTicket(t, db, "T-201 漏洞整改")
 	groupID := f.insertGroup(t, db, "VULN-1", f.ownerU, f.deptA, ticketID)
 	f.insertLinkedRisk(t, db, 1, "VULN-1", groupID)
 	f.insertLinkedRisk(t, db, 2, "VULN-1", groupID)
+	visibleInA := f.insertTicketInOrg(t, db, "A department witness", f.dispatcherM, f.deptA)
+	visibleInB := f.insertTicketInOrg(t, db, "B department witness", f.dispatcherM, f.deptB)
+	visibleLocally := f.insertTicketInOrg(t, db, "Local appointment witness", f.dispatcherM, f.viewerOrg)
 
-	ctx := context.Background()
+	ctx := t.Context()
+	checkVisibility := func(visibleDepartmentTicket int64) {
+		t.Helper()
+		filter, err := resource.GetFilter(ctx, f.ownerU, "list")
+		require.NoError(t, err)
+		visible, total, err := tickets.List(ctx, filter, model.TicketListQuery{TypeCode: f.typeCode})
+		require.NoError(t, err)
+		require.EqualValues(t, 3, total)
+		ids := make([]int64, 0, len(visible))
+		for _, row := range visible {
+			ids = append(ids, row.ID)
+		}
+		require.ElementsMatch(t, []int64{visibleDepartmentTicket, visibleLocally, ticketID}, ids)
+		roles, err := repository.NewRoleRepo(db).GetEffectiveRoleCodes(ctx, f.ownerU)
+		require.NoError(t, err)
+		require.Equal(t, []string{directRole}, roles)
+	}
+	checkVisibility(visibleInA)
+
 	todo, err := stats.CurrentTodoByDept(ctx, db, f.viewer)
 	require.NoError(t, err)
 	requireTodoRows(t, todo, []dsTodoWant{{deptID: f.deptA, deptName: "部门甲", tickets: 1, risks: 2}})
@@ -331,25 +361,73 @@ func TestDeptStats_CurrentTodoFollowsTransferredDept(t *testing.T) {
 		ownerID: f.ownerU, deptID: f.deptA, disp: 1, tickets: 1, risks: 2, ownerName: "责任人U",
 	}})
 
-	// U 从甲部门调入乙部门（SetUserOrgs 全量覆盖终态）。
-	transferUserPrimary(t, db, f.ownerU, f.deptB)
+	receipt, err := directorymock.ApplyPrimaryTransfer(ctx, db, event)
+	require.NoError(t, err)
+	require.Equal(t, directorymock.StatusTransferApplied, receipt.Status, "%+v", receipt)
+	checkVisibility(visibleInB)
 
 	todo, err = stats.CurrentTodoByDept(ctx, db, f.viewer)
 	require.NoError(t, err)
 	requireTodoRows(t, todo, []dsTodoWant{{deptID: f.deptB, deptName: "部门乙", tickets: 1, risks: 2}})
 
-	// 历史始终按派单成功时冻结的甲部门读取。
-	history, err = stats.HistoryByDispatchDept(ctx, db, f.viewer)
+	afterHistory, err := stats.HistoryByDispatchDept(ctx, db, f.viewer)
 	require.NoError(t, err)
-	requireHistoryRows(t, history, []dsHistoryWant{{
-		ownerID: f.ownerU, deptID: f.deptA, disp: 1, tickets: 1, risks: 2,
-	}})
+	require.Equal(t, history, afterHistory)
 
-	// 工单目标组织不随迁：tickets.org_id 恒为派单目标组织。
-	var ticketOrg int64
-	require.NoError(t, db.QueryRow(ctx,
-		`SELECT org_id FROM tickets WHERE id = $1`, ticketID).Scan(&ticketOrg))
+	var ticketOrg, targetOrg, ownerOrgAtDispatch, ownerAtDispatch int64
+	require.NoError(t, db.QueryRow(ctx, `SELECT t.org_id, g.target_org_id, g.owner_org_at_dispatch,
+		COALESCE(g.owner_at_dispatch, g.owner_user_id)
+		FROM risk_dispatch_groups g JOIN tickets t ON t.id=g.ticket_id WHERE g.id=$1`, groupID).
+		Scan(&ticketOrg, &targetOrg, &ownerOrgAtDispatch, &ownerAtDispatch))
 	require.Equal(t, f.targetOrg, ticketOrg)
+	require.Equal(t, f.targetOrg, targetOrg)
+	require.Equal(t, f.deptA, ownerOrgAtDispatch)
+	require.Equal(t, f.ownerU, ownerAtDispatch)
+}
+
+func seedDeptStatsPrimaryTransfer(t *testing.T, db *pgxpool.Pool, f dsFixture) (directorymock.PrimaryTransfer, string) {
+	t.Helper()
+	ctx := t.Context()
+	event := directorymock.PrimaryTransfer{
+		ProviderRef: repository.MockDirectorySource, ScopeRef: f.tag, OperationID: "transfer-a-to-b",
+		EmployeeExternalID: "synthetic-employee", IdentityGeneration: 1, SourceRevision: 2,
+		FromDepartmentExternalID: "dept-a", ToDepartmentExternalID: "dept-b",
+	}
+	directRole := "ds_direct_" + f.tag
+	t.Cleanup(func() {
+		ctx := context.Background()
+		execMustNoError(t, db, ctx, `DELETE FROM directory_mock_transfer_runs WHERE scope_ref=$1`, event.ScopeRef)
+		execMustNoError(t, db, ctx, `DELETE FROM directory_mock_employee_bindings WHERE scope_ref=$1`, event.ScopeRef)
+		execMustNoError(t, db, ctx, `DELETE FROM directory_mock_department_bindings WHERE scope_ref=$1`, event.ScopeRef)
+		execMustNoError(t, db, ctx, `DELETE FROM directory_mock_departments WHERE scope_ref=$1`, event.ScopeRef)
+		execMustNoError(t, db, ctx, `DELETE FROM directory_mock_scopes WHERE scope_ref=$1`, event.ScopeRef)
+		execMustNoError(t, db, ctx, `DELETE FROM user_roles WHERE user_id=$1`, f.ownerU)
+		execMustNoError(t, db, ctx, `DELETE FROM roles WHERE code=$1`, directRole)
+	})
+	execMustNoError(t, db, ctx, `UPDATE users SET source=$2, external_id=$3 WHERE id=$1`, f.ownerU, event.ProviderRef, event.EmployeeExternalID)
+	execMustNoError(t, db, ctx, `UPDATE user_orgs SET source=$3 WHERE user_id=$1 AND org_id=$2`, f.ownerU, f.deptA, event.ProviderRef)
+	var localGroup int64
+	require.NoError(t, db.QueryRow(ctx, `INSERT INTO organizations(code,name,path,parent_id,is_virtual,source)
+		SELECT $1::varchar,'Local secondary appointment',path || $1::varchar::ltree,id,true,'local' FROM organizations WHERE id=$2
+		RETURNING id`, "ds_virtual_"+f.tag, f.viewerOrg).Scan(&localGroup))
+	execMustNoError(t, db, ctx, `INSERT INTO user_orgs(user_id,org_id,is_primary,source) VALUES($1,$2,false,'local')`, f.ownerU, localGroup)
+	var roleID int64
+	require.NoError(t, db.QueryRow(ctx, `INSERT INTO roles(code,name,priority) VALUES($1,'Local direct role',20) RETURNING id`, directRole).Scan(&roleID))
+	execMustNoError(t, db, ctx, `INSERT INTO user_roles(user_id,role_id) VALUES($1,$2)`, f.ownerU, roleID)
+	execMustNoError(t, db, ctx, `INSERT INTO directory_mock_scopes(scope_ref) VALUES($1)`, event.ScopeRef)
+	execMustNoError(t, db, ctx, `INSERT INTO directory_mock_employee_bindings(scope_ref,external_id,identity_generation,user_id,source_revision)
+		VALUES($1,$2,$3,$4,1)`, event.ScopeRef, event.EmployeeExternalID, event.IdentityGeneration, f.ownerU)
+	for _, department := range []struct {
+		orgID      int64
+		externalID string
+	}{{f.deptA, event.FromDepartmentExternalID}, {f.deptB, event.ToDepartmentExternalID}} {
+		execMustNoError(t, db, ctx, `UPDATE organizations SET source=$2, external_id=$3 WHERE id=$1`, department.orgID, event.ProviderRef, department.externalID)
+		execMustNoError(t, db, ctx, `INSERT INTO directory_mock_departments(scope_ref,external_id,display_name,source_revision)
+			SELECT $1,$2,name,1 FROM organizations WHERE id=$3`, event.ScopeRef, department.externalID, department.orgID)
+		execMustNoError(t, db, ctx, `INSERT INTO directory_mock_department_bindings(scope_ref,external_id,org_id)
+			VALUES($1,$2,$3)`, event.ScopeRef, department.externalID, department.orgID)
+	}
+	return event, directRole
 }
 
 // 权限检查先于计数：同一份在办数据，真实可见性决定是否计入——
