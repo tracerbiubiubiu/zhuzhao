@@ -468,6 +468,20 @@ definitions:
     - source_item_key
     - source_ref
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.IAMReceipt:
+    properties:
+      changed:
+        type: boolean
+      command:
+        type: string
+      operation_id:
+        type: string
+      status:
+        type: string
+      target_id:
+        example: "0"
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest:
     properties:
       captcha:
@@ -3050,6 +3064,34 @@ paths:
       summary: 更新通知配置（version 乐观锁）
       tags:
       - notifications
+  /api/v1/operations/receipt:
+    get:
+      parameters:
+      - description: 原操作号，与 idempotency_key 二选一
+        in: query
+        name: operation_id
+        type: string
+      - description: 原幂等键
+        in: query
+        name: idempotency_key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.IAMReceipt'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 按原操作号或幂等键核查两条 IAM 改权命令的本地提交结果
+      tags:
+      - users
   /api/v1/orgs/members/list:
     get:
       consumes:
@@ -3979,11 +4021,23 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest'
+      - description: 改权原键，重试必须保持原输入
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: 原操作号，可替代 Idempotency-Key
+        in: header
+        name: X-Operation-ID
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          headers:
+            X-Operation-ID:
+              description: 原操作号
+              type: string
           schema:
             $ref: '#/definitions/response.Response'
       security:
@@ -5601,11 +5655,23 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SetUserRolesRequest'
+      - description: 改权原键，重试必须保持原输入
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: 原操作号，可替代 Idempotency-Key
+        in: header
+        name: X-Operation-ID
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          headers:
+            X-Operation-ID:
+              description: 原操作号
+              type: string
           schema:
             $ref: '#/definitions/response.Response'
       security:
