@@ -6236,6 +6236,9 @@ const docTemplate = `{
                 "command": {
                     "type": "string"
                 },
+                "local_policy_projection": {
+                    "type": "string"
+                },
                 "operation_id": {
                     "type": "string"
                 },
