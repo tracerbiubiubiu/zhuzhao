@@ -1,6 +1,6 @@
 # Phase6 私有适配、设备与 AI 薄入口详细设计
 
-日期：2026-11-14。状态：**详细设计候选，未实现**。对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只建设实际需要的稳定接口；设备和 AI 尚未就绪，不阻塞首版风险、工单、TR、AL和消息交付。完整 X01-H、UAA-P/R、持续委托、MCP 产品化及领域 Agent 保留原后续窗口。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
+日期：2026-11-14。状态：**详细设计候选，未实现**。对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只建设实际需要的稳定接口；设备和 AI 尚未就绪，不阻塞首版风险、工单、TR、AL和消息交付。完整 X01-H、持续委托、MCP 产品化及领域 Agent 按各自窗口交付。B4 稳定后优先仅 SSO，完整纳管按条件另立项。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
 
 ## 1. 真实基础与边界
 
@@ -186,7 +186,7 @@ ExtensionConfigV1在§2骨架补齐：manifest_version、artifact_digest、maint
 
 UAA-C矩阵含稳定资源键、capability/version、本地主体ID、来源、受管字段、唯一写主/入口、direct/org/inherit链、接管本地写限制与撤权/新鲜度。先冻结实际local行；HR任职与UAA账号/授权事实按字段写主归一，不抢同字段。认证issuer+subject、治理application/source/subject及目录实体分别映射，不因邮箱/同名admin并号。**独立模式不启用UAA**仍保本地账号/角色/直接与组织赋角/菜单分配查询/三层执行；企业模式停adapter只停相应受管能力，不自动切独立/恢复旧grant。菜单目录当前迁移维护，不虚标CRUD。
 
-完整P/R继续认证、目录注册、账号状态、用户角色、角色资源、条件范围与治理回执，不退为SSO。复用uaa-reference-mock/port-map.json和57例/16变异离线参考，非HTTP产品/PG/真实登录证明；真实映射/接管/失联/退出人员沿Q07和UAA real conditions窗口确认，不要求公司文档导出。
+仅 SSO 优先交付登录、既有身份绑定和本地权限回归。目录注册、账号状态、用户角色、角色资源、条件范围和治理回执归条件 P/R。复用uaa-reference-mock/port-map.json和57例/16变异离线参考，非HTTP产品/PG/真实登录证明；真实映射/接管/失联/退出人员沿Q07和UAA real conditions窗口确认，不要求公司文档导出。
 
 ### 8.2 设备与AI的有限参考profile
 

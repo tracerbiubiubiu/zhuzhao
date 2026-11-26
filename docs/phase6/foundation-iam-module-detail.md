@@ -64,7 +64,7 @@ L1 为当前页面/按钮/API 功能；L2 为该主体可访问的资源行及�
 | authorization_control | 单行主键；L1策略revision单调 | 共同事务屏障；L2/L3变化不推进Casbin代际；不可被私有 adapter 写 |
 | capability_operations中的IAM记录 | 沿共同operation唯一身份/输入hash/主体绑定；增加capability+target+domain_revision查询索引 | 两个IAM命令共用同一逻辑操作存储，不另建iam_change_receipts；IAMReceipt只呈现该领域所需的状态 |
 | authorization_effect_intents | UNIQUE(operation_id, effect_kind, target_id, desired_revision)；(state,next_attempt_at)索引；lease_owner/until/fence | 复用 R01 worker 机制；一个 effect 一个重试主，过期 fence 不更新新执行 |
-| identity_source_bindings | UNIQUE(source_id,entity_kind,external_id,identity_generation)；本地 ID 索引 | 启用实际D06目录feed时建设所需映射；issuer+subject映射在UAA-P增补。人工local账号/风险不以完整HR映射表为前置 |
+| identity_source_bindings | UNIQUE(source_id,entity_kind,external_id,identity_generation)；本地 ID 索引 | 启用实际D06目录feed时建设所需映射；认证稳定身份映射随仅 SSO 先交，治理身份映射归条件 P/R。人工local账号/风险不以完整HR映射表为前置 |
 | governance_ownership | UNIQUE(application,resource_key,scope_key)；revision/source/allowed_write_port | 完整受管投影表在P/R建设；本地先以既有来源字段和受审配置登记local写主，不先建全UAA治理库 |
 
 表名是逻辑建议，实施前与已有 job submission/审计表对表复用，不复制第二套 outbox；迁移 up/down 成对、编号当天从迁移地图领取。初始代际为 0，对现有本地来源显式回填；回滚新增约束前停止新入口并处理在途 intent，不能删除正式历史以求 down 通过。
@@ -215,7 +215,7 @@ C05 计划在登录用的访问令牌（AT）和刷新令牌（RT）中记录账
 
 目标是禁用提交后Redis超时明确“账号已停用、会话清理待恢复”，不能诱发整笔重做或把禁用回滚为active。Login、Refresh、文件会话及适用worker准入核DB状态和安全屏障；PAT按其独立生命周期核当前账号/自身状态与业务授权，不因密码投影pending被误撤。**重新启用不自动清除未完成撤销**，须确认目标撤销完成，再按新epoch签发。恢复worker重投原intent并按状态/epoch CAS，旧enable/clear不能覆盖新disable；当前实际错误wire与未来变化见§4.1–4.3。
 
-首版本地模式关闭 UAA adapter、UAA 网络不可达仍完整保留本地登录、用户/角色/菜单管理。完整 UAA-P 后才追加认证交换及中央纳管策略；OIDC 仅是参考 profile，不假定公司使用 OIDC。若采用它，adapter 按 [OIDC ID Token 验证](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)及 [OAuth 安全实践](https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1)验证 issuer/audience/签名/时效/nonce、code flow 与 PKCE，核心只收规范化已验证身份；认证通过不等于获得 L1/L2/L3。
+首版本地模式关闭 UAA adapter、UAA 网络不可达仍完整保留本地登录、用户/角色/菜单管理。B4 稳定后优先追加公司认证交换、既有本地身份绑定和会话撤权；中央纳管策略随条件 P/R；OIDC 仅是参考 profile，不假定公司使用 OIDC。若采用它，adapter 按 [OIDC ID Token 验证](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)及 [OAuth 安全实践](https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1)验证 issuer/audience/签名/时效/nonce、code flow 与 PKCE，核心只收规范化已验证身份；认证通过不等于获得 L1/L2/L3。
 
 PAT条件性加固另见专项AUTH-05：当前Go1.27.4默认Reader不会回错误，不能把故障注入夸成正常签发可预测；仍应随C05去掉`generateSecret`固定回退。若可注入生成器返回错误，必须零落库/零secret回包，不改PAT独立生命周期政策。
 
@@ -305,11 +305,11 @@ HandoffPlan = {plan_id: string, subject_ref: ID, expected_revision: UInt64String
   plan_hash: SHA256, expires_at: Timestamp}
 ```
 
-这些是公共领域输入，不是厂商报文透传。来源版本不一定可排序：`unproven` 下，身份和hash相同只能判为重复；发生冲突却无法判断新旧时，保留为 hold 等待处理。不能用到达顺序编造权威 revision。引用的对象尚未到齐时可先保存为 stage/held，依赖到齐后重新验证；姓名、工号、邮箱更改不改本地 ID；重用来源 ID 须明确新 generation，不自动接回旧人历史。完整快照必须有完整性证明，分页失败/局部缺失不能触发离职或撤部。HR 管目录任职，UAA 管批准范围账号/角色/资源；同字段只登记一个写主。
+这些是公共领域输入，不是厂商报文透传。来源版本不一定可排序：`unproven` 下，身份和hash相同只能判为重复；发生冲突却无法判断新旧时，保留为 hold 等待处理。不能用到达顺序编造权威 revision。引用的对象尚未到齐时可先保存为 stage/held，依赖到齐后重新验证；姓名、工号、邮箱更改不改本地 ID；重用来源 ID 须明确新 generation，不自动接回旧人历史。完整快照必须有完整性证明，分页失败/局部缺失不能触发离职或撤部。HR 按获选接口管理其权威目录字段；仅 SSO 统一登录，本地继续管理账号准入与授权。启用完整纳管时中央才管理获批的账号、角色与资源范围。
 
 离职按已确认 B06：先安全停用，合法批准继任映射逐项检查目标在职/权限及对象 revision；合法项自动交接，无映射、冲突、不能直接转的项留 pending_handoff，不整批回滚安全停用。撤部按 B07：先预览虚拟组、在途业务和权限范围差异，plan 绑定 revision/hash/映射；批准后分批 CAS。新增/变化项重做预览，不偷纳入旧批准；保留历史归属，不把原部门角色复制给接管部门。计划/条目唯一 `(plan_id,kind,object_id)`，带 pending/applied/conflict/blocked 及原 receipt；恢复从未完成项续跑，目标离职即暂停该项。
 
-UAA-C 现在冻结四个不能事后补的接口边界：稳定本地 ID 与认证 `issuer+subject` 显式映射；资源稳定 code 与页面/按钮 B 案；local/managed 单写主；三源角色撤销与代际传播。**三 feed 的持久投影、准确企业 wire、登录 UI/治理 UI 和切换台属于后续完整 P/R**，不是本地核心开工前置。后续 envelope 沿[port-map](../design/examples/uaa-reference-mock/port-map.json)的 application/source/kind/subject/revision/complete/payload，版本按对象范围而非应用全局比较；真实源不能证明规范化版本和 complete 时不得自动 apply。57 例离线模型继续作公共反例，不代替真实 PG/Redis 产品测试。
+UAA-C 现在冻结四个不能事后补的接口边界：稳定本地 ID 与认证 `issuer+subject` 显式映射；资源稳定 code 与页面/按钮 B 案；local/managed 单写主；三源角色撤销与代际传播。身份交换与最小登录 UI 归优先仅 SSO。三路 feed 持久投影、治理 wire、治理 UI 和接管归条件 P/R。B4 交付先验本地接缝。后续 envelope 沿[port-map](../design/examples/uaa-reference-mock/port-map.json)的 application/source/kind/subject/revision/complete/payload，版本按对象范围而非应用全局比较；真实源不能证明规范化版本和 complete 时不得自动 apply。57 例离线模型继续作公共反例，不代替真实 PG/Redis 产品测试。
 
 ## 6. 统一日志、审计和管理 UI
 

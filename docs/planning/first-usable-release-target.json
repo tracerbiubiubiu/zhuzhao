@@ -23,7 +23,7 @@
     "dates_are_target_windows_not_a_feasible_dispatch_schedule": true,
     "January_is_aspiration_not_deadline": true,
     "local_core_formal_exit": "mandatory usable business journey and applicable production gates; not a forced calendar date",
-    "UAA_follows_core": "full P/R after core stabilizes; roughly two months is aspiration not committed duration",
+    "UAA_follows_core": "SSO-only with local authorization is the preferred development path after B4 stability; full governance P/R requires a separate trigger",
     "superseded_target": {
       "ready_before": "2027-02-01",
       "trial_start_candidates": [
@@ -52,14 +52,15 @@
     "工单→taskrunner→原任务结果/activelist受权更新",
     "activelist变化→获权TR后继任务；仅消息/刷新不代验",
     "公共HTTP sender及一条实际公司消息映射/实测，明确受理与送达；真实条件未知不代验",
-    "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继",
+    "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；后续公司认证和完整治理各按其启用窗口验收",
     "当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI",
     "核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收",
     "首次本地正式生产适用制品/漏洞/运行配置/备份恢复/回退与故障接管证据"
   ],
   "selected_profile_candidate": "少量固定动作/一风险来源或人工输入/一整改类型/一AL结构字段组/一变化订阅/一HTTP渠道，实际业务绑定实施前确认",
   "after_core": [
-    "完整UAA公共P/私有R及受管模式真实接管，仍含账号/角色/菜单按钮API/适用范围治理",
+    "优先仅 SSO、本地授权；单独验合成登录、真实试点和正式启用",
+    "条件完整纳管：公司要求或所有者另行批准时启动 P/R，保留受管账号、角色、目录和范围治理",
     "AI/RAG/skill/MCP产品化",
     "高级仪表盘",
     "设备模块扩展",
@@ -69,13 +70,14 @@
   ],
   "ready_states": {
     "public_product": "real core/PG/Redis/browser plus synthetic provider prove public contract; not sufficient alone for actual company message delivery",
-    "company_managed": "after formal-local core add actual UAA authentication/three feeds/scope/revocation/source takeover and approved switch; cannot substitute pure SSO or mock",
+    "company_sso_local_authorization_ref": "docs/planning/planning-backlog.json#/release_gates/company_sso_local_authorization",
+    "company_managed": "conditional on separately selected governance scope; verify actual UAA authentication/three feeds/scope/revocation/source takeover and approved switch",
     "real_uaa_test_available_on": null,
     "real_message_test_available_on": null,
     "external_waiting_days": null,
     "unknown_waiting_is_not_zero": true,
     "formal_local": "company allows local accounts for formal operation; real mandatory core journey/local L1 L2 L3/message and applicable production gates pass; complete UAA P/R not required",
-    "real_UAA_window": "not fixed; owner prefers after core, possibly February-March but no committed dates",
+    "real_UAA_window": "pending provider readiness and separate trial/activation approval; no calendar commitment",
     "trial_environment_binding": {
       "state": "pending_real_binding",
       "action_ref": "docs/planning/owner-decision-agenda.json#/execution_actions/Q12_trial"
@@ -197,7 +199,7 @@
   "module_design_handoff_ref": "docs/phase6/module-design-handoff.md",
   "design_progress": {
     "stage": "module_candidates_detailed_and_local_core_projection",
-    "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; full_UAA_module_later",
+    "first_pack": "local_authorization_and_shared_interfaces_with_six_edges; preferred SSO-only after stability; full governance is conditional",
     "module_exact_DTO_DDL_frozen": false,
     "full_release_net_estimate_frozen": false,
     "business_implementation_started": false,

@@ -300,7 +300,7 @@ def validate_uaa_capacity_gate(model, core):
                 gate_ref='local_core.delivery_exits.' + exit_id,
                 evidence_ref=gate['evidence_ref'], readiness=gate['readiness'],
                 preparation_contact_is_blocked=False, added_engineering_days=[0, 0],
-                rule='Actual main-capacity transfer to complete UAA P/R requires this existing evidence exit; long-horizon D windows remain conditional engineering comparisons, not permission or dates. Contract contact and public mock preparation may precede it.')
+                rule=binding['scope'])
 
 
 def run_scheduler(nodes, seats, endpoint):
@@ -602,7 +602,8 @@ def project_phase6_audit(estimate, core, long_reference, uaa):
         ('uaa_managed', real_days, real_days[1]),
     ]:
         previous = stages[-1]
-        stages.append(dict(id=key, engineering_candidate_days=list(summed([previous['engineering_candidate_days'], added])),
+        stages.append(dict(id=key, conditional_full_governance=True,
+                           engineering_candidate_days=list(summed([previous['engineering_candidate_days'], added])),
                            conservative_days=previous['conservative_days'] + reserve_added))
 
     full = audit['full_phase6_exposure']
@@ -629,8 +630,13 @@ def calculate(repo):
     paths=['docs/planning/planning-backlog.json','docs/planning/execution-schedule-model.json','docs/planning/planning-scope-estimates.json','docs/planning/uaa-implementation-estimate.json','docs/planning/uaa-real-integration-conditions.json','docs/planning/local-core-release-estimate.json','docs/planning/first-usable-release-target.json','docs/planning/owner-decision-agenda.json']
     blobs={p:(repo/p).read_bytes() for p in paths}
     backlog,model,scope,uaa,conditions,local_estimate,local_target,owner_actions=[json.loads(blobs[p]) for p in paths]
+    sso = backlog['release_gates']['company_sso_local_authorization']
+    if (sso['estimate_status'] != 'pending_net_estimate'
+            or sso['engineering_days'] is not None
+            or sso['included_in_priced_schedule_baseline'] is not False):
+        raise ValueError('SSO-only delivery must stay outside the priced baseline until its estimate is integrated')
     graph,milestones=source_graph(backlog)
-    result=dict(date=model['date'],status='fully_priced_bounded_candidate_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling',do_not_repeat_future_coding_estimate=True,actual_record_ref='docs/planning/core-release-accounting-reconciliation-2026-11-16.md',reserve_profile_rule='Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core'),release_gates_ref='docs/planning/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/planning/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
+    result=dict(date=model['date'],status='priced_baseline_with_unpriced_sso_successor_not_implemented',calendar=None,estimate_source=paths,source_input_sha256={p:hashlib.sha256(blobs[p]).hexdigest() for p in paths},resource_assumptions=model['resource_assumptions'],source_structure=dict(parents=len(backlog['work_items']),official_child_milestones=len(milestones),additional_scope_tasks=sum(x['kind']=='additional_existing_scope' for x in scope['items']),release_slices=len(model['release_slices']),merged_dag=True,source_nodes=len(graph)),scenarios={},release_slices=model['release_slices'],pre_business_maintenance=dict(work_items=model['completed_parent_ids'],status='historical_version_maintenance_delivered; retained_reserve_profiles_are_conditional_comparisons_not_current_rebilling',do_not_repeat_future_coding_estimate=True,actual_record_ref='docs/planning/core-release-accounting-reconciliation-2026-11-16.md',reserve_profile_rule='Keep original with/without reserve arithmetic for comparison; completed version-maintenance work is not dispatched or charged again in local_core'),release_gates_ref='docs/planning/planning-backlog.json#/release_gates',external_waiting=dict(ref='docs/planning/uaa-real-integration-conditions.json',entry_and_activation_stages=conditions['entry_and_activation_stages'],additional_refs=model['external_waiting_refs'],rule='Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers.'),endpoint_semantics=model['endpoint_semantics'],reference_algorithm=dict(kind='deterministic list scheduling; priority then remaining critical chain then ID',reproduction='python3 scripts/calculate-planning-schedule.py --check',runtime_acceptance_claimed=False),active_work_boundary='Design/schedule only; T0 not started; no business development or activation authorized')
     result['delivery_scope_boundaries']=dict(foundation_targets=model['delivery_priority_groups']['foundation']['targets'],risk_first_chain_targets=model['delivery_priority_groups']['risk_first_chain']['targets'],effort_rule='Each delivery exit reports the union of its named targets and actual dependencies. Shared ancestors overlap; do not add the exit efforts.',long_horizon_totals_are_not_foundation_duration=True,baseline_scope_only=True,post_baseline_supplements_not_merged=['F004 newly selected details pending net estimate','OBS01–03 separately priced candidate supplement'],supplement_ref='docs/planning/post-baseline-scope-estimates.json',production_or_enterprise_activation_approved=False)
     for include_r in (False,True):
         key='with_conditional_R_ready' if include_r else 'public_R_pending'
@@ -663,8 +669,20 @@ def calculate(repo):
     result['bounded_effort_totals']={key:scenario['profiles']['without_maintenance_reserve']['total_effort_range'] for key,scenario in result['scenarios'].items()}
     result['source_input_sha256']['scripts/calculate-planning-schedule.py']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     result['scope_estimate_registry']='docs/planning/planning-scope-estimates.json'
-    result['no_unpriced_required_increment']=scope['all_required_supplements_priced']
-    result['no_unpriced_required_increment_scope']='priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price'
+    result['current_uaa_delivery'] = dict(
+        source_ref='docs/planning/planning-backlog.json#/release_gates/company_sso_local_authorization',
+        development_priority=sso['development_priority'],
+        plan_ref=sso['plan_ref'],
+        estimate_status=sso['estimate_status'],
+        engineering_days=sso['engineering_days'],
+        included_in_priced_schedule_baseline=sso['included_in_priced_schedule_baseline'],
+    )
+    result['no_unpriced_required_increment'] = (
+        scope['all_required_supplements_priced'] and sso['included_in_priced_schedule_baseline']
+    )
+    result['no_unpriced_required_increment_scope'] = (
+        'current_delivery_includes_unpriced_sso_successor; priced_76_parent_baseline_excludes_F004_new_detail_and_OBS'
+    )
     result['dated_core_release_target_ref']=model['dated_core_release_target_ref']
     result['local_core_net_estimate_ref']=model['local_core_net_estimate_ref']
     result['local_core_view_note']=model['local_core_view_note']
@@ -748,7 +766,7 @@ def render_schedule(result):
         f"原71父包完整承接，正式纳入CE五项后为{structure['parents']}父包、{structure['official_child_milestones']}正式子出口、{structure['additional_scope_tasks']}项LS额外范围任务、{structure['release_slices']}发布切片。",
         'LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。',
         '本页长程总量只覆盖76包既有计价基线，不是基础版B0/B1工期，也未合并F004新增未净估细项及OBS候选补充；后继范围见[补充册](post-baseline-scope-estimates.json)。',
-        '首个本地正式核心获准先用本地账号，质量优先；1月试用是争取窗口，完整UAA P/R核心稳定后交。见[阶梯](../phase6/first-usable-release-plan.md)、[首版净估候选](local-core-release-estimate.json)和[变化对照](core-release-change-comparison.md)；本页长期DAG/日窗不是该首版顺序或日期承诺。',
+        'B4 以本地账号密码首发，核心稳定后优先仅 SSO、本地授权。仅 SSO 工日待独立净估，未计入下列总量；完整 UAA P/R 工日与日窗仅供按条件立项时对照。见[首版阶梯](../phase6/first-usable-release-plan.md)与[仅 SSO 计划](uaa-sso-local-authorization-plan.md)。',
         '六项RP替换原基价，不能替换后又把净差额再加一次。',
         '数字源为[净增册](planning-scope-estimates.json)、[UAA估算](uaa-implementation-estimate.json)和[总账](planning-backlog.json)。',
         '切片、UAA接线及分阶段迁移配额见[排程模型](execution-schedule-model.json)；逐任务/资源槽/输入哈希见[JSON](execution-schedule.json)。',
@@ -759,9 +777,11 @@ def render_schedule(result):
         'G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。', '',
     ]
     audit = result['phase6_design_audit_projection']
-    labels = ['人工风险整改', '自动任务、清单和公共消息组合', '本地核心正式和稳定', '公共 UAA 双模式', '真实 UAA 纳管']
-    lines += ['', '## 当前审计候选的累计工程量', '']
+    labels = ['人工风险整改', '自动任务、清单和公共消息组合', '本地核心正式和稳定', '公共 UAA 治理', '真实 UAA 纳管']
+    lines += ['', '## 既有审计画像的累计工程量', '']
     for label, stage in zip(labels, audit['stages']):
+        if stage.get('conditional_full_governance'):
+            label += '（完整纳管条件对照）'
         lines.append(f"- {label}，{format_pair(stage['engineering_candidate_days'])} 日，保守 {stage['conservative_days']:g} 日。")
     lines += ['', '日期、目标环境和外部等待另列。累计值有重叠，按[交付排期](intranet-uaa-release-schedule.md#2-最早与保守排期)阅读。']
     lines += render_local_core(result)
@@ -806,18 +826,19 @@ def render_schedule(result):
         '新增或触及模块当批接入，P9只是存量最终库存/旁路验收；当前候选能力runtime_verified均不能因已排程变为true。',
         'D12只依CE02-D可靠入口，不反依I01；I01/I02/I03消费D12。CE03/04/05在P7，LS01–04在P6.3，LS05/06在P7。',
         'X01-C2–3/X01-B3–4/X01-H3–5仍合计原8–12日；B为配置后重启的受信接缝，H在S09/P7交完整管理增强。X02-Q独立依X01-C，不等D06/feed；X03只依U02、X01-B和X02-Q，资源授权不因此削弱。',
-        '', '## UAA在现有13切片中的跨阶段硬出口', '',
-        f"完整UAA P/R的实际主研发产能投入须通过既有`{result['uaa_main_capacity_gate']['gate_ref']}`，"
+        '', '<a id="uaa在现有13切片中的跨阶段硬出口"></a>', '',
+        '## 后续 UAA 主线与完整纳管条件对照', '',
+        f"核心稳定后优先仅 SSO；实际主研发容量须先满足既有`{result['uaa_main_capacity_gate']['gate_ref']}`，"
         f"对应`{result['uaa_main_capacity_gate']['owner_action_key']}`业务/工程证据，当前仍为`{result['uaa_main_capacity_gate']['readiness']}`。"
-        '这不是新增有价任务，不要求整个P6.3完成，也不阻协议联系、条件索取和公共mock准备；下方长期日窗不是该门已通过的证明。',
+        '此门也适用于另行立项的完整纳管。证据门本身无新增工日，协议联系与合成准备可以先行。仅 SSO 净估独立于下方完整治理日窗。',
         '公共范围保留mock/contract，不因公司资源未到而阻断独立IAM和公共开发；真实成功不能由合成用例代验。',
-        'UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内部才产出影子差异、私有制品/runbook。',
+        '仅 SSO 的真实测试按认证计划验收。完整纳管联调须 P、测试应用、协议、网络和专属测试权限；R 内产出影子差异与私有制品。',
         '正式apply前另需映射/影子差异批准、正式资源/窗口、应急退出与适用公共生产门；apply后观察才是R整体收口。',
         '不把R整体收口倒置为自己apply前提，也不编造pre_apply具体天数或正式激活日。',
         '真实专业数据源/第二类adapter、标准OAuth AS/主体桥、SOAR/知识/Agent等依赖各自提供方合同、身份与权限。',
         '外部排队、修复、审批和窗口等待不在工程日内；LS05/06已计有限公共实现，真实条件未具备时保持未激活。',
         '未选Office/供应商门户/草稿等整套产品、获准后三类导入/merge建设仍按净增册条件另估，不由E05/E10小包包干。',
-        '独立首次生产仍验G05/E09适用硬项；公司UAA纳管模式加R.pre_apply。早期首发只前移硬证据，不机械等全部P7/I03。',
+        '各形态正式启用均验证 G05/E09 适用硬项。仅 SSO 另验真实认证、会话和回退；完整纳管追加 R.pre_apply。',
         '详细条件和阶段见[真实接入条件](uaa-real-integration-conditions.json)；各提供方激活窗口由对应Owner确认。',
         '', '## 全部正工时任务派发顺序', '',
         '下列保留公共含历史/条件维护储备的单席对照，不是今日剩余派单；当前首版净额和顺序见上方本地核心投影。双席及含R记录保留JSON，聚合节点零工日不另计价。', '']
@@ -838,7 +859,7 @@ def render_backlog(backlog):
     lines=['# 全项目排期总账 — 既有能力与新增范围的唯一任务入口','',
         f"日期：{backlog['date']}。{parents}父包、{children}正式子出口、6项LS额外子范围，13发布切片；原71包完整保留，CE五项正式纳入。",
         '唯一净增数字源为[估算注册表](planning-scope-estimates.json)，相对日窗见[完整排程](execution-schedule.md)，算法/分解见[模型](execution-schedule-model.json)。',
-        '1有效席位×每周5工程日，T0未启动；本地账号可先正式运行，质量优先，1月试用为争取窗口，完整UAA P/R后继。当前首版[阶梯](../phase6/first-usable-release-plan.md)/[首版净估候选](local-core-release-estimate.json)与本页长期参考分列，不是整Phase6完成承诺或开发授权。',
+        'B4 先以本地账号密码正式运行。核心稳定后优先[仅 SSO、本地授权](uaa-sso-local-authorization-plan.md)，工日待独立净估。完整 P/R 保留有条件立项的设计和计价对照。首版按[业务与放行条件](../phase6/first-usable-release-plan.md)排期。',
         '本总账长程工日不是基础版B0/B1工期；基础目标与风险首链在完整排程单列。F004新增细项/OBS后继补充尚未合并，不把旧总额冒称完整新路线总价。',
         '', '## 读取规则与质量继承','',
         '尽可能承接现有功能、渐进优化扩展，专业平台能力优先取数与受权调用，保留大量合成mock。',
@@ -882,7 +903,7 @@ def render_backlog(backlog):
         '每个包开工前按[设计成熟度](planning-design-status.json)冻结准确契约/数据和负例；所有者确认仅绑定具体前文政策，不默认为全面开工。',
         '', '## 按运行模式检查的发布证据门', '',
         '所有模式首次生产前均验证G05/E09适用硬项：已选拓扑的TLS/网络/会话/秘密、固定制品/配置/迁移回执、备份恢复和故障接管；允许单副本，不要求未选HA或全部P7/I03先完。',
-        '公司UAA纳管模式另过E01-UAA-R的pre_apply检查；R切换后观察属于后置收口，不倒置为apply前提。完整独立IAM不等公司R、E01父包或企业凭据。',
+        '公司仅 SSO 另验真实认证、撤权、试点和回退。完整纳管先过 E01-UAA-R 的 pre_apply，切换后再做观察收口。',
         '这些是按能力启用的证据门而非新包或重复预算；详细checklist以本总账JSON的release_gates及UAA条件册为准。',
         '', '## 本轮校准与去重','',
         '当前长期基线、净增与总量由[净增册](planning-scope-estimates.json)和[派生排程](execution-schedule.md)给出，不在本页另写一组价格；已完成维护不再次收费，首版本地净价不与长期总量相加。',
