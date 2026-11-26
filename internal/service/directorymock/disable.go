@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
 
 const StatusEmployeeDisabled = "disabled"
@@ -67,11 +66,17 @@ func disableOperationKey(scope, operation string) operationKey {
 	return operationKey{scope: scope, id: "disable/" + operation}
 }
 
+// RecordDisable is the account-security port for a scoped, explicit source event.
+type RecordDisable func(context.Context, EmployeeDisable, string) (epoch int64, problem string, err error)
+
 // DisableEmployee applies only an explicit, monotonic event. The durable C05
 // operation and intent commit in the same IAM transaction as the mock receipt.
-func DisableEmployee(ctx context.Context, pool *pgxpool.Pool, event EmployeeDisable) (DisableReceipt, error) {
+func DisableEmployee(ctx context.Context, pool *pgxpool.Pool, event EmployeeDisable, record RecordDisable) (DisableReceipt, error) {
 	if !event.valid() {
 		return DisableReceipt{}, ErrInvalidDisable
+	}
+	if record == nil {
+		return DisableReceipt{}, errors.New("missing account safety port")
 	}
 	receipt, err := recordOperation(ctx, pool, disableOperationKey(event.ScopeRef, event.OperationID), event,
 		func(ctx context.Context, _ repository.IAMDBTX, runID string) (DisableReceipt, error) {
@@ -80,10 +85,7 @@ func DisableEmployee(ctx context.Context, pool *pgxpool.Pool, event EmployeeDisa
 				EmployeeExternalID: event.EmployeeExternalID, IdentityGeneration: event.IdentityGeneration,
 				SourceRevision: event.SourceRevision, Status: StatusEmployeeDisabled,
 			}
-			epoch, problem, err := service.RecordMockDirectoryDisable(ctx, pool, service.MockDirectoryTermination{
-				ScopeRef: event.ScopeRef, EmployeeExternalID: event.EmployeeExternalID,
-				IdentityGeneration: event.IdentityGeneration, SourceRevision: event.SourceRevision,
-			}, runID)
+			epoch, problem, err := record(ctx, event, runID)
 			if err != nil {
 				return DisableReceipt{}, err
 			}

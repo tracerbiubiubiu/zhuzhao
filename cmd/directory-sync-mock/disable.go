@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/directorymock"
 )
 
@@ -41,7 +42,12 @@ func runDisable(ctx context.Context, args []string, databaseURL string, input io
 	exitCode := 0
 	if apply {
 		var receipt directorymock.DisableReceipt
-		receipt, err = directorymock.DisableEmployee(ctx, pool, event)
+		receipt, err = directorymock.DisableEmployee(ctx, pool, event, func(ctx context.Context, event directorymock.EmployeeDisable, runID string) (int64, string, error) {
+			return service.RecordMockDirectoryDisable(ctx, pool, service.MockDirectoryTermination{
+				ScopeRef: event.ScopeRef, EmployeeExternalID: event.EmployeeExternalID,
+				IdentityGeneration: event.IdentityGeneration, SourceRevision: event.SourceRevision,
+			}, runID)
+		})
 		output = receipt
 		if receipt.Status != directorymock.StatusEmployeeDisabled {
 			exitCode = 3
