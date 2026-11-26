@@ -97,7 +97,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 AL验证可信服务、claims与command绑定及字段子集后进入同库事务；检查generation、CAS、schema、唯一值，保存数据/源事实/receipt。合法同值patch可回noop receipt，不增加revision/cursor、不触发后继。代际变化/行版本冲突409且无效果，不能自动读取新version覆盖用户修改。TR绝不直写AL库。
 
-发送后超时进入unknown，按原operation查询AL效果收据；查到succeeded只补投影。查询空结果若不能证明旧请求已不可能迟到生效，继续unknown；不基于一次not_found盲重发非幂等动作。新worker持新fence只能更新自己认领阶段，旧writer无权覆盖新状态；AL效果唯一键及版本条件才是效果防重底线，租约不是exactly-once。
+发送后超时进入unknown，按原operation查询AL效果收据；查到succeeded只补投影。查询空结果若不能证明旧请求已不可能迟到生效，继续unknown；不基于一次not_found盲重发非幂等动作。队列取消后，已发送的写仍按原操作号查回执。命令到期后只能查询，查无回执时保留结果待核实。新worker持新fence只能更新自己认领阶段，旧writer无权覆盖新状态；AL效果唯一键及版本条件才是效果防重底线，租约不是exactly-once。
 
 core结果投影验证已登记来源、operation/input_hash、原ticket/node_run/definition_hash，CAS receipt_revision后保存。投影失败只重放投影，不重做已成功效果；原节点已取消/流程换版，迟到结果只挂原运行视图及历史。首版仅展示有界摘要/artifact引用，**不自动改票状态/关风险**；后续字段写回另验字段ACL/CAS和发布映射。artifact下载每次验当前资源读权，临时URL不作长期权限凭证。
 

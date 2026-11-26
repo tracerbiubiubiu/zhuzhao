@@ -97,21 +97,23 @@ func (f *B3Flow) deliver(ctx context.Context, d repository.B3Delivery) bool {
 		return false
 	}
 	switch view.Status {
-	case "failed", "dead":
-		f.recoverDelivery(ctx, d)
-	case "canceled":
-		f.finishUndelivered(ctx, d, "task_delivery_canceled")
+	case "failed", "dead", "canceled":
+		f.recoverDelivery(ctx, d, view.Status)
 	}
 	return true
 }
 
 // A terminal queue delivery does not establish a terminal business outcome.
-func (f *B3Flow) recoverDelivery(ctx context.Context, delivery repository.B3Delivery) {
-	if time.Since(delivery.CreatedAt) >= b3CommandLifetime && !delivery.RemoteStarted {
-		f.finishUndelivered(ctx, delivery, "execution_expired")
-		return
-	}
+func (f *B3Flow) recoverDelivery(ctx context.Context, delivery repository.B3Delivery, queueStatus string) {
 	if !delivery.RemoteStarted {
+		if queueStatus == "canceled" {
+			f.finishUndelivered(ctx, delivery, "task_delivery_canceled")
+			return
+		}
+		if time.Since(delivery.CreatedAt) >= b3CommandLifetime {
+			f.finishUndelivered(ctx, delivery, "execution_expired")
+			return
+		}
 		// The worker only runs after its current claim. A retry of this
 		// confirmed failed delivery reuses the original Taskrunner identity.
 		_, _ = f.tr.RetryTask(ctx, delivery.TaskID, b3Submitter)
@@ -323,11 +325,15 @@ func (f *B3Flow) runUpdate(ctx context.Context, run repository.B3Execution) erro
 			return f.finish(ctx, run, "succeeded", "", result)
 		}
 		var upstream *b3al.HTTPError
-		if !errors.As(err, &upstream) || upstream.Status != 404 || !time.Now().Before(command.ExpiresAt) {
+		if !errors.As(err, &upstream) || upstream.Status != 404 {
 			return f.unknownUpdate(ctx, run)
 		}
 	}
 	if !time.Now().Before(command.ExpiresAt) {
+		// A missing receipt is a snapshot. A previously sent write may still commit.
+		if run.RemoteStarted {
+			return f.unknownUpdate(ctx, run)
+		}
 		return f.finish(ctx, run, "failed_no_effect", "execution_expired", nil)
 	}
 	if err := check(true); err != nil {

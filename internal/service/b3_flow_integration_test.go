@@ -159,3 +159,108 @@ func TestB3SourceCommitAndRecoverByOriginalIdentity(t *testing.T) {
 	_, err = flow.Status(ctx, task, operation)
 	require.ErrorIs(t, err, errcode.ErrForbidden)
 }
+
+type b3RecoveryPeer struct {
+	lookups, writes  []string
+	receiptAvailable bool
+}
+
+func (*b3RecoveryPeer) Get(context.Context, b3al.Command) (b3al.ReadResult, error) {
+	return b3al.ReadResult{}, fmt.Errorf("unexpected document read")
+}
+
+func (p *b3RecoveryPeer) LookupUpdate(_ context.Context, cmd b3al.Command) (b3al.UpdateResult, error) {
+	p.lookups = append(p.lookups, cmd.OperationID)
+	if !p.receiptAvailable {
+		return b3al.UpdateResult{}, &b3al.HTTPError{Status: 404}
+	}
+	return b3al.UpdateResult{DocumentRevision: "2"}, nil
+}
+
+func (p *b3RecoveryPeer) Update(_ context.Context, cmd b3al.Command) (b3al.UpdateResult, error) {
+	p.writes = append(p.writes, cmd.OperationID)
+	return b3al.UpdateResult{DocumentRevision: "2"}, nil
+}
+
+func TestB3SentUpdateRecovery(t *testing.T) {
+	for _, tt := range []struct {
+		name                             string
+		sent, canceled, expired, receipt bool
+		wantLookup, wantWrite            bool
+		status, reason                   string
+	}{
+		{name: "valid_same_operation_retry", sent: true, wantLookup: true, wantWrite: true, status: "succeeded"},
+		{name: "expired_uncertain", sent: true, expired: true, wantLookup: true, status: "pending", reason: "document_outcome_unconfirmed"},
+		{name: "expired_receipt", sent: true, expired: true, receipt: true, wantLookup: true, status: "succeeded"},
+		{name: "canceled_uncertain", sent: true, canceled: true, wantLookup: true, status: "pending", reason: "document_outcome_unconfirmed"},
+		{name: "canceled_receipt", sent: true, canceled: true, receipt: true, wantLookup: true, status: "succeeded"},
+		{name: "never_sent_canceled", canceled: true, status: "failed_no_effect", reason: "task_delivery_canceled"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			id := int64(rand.Uint64N(1<<50)) + 1
+			grant := fmt.Sprintf("recovery-grant-%d", id)
+			op := b3protocol.Identity("op_ticket_", fmt.Sprint(id))
+			task := b3protocol.TaskID(op)
+			_, err := testPool.Exec(ctx, `INSERT INTO b3_grants(grant_ref,revision,subject_type,subject_id,type_name,generation,document_id,write_fields,enabled)
+				VALUES($1,1,'human','42','sample',1,7,ARRAY['name'],true)`, grant)
+			require.NoError(t, err)
+			payload, err := json.Marshal(b3protocol.DocumentUpdate{TypeName: "sample", DocumentID: "7", Generation: "1", ExpectedRevision: "1",
+				Patch: map[string]any{"name": "synthetic"}, GrantRef: grant, GrantRevision: "1"})
+			require.NoError(t, err)
+			_, err = testPool.Exec(ctx, `INSERT INTO command_receipts(operation_id,task_id,action,ticket_id,ticket_revision,node,
+				definition_hash,action_index,actor_id,transition_roles,payload,remote_started,created_at)
+				VALUES($1,$2,'activelist.document.update',$3,1,'assigned','synthetic',0,42,'{}',$4,$5,
+				now() - CASE WHEN $6 THEN interval '2 hours' ELSE interval '1 second' END)`, op, task, id, payload, tt.sent, tt.expired)
+			require.NoError(t, err)
+			_, err = testPool.Exec(ctx, "INSERT INTO business_intent_outbox(operation_id) VALUES($1)", op)
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				_, err := testPool.Exec(ctx, "DELETE FROM business_intent_outbox WHERE operation_id=$1", op)
+				require.NoError(t, err)
+				_, err = testPool.Exec(ctx, "DELETE FROM command_receipts WHERE operation_id=$1", op)
+				require.NoError(t, err)
+				_, err = testPool.Exec(ctx, "DELETE FROM b3_grants WHERE grant_ref=$1", grant)
+				require.NoError(t, err)
+			})
+			params, err := json.Marshal(b3protocol.TaskParams{OperationID: op})
+			require.NoError(t, err)
+			tr := &b3TaskPeer{t: t, runs: make(map[string]json.RawMessage)}
+			tr.runs[task], err = json.Marshal(map[string]any{"task_id": task, "action": b3protocol.Update,
+				"submitted_by": "service:zhuzhao-b3", "params": string(params), "status": "canceled"})
+			require.NoError(t, err)
+			al := &b3RecoveryPeer{receiptAvailable: tt.receipt}
+			store := repository.NewB3Store(testPool)
+			flow := service.NewB3Flow(testPool, store, tr, al, func(ctx context.Context, _ repository.B3Execution, _ string, execute func(context.Context) error) error {
+				return execute(ctx)
+			}, "", service.B3Subscription{})
+			if tt.canceled {
+				require.NoError(t, flow.Handle(ctx, nil))
+			} else {
+				_, err = flow.Callback(ctx, service.B3Callback{ProtocolVersion: 2, ActionVersion: 1, TaskID: task, Action: b3protocol.Update,
+					OperationID: op, DeliveryID: "test-update-delivery-12345", Params: params})
+				if tt.status == "pending" {
+					require.ErrorIs(t, err, errcode.ErrServiceUnavailable)
+				} else {
+					require.NoError(t, err)
+				}
+			}
+			run, err := store.Execution(ctx, task)
+			require.NoError(t, err)
+			require.Equal(t, tt.status, run.Status)
+			require.Equal(t, tt.reason, run.Reason)
+			if tt.wantLookup {
+				require.Equal(t, []string{op}, al.lookups)
+			} else {
+				require.Empty(t, al.lookups)
+			}
+			if tt.wantWrite {
+				require.Equal(t, []string{op}, al.writes)
+			} else {
+				require.Empty(t, al.writes)
+			}
+			require.Empty(t, tr.retried)
+			require.Zero(t, tr.submissions)
+		})
+	}
+}
