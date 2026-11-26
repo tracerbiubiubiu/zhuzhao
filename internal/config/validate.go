@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"math"
+	"path"
 	"strings"
 	"time"
 )
@@ -23,6 +24,17 @@ var repoKnownSecrets = map[string]struct{}{
 	"dev-only-0123456789abcdef0123456789abcdef0123456789abcdef": {},
 }
 
+func gatewayRouteConflict(prefix string, routes ...string) bool {
+	// Gin joins the configured prefix with the catch-all route using path.Join.
+	prefix = path.Clean(prefix)
+	for _, route := range routes {
+		if prefix == "/" || prefix == route || strings.HasPrefix(route, prefix+"/") || strings.HasPrefix(prefix, route+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
 // 原仅校验 secret，TTL 漏配为 0 时 token 签发即过期且无启动期报错，排障成本高）
 func (c *Config) Validate() error {
@@ -33,8 +45,14 @@ func (c *Config) Validate() error {
 		if c.ReferenceAssets.Enabled && upstream.Prefix != "" && referenceRouteConflict(upstream.Prefix) {
 			return fmt.Errorf("reference_assets: gateway prefix conflicts with a reserved reference route")
 		}
+		if c.B3.Enabled && gatewayRouteConflict(upstream.Prefix, B3SourcePushPath, InternalJobsPrefix+B3TaskStatusRoute) {
+			return fmt.Errorf("b3: gateway prefix conflicts with a reserved B3 route")
+		}
 	}
 	if err := c.validateB3(); err != nil {
+		return err
+	}
+	if err := c.validateB3ReferenceCredentials("", ""); err != nil {
 		return err
 	}
 	if err := c.RiskIngest.validate(); err != nil {

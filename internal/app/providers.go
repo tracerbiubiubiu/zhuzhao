@@ -224,7 +224,7 @@ func provideRateLimitConfig(cfg *config.Config) *config.RateLimitConfig {
 // 闭包注册/条件初始化——wire 表达不了）已整体搬至此处；wire.go 的 wire.Build
 // 只引用本 provider，再生永远可重现（"wire 转正"的真终态）。
 func provideApp(cfg *config.Config) (*App, func(), error) {
-	referencePeer, referenceCallbackKey, err := cfg.ReferenceAssets.Open()
+	referencePeer, referenceCallbackKey, err := cfg.OpenReferenceAssets()
 	if err != nil {
 		return nil, nil, err
 	}

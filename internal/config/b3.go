@@ -6,6 +6,12 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
 )
 
+const (
+	InternalJobsPrefix = "/internal"
+	B3TaskStatusRoute  = "/jobs/status"
+	B3SourcePushPath   = "/internal/activelist/changes/push"
+)
+
 // B3Config binds one watched source, one subscription and independent service
 // identities. The keys are provided by the deployment environment.
 type B3Config struct {
@@ -55,6 +61,26 @@ func (c *Config) validateB3() error {
 		!b3protocol.ValidFields(b.ReadFields, 32) ||
 		(len(b.EventFields) > 0 && !b3protocol.ValidFields(b.EventFields, 8)) {
 		return fmt.Errorf("b3 requires an exact ActiveList generation, subscription and read grant")
+	}
+	return nil
+}
+
+func (c *Config) validateB3ReferenceCredentials(outboundKey, callbackKey string) error {
+	ref, b3 := c.ReferenceAssets, c.B3
+	if !ref.Enabled || !b3.Enabled {
+		return nil
+	}
+	for _, credential := range [...][2]string{
+		{b3.SourceAK, b3.SourceSK},
+		{b3.ALCommandAK, b3.ALCommandSK},
+		{c.InternalJobs.AK, c.InternalJobs.SK},
+		{c.Taskrunner.AK, c.Taskrunner.SK},
+	} {
+		ak, sk := credential[0], credential[1]
+		if ak == ref.OutboundAK || ak == ref.CallbackAK ||
+			(sk != "" && (sk == outboundKey || sk == callbackKey)) {
+			return fmt.Errorf("reference_assets and b3 require distinct service credentials")
+		}
 	}
 	return nil
 }

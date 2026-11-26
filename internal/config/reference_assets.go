@@ -52,12 +52,7 @@ var referenceIdentifier = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,63}$
 const ReferenceAssetsPage = "/extensions/reference-assets"
 
 func referenceRouteConflict(prefix string) bool {
-	for _, route := range []string{ReferenceAssetsPage, referencequery.QueryPath, referencequery.AdmissionPath} {
-		if prefix == route || strings.HasPrefix(route, prefix+"/") || strings.HasPrefix(prefix, route+"/") {
-			return true
-		}
-	}
-	return false
+	return gatewayRouteConflict(prefix, ReferenceAssetsPage, referencequery.QueryPath, referencequery.AdmissionPath)
 }
 
 func (c ReferenceAssetsConfig) Validate() error {
@@ -84,7 +79,8 @@ func (c ReferenceAssetsConfig) Validate() error {
 	return nil
 }
 
-func (c ReferenceAssetsConfig) Open() (*referencequery.Peer, []byte, error) {
+func (cfg *Config) OpenReferenceAssets() (*referencequery.Peer, []byte, error) {
+	c := cfg.ReferenceAssets
 	if err := c.Validate(); err != nil || !c.Enabled {
 		return nil, nil, err
 	}
@@ -92,6 +88,9 @@ func (c ReferenceAssetsConfig) Open() (*referencequery.Peer, []byte, error) {
 	callbackKey, callbackErr := referenceKey(c.CallbackKeyFile)
 	if appErr != nil || callbackErr != nil || appKey == callbackKey {
 		return nil, nil, fmt.Errorf("reference_assets: each caller requires a distinct readable key file")
+	}
+	if err := cfg.validateB3ReferenceCredentials(appKey, callbackKey); err != nil {
+		return nil, nil, err
 	}
 	peer, err := referencequery.NewPeer(c.AppOrigin, c.OutboundAK, appKey, c.Timeout)
 	if err != nil {

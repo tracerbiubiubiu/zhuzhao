@@ -187,10 +187,10 @@ func New(deps Deps) *gin.Engine {
 		verifier := &aksk.Verifier{Keys: map[string][]byte{
 			deps.InternalJobs.AK: []byte(deps.InternalJobs.SK),
 		}}
-		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
+		internalGroup := r.Group(config.InternalJobsPrefix, aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
 		if deps.B3Handler != nil {
-			internalGroup.POST("/jobs/status", deps.B3Handler.Status)
+			internalGroup.POST(config.B3TaskStatusRoute, deps.B3Handler.Status)
 		}
 		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
 		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
@@ -198,7 +198,7 @@ func New(deps Deps) *gin.Engine {
 
 	if deps.B3Handler != nil {
 		verifier := &aksk.Verifier{Keys: map[string][]byte{deps.B3.SourceAK: []byte(deps.B3.SourceSK)}}
-		r.POST("/internal/activelist/changes/push", aksk.GinMiddleware(verifier, response.AKSKFail()), deps.B3Handler.Push)
+		r.POST(config.B3SourcePushPath, aksk.GinMiddleware(verifier, response.AKSKFail()), deps.B3Handler.Push)
 	}
 
 	// 存量协议兼容层（2026-10-14 预接线，翻案决策见 phase1/02-auth §存量迁移
