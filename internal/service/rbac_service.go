@@ -17,10 +17,11 @@ import (
 
 // RBACService 角色权限管理服务
 type RBACService struct {
-	roleRepo *repository.RoleRepo
-	userRepo *repository.UserRepo
-	menuRepo *repository.MenuRepo
-	enforcer *casbin.SyncedEnforcer
+	auditCollector string
+	roleRepo       *repository.RoleRepo
+	userRepo       *repository.UserRepo
+	menuRepo       *repository.MenuRepo
+	enforcer       *casbin.SyncedEnforcer
 }
 
 func NewRBACService(
@@ -328,8 +329,15 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 	if req.OriginalMenuIDs != nil {
 		original = append(original, []int64(*req.OriginalMenuIDs))
 	}
+	previous, err := s.roleRepo.ListMenuIDsByRoleID(ctx, role.ID)
+	if err != nil {
+		return err
+	}
 	if err := s.roleRepo.AssignMenus(ctx, role, menuIDs, apis, original...); err != nil {
 		return fmt.Errorf("assign menus: %w", err)
+	}
+	if err := s.roleRepo.RecordMenuAudit(ctx, actorUserID, role.ID, previous, menuIDs, s.auditCollector); err != nil {
+		return err
 	}
 	if role.Code != "admin" && role.Code != "superadmin" {
 		if err := s.schedulePolicyReload(ctx, role.Code); err != nil {

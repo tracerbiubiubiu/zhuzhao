@@ -258,6 +258,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	rbacService := service.NewRBACService(roleRepo, userRepo, menuRepo, syncedEnforcer)
 	orgService := service.NewOrgService(orgRepo, userRepo, orgDelegationService, rbacService)
 	userService := service.NewUserService(pool, userRepo, roleRepo, orgService, client, manager)
+	service.ConfigureIAMAuditDelivery(userService, rbacService, cfg.Audit.IAMCollectorURL)
 	menuService := service.NewMenuService(menuRepo, userRepo, roleRepo)
 	userHandler := handler.NewUserHandler(userService, menuService)
 	roleHandler := handler.NewRoleHandler(rbacService)

@@ -22,15 +22,16 @@ import (
 
 // UserService 用户管理服务
 type UserService struct {
-	storageConfig *pkgstorage.ConfigStore
-	storageBucket string
-	db            *pgxpool.Pool
-	userRepo      *repository.UserRepo
-	roleRepo      *repository.RoleRepo
-	opsRepo       *repository.SessionOperationRepo
-	orgService    *OrgService
-	rdb           *goredis.Client
-	jwtManager    *jwtpkg.Manager
+	auditCollector string
+	storageConfig  *pkgstorage.ConfigStore
+	storageBucket  string
+	db             *pgxpool.Pool
+	userRepo       *repository.UserRepo
+	roleRepo       *repository.RoleRepo
+	opsRepo        *repository.SessionOperationRepo
+	orgService     *OrgService
+	rdb            *goredis.Client
+	jwtManager     *jwtpkg.Manager
 }
 
 func NewUserService(
@@ -550,7 +551,14 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 				return errcode.ErrCannotRemoveLastSuperadmin
 			}
 		}
-		return s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs))
+		if err := s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs)); err != nil {
+			return err
+		}
+		previous := make([]int64, 0, len(oldRoles))
+		for _, role := range oldRoles {
+			previous = append(previous, role.ID)
+		}
+		return repository.RecordIAMFactTx(ctx, tx, "iam.user.roles.set", actorUserID, req.UserID, previous, req.RoleIDs, s.auditCollector)
 	})
 }
 

@@ -46,6 +46,7 @@ type App struct {
 	auditCron        *service.CronScheduler  // P4 cron 收归：nil=未启用（配置开关）
 	storageGC        *service.CronScheduler  // phase5 S5 孤儿 GC：nil=storage 未启用
 	timeoutScan      *service.CronScheduler  // S10 B10-4 节点超时：nil=未启用（配置开关）
+	iamAuditDelivery *service.CronScheduler
 	riskReminder     *service.CronScheduler
 	inboxCleanup     *service.CronScheduler // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
 	intelCleanup     *service.CronScheduler // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
@@ -128,6 +129,15 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 	}
 	// P4 cron 收归：配置开关启用则装配进程内调度器（audit_archive 单批可重入——
 	// ReentrantJob 契约见 cron_scheduler.go）
+	var iamAuditDelivery *service.CronScheduler
+	if cfg.Audit.IAMCollectorURL != "" {
+		worker, err := service.NewIAMAuditDelivery(pool, cfg.Audit.IAMCollectorURL)
+		if err != nil {
+			return nil, err
+		}
+		iamAuditDelivery = service.NewCronScheduler(pool, "iam_audit_delivery", worker, time.Second*5, logger)
+		cronReg.Register("iam_audit_delivery", iamAuditDelivery)
+	}
 	var auditCron *service.CronScheduler
 	if cfg.Audit.Archive.CronEnabled {
 		tick, _ := time.ParseDuration(cfg.Audit.Archive.CronTick)
@@ -261,6 +271,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger, router *gin.Engine, policyE
 		router:             router,
 		policyEval:         policyEval,
 		auditCron:          auditCron,
+		iamAuditDelivery:   iamAuditDelivery,
 		storageGC:          storageGC,
 		timeoutScan:        timeoutScan,
 		inboxCleanup:       inboxCleanup,
@@ -329,7 +340,7 @@ func (a *App) Run() error {
 	if a.policyEval != nil {
 		a.policyEval.Start(requestCtx, ownerCtx)
 	}
-	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.storageGC, a.timeoutScan, a.riskReminder, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
+	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.iamAuditDelivery, a.storageGC, a.timeoutScan, a.riskReminder, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
 		if scheduler == nil {
 			continue
 		}
