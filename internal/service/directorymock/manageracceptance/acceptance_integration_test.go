@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,26 @@ import (
 
 const managerScope = "synthetic-mgr-scope"
 
+var closeDirectoryCLIIntegrationDB func()
+
+func TestMain(m *testing.M) {
+	exit := m.Run()
+	if closeDirectoryCLIIntegrationDB != nil {
+		closeDirectoryCLIIntegrationDB()
+	}
+	os.Exit(exit)
+}
+
+func directoryCLIIntegrationDB(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	db, closeDB, err := testutil.SetupPostgresShared()
+	if err != nil {
+		t.Fatalf("start isolated PostgreSQL: %v", err)
+	}
+	closeDirectoryCLIIntegrationDB = closeDB
+	return db
+}
+
 func TestMockDirectoryManagerCLI(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "directory-sync-mock")
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
@@ -30,11 +51,7 @@ func TestMockDirectoryManagerCLI(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build real mock directory CLI: %v\n%s", err, output)
 	}
-	db, terminate, err := testutil.SetupPostgresShared()
-	if err != nil {
-		t.Fatalf("start isolated PostgreSQL: %v", err)
-	}
-	t.Cleanup(terminate)
+	db := directoryCLIIntegrationDB(t)
 	cli := managerCLI{binary: binary, databaseURL: db.Config().ConnString()}
 
 	t.Run("missing_receipt", func(t *testing.T) {

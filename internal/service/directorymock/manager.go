@@ -109,7 +109,7 @@ func LookupManagerReceipt(ctx context.Context, pool *pgxpool.Pool, scope, operat
 }
 
 func managerOutcome(ctx context.Context, db repository.IAMDBTX, event ManagerResolution) (status, problem string, err error) {
-	employee, err := readManagerIdentity(ctx, db, event.ScopeRef, event.EmployeeExternalID)
+	employee, err := readMockEmployeeIdentity(ctx, db, event.ScopeRef, event.EmployeeExternalID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (!employee.eligible || employee.generation != event.IdentityGeneration)) {
 		return statusManagerRejected, "employee_unresolved", nil
 	}
@@ -119,7 +119,7 @@ func managerOutcome(ctx context.Context, db repository.IAMDBTX, event ManagerRes
 	if event.EmployeeExternalID == event.ManagerExternalID && event.IdentityGeneration == event.ManagerIdentityGeneration {
 		return statusManagerRejected, "manager_self_reference", nil
 	}
-	manager, err := readManagerIdentity(ctx, db, event.ScopeRef, event.ManagerExternalID)
+	manager, err := readMockEmployeeIdentity(ctx, db, event.ScopeRef, event.ManagerExternalID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return statusManagerPending, "manager_not_registered", nil
 	}
@@ -132,21 +132,21 @@ func managerOutcome(ctx context.Context, db repository.IAMDBTX, event ManagerRes
 	return StatusManagerResolved, "", nil
 }
 
-type managerIdentity struct {
+type mockEmployeeIdentity struct {
 	tenant     int64
 	generation int64
 	eligible   bool
 }
 
-func readManagerIdentity(ctx context.Context, db repository.IAMDBTX, scope, externalID string) (managerIdentity, error) {
-	var identity managerIdentity
+func readMockEmployeeIdentity(ctx context.Context, db repository.IAMDBTX, scope, externalID string) (mockEmployeeIdentity, error) {
+	var identity mockEmployeeIdentity
 	err := db.QueryRow(ctx, `SELECT u.tenant_id,b.identity_generation,
 		u.source=$3 AND u.status=1 AND u.deleted_at IS NULL AND u.is_system IS FALSE
 		FROM directory_mock_employee_bindings b JOIN users u ON u.id=b.user_id
 		WHERE b.scope_ref=$1 AND b.external_id=$2`, scope, externalID, repository.MockDirectorySource).
 		Scan(&identity.tenant, &identity.generation, &identity.eligible)
 	if err != nil {
-		return managerIdentity{}, fmt.Errorf("read mock manager identity: %w", err)
+		return mockEmployeeIdentity{}, fmt.Errorf("read mock employee identity: %w", err)
 	}
 	return identity, nil
 }
