@@ -1164,6 +1164,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/operations/receipt": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "按原操作号或幂等键核查两条 IAM 改权命令的本地提交结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原操作号，与 idempotency_key 二选一",
+                        "name": "operation_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "原幂等键",
+                        "name": "idempotency_key",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.IAMReceipt"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orgs/members/list": {
             "get": {
                 "security": [
@@ -2610,6 +2660,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.AssignMenusRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "改权原键，重试必须保持原输入",
+                        "name": "Idempotency-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "原操作号，可替代 Idempotency-Key",
+                        "name": "X-Operation-ID",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -2617,6 +2679,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Operation-ID": {
+                                "type": "string",
+                                "description": "原操作号"
+                            }
                         }
                     }
                 }
@@ -5209,6 +5277,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.SetUserRolesRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "改权原键，重试必须保持原输入",
+                        "name": "Idempotency-Key",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "原操作号，可替代 Idempotency-Key",
+                        "name": "X-Operation-ID",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -5216,6 +5296,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Operation-ID": {
+                                "type": "string",
+                                "description": "原操作号"
+                            }
                         }
                     }
                 }
@@ -6138,6 +6224,30 @@ const docTemplate = `{
                 },
                 "valid_until": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.IAMReceipt": {
+            "type": "object",
+            "properties": {
+                "changed": {
+                    "type": "boolean"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "local_policy_projection": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },

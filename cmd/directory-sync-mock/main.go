@@ -26,6 +26,14 @@ func run(ctx context.Context, args []string, databaseURL string, input io.Reader
 		switch args[0] {
 		case "transfer-primary", "transfer-receipt":
 			return runTransfer(ctx, args, databaseURL, input, stdout, stderr)
+		case "resolve-manager", "manager-receipt":
+			return runManager(ctx, args, databaseURL, input, stdout, stderr)
+		case "disable-employee", "employee-disable-receipt":
+			return runDisable(ctx, args, databaseURL, input, stdout, stderr)
+		case "resolve-department-owners", "department-owner-receipt":
+			return runDepartmentOwners(ctx, args, databaseURL, input, stdout, stderr)
+		case "preview-department-retirement", "department-retirement-receipt":
+			return runRetirement(ctx, args, databaseURL, input, stdout, stderr)
 		}
 	}
 	if len(args) != 0 || databaseURL == "" {

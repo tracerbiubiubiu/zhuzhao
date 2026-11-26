@@ -77,7 +77,7 @@ func authorizeIAMCommand(ctx context.Context, command string, actorID int64, use
 		return errcode.ErrNoPermission
 	}
 	switch command {
-	case "user.status", "user.delete", "user.reset":
+	case "user.status", "user.delete", "user.reset", "user.roles", "role.menus":
 		if err := freshC05Credential(ctx, users, purpose); err != nil {
 			return err
 		}

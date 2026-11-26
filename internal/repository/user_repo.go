@@ -541,9 +541,30 @@ func scanSecuritySnapshot(row pgx.Row) (*UserSecuritySnapshot, error) {
 	return &s, nil
 }
 
-// AdvanceEpochSetStatusTx 锁内推进代际并写状态：目标状态相同则不无意义推进
-// （changed=false），不同则 epoch+1；expected 不符即并发冲突（ErrConcurrentModification）。
+// MockDirectoryTerminated preserves a managed lifecycle stop across local enable attempts.
+func MockDirectoryTerminated(ctx context.Context, db IAMDBTX, userID int64) (bool, error) {
+	var terminated bool
+	err := db.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM directory_mock_employee_bindings b JOIN users u ON u.id=b.user_id
+		WHERE b.user_id=$1 AND u.source=$2 AND b.source_terminated
+	)`, userID, MockDirectorySource).Scan(&terminated)
+	if err != nil {
+		return false, fmt.Errorf("read directory lifecycle: %w", err)
+	}
+	return terminated, nil
+}
+
+// AdvanceEpochSetStatusTx sets account status and advances the session epoch for a change.
 func (r *UserRepo) AdvanceEpochSetStatusTx(ctx context.Context, tx pgx.Tx, id int64, expectedEpoch int64, status int) (newEpoch int64, changed bool, err error) {
+	if status == 1 {
+		terminated, err := MockDirectoryTerminated(ctx, tx, id)
+		if err != nil {
+			return 0, false, err
+		}
+		if terminated {
+			return 0, false, errcode.ErrConflict
+		}
+	}
 	err = tx.QueryRow(ctx, `
 		UPDATE users SET
 			status = $3,

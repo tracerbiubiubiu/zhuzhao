@@ -1,0 +1,1 @@
+ALTER TABLE directory_mock_employee_bindings DROP COLUMN source_terminated;

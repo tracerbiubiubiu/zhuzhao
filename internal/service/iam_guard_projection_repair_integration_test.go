@@ -89,11 +89,28 @@ func TestIAMGuard_FailedPolicyProjectionClosesCachedL1UntilRestart(t *testing.T)
 	}
 	require.Equal(t, http.StatusOK, request(enforcer, false))
 	adapter.fail.Store(true)
-	err = rbac.AssignMenus(service.TrustedIAMInternal(ctx), &model.AssignMenusRequest{RoleID: role.ID}, actor)
+	operationCtx, operationID, err := service.IAMOperationContext(service.TrustedIAMInternal(ctx), "repair-policy-only-"+uniqueSuffix())
+	require.NoError(t, err)
+	err = rbac.AssignMenus(operationCtx, &model.AssignMenusRequest{RoleID: role.ID}, actor)
 	require.ErrorIs(t, err, errcode.ErrPolicyReloadFailed)
 	var policies int
 	require.NoError(t, testPool.QueryRow(ctx, `SELECT count(*) FROM casbin_rule WHERE ptype='p' AND v0='role::projection_reader'`).Scan(&policies))
 	require.Zero(t, policies, "DB revocation committed despite reload error")
+	var repaired bool
+	require.NoError(t, testPool.QueryRow(ctx, `SELECT f.policy_changed AND cardinality(f.added_ids)=0 AND cardinality(f.removed_ids)=0 FROM iam_command_receipts r JOIN iam_audit_facts f ON f.record_id=r.record_id WHERE r.actor_id=$1 AND r.operation_id=$2`, actor, operationID).Scan(&repaired))
+	require.True(t, repaired)
+	lookup := func(active *service.RBACService) string {
+		t.Helper()
+		reader := service.NewUserService(testPool, users, roles, nil, nil, nil)
+		service.ConfigureIAMAuditDelivery(reader, active, "")
+		receipt, err := reader.IAMReceipt(service.TrustedIAMInternal(ctx), actor, operationID)
+		require.NoError(t, err)
+		require.Equal(t, "domain_committed", receipt.Status)
+		return receipt.LocalPolicyProjection
+	}
+	require.Equal(t, "pending", lookup(rbac))
+	require.ErrorIs(t, rbac.AssignMenus(operationCtx, &model.AssignMenusRequest{RoleID: role.ID}, actor), errcode.ErrPolicyReloadFailed)
+
 	allowed, err := enforcer.Enforce("role::projection_reader", "/api/v1/users", "GET")
 	require.NoError(t, err)
 	require.True(t, allowed, "the failed adapter deliberately leaves old memory intact")
@@ -114,6 +131,7 @@ func TestIAMGuard_FailedPolicyProjectionClosesCachedL1UntilRestart(t *testing.T)
 	restarted, err := casbin.NewSyncedEnforcer(m.Copy(), adapter)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusForbidden, request(restarted, false))
+	require.Equal(t, "available", lookup(service.NewRBACService(roles, users, menus, restarted)))
 }
 
 type iamCountedPeople struct {

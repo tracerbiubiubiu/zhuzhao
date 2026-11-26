@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/casbin/casbin/v3"
@@ -17,10 +18,11 @@ import (
 
 // RBACService 角色权限管理服务
 type RBACService struct {
-	roleRepo *repository.RoleRepo
-	userRepo *repository.UserRepo
-	menuRepo *repository.MenuRepo
-	enforcer *casbin.SyncedEnforcer
+	auditCollector string
+	roleRepo       *repository.RoleRepo
+	userRepo       *repository.UserRepo
+	menuRepo       *repository.MenuRepo
+	enforcer       *casbin.SyncedEnforcer
 }
 
 func NewRBACService(
@@ -285,27 +287,29 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 	if err != nil {
 		return err
 	}
-	if role.IsSystem && !isSuperadmin(actorRoles) {
-		return errcode.ErrRoleIsSystem
+	if err := authorizeMenuTarget(role, actorRoles); err != nil {
+		return err
 	}
-	if !canManageTarget(actorRoles, []*model.Role{role}) {
-		return errcode.ErrCannotManageHigher
+	var original [][]int64
+	var originalIDs *[]int64
+	if req.OriginalMenuIDs != nil {
+		ids := []int64(*req.OriginalMenuIDs)
+		originalIDs = &ids
+		original = append(original, ids)
 	}
-
-	var apis []*model.MenuAPI
-	menuIDs := []int64(req.MenuIDs)
-	// D2-14：入参去重（保序）——重复 menu_id 使 ListByIDs 去重行数 ≠ len，
-	// 误报 ErrMenuNotFound（B3-4 只给 SetUserOrgsTx 做了同型去重）
-	seen := make(map[int64]struct{}, len(menuIDs))
-	deduped := make([]int64, 0, len(menuIDs))
-	for _, id := range menuIDs {
-		if _, ok := seen[id]; ok {
-			continue
+	op := newIAMOperation(ctx, repository.IAMRoleMenus, actorUserID, role.ID, req.MenuIDs, originalIDs)
+	replay, err := s.roleRepo.MenuOperationReplayed(ctx, op)
+	if err != nil {
+		return err
+	}
+	if replay {
+		if role.Code != "admin" && role.Code != "superadmin" && !middleware.PolicyProjectionAvailable(s.enforcer) {
+			return errcode.ErrPolicyReloadFailed
 		}
-		seen[id] = struct{}{}
-		deduped = append(deduped, id)
+		return nil
 	}
-	menuIDs = deduped
+	var apis []*model.MenuAPI
+	menuIDs := canonicalIAMIDs(req.MenuIDs)
 	if len(menuIDs) > 0 {
 		// B2-5：菜单存在性/活跃性预检——不存在或已软删的 ID 返回 ErrMenuNotFound
 		// （05-role.md 测试用例承诺；此前 FK 错误冒充 500、软删菜单产生脏绑定）
@@ -324,14 +328,27 @@ func (s *RBACService) AssignMenus(ctx context.Context, req *model.AssignMenusReq
 		}
 	}
 
-	var original [][]int64
-	if req.OriginalMenuIDs != nil {
-		original = append(original, []int64(*req.OriginalMenuIDs))
+	previous, err := s.roleRepo.ListMenuIDsByRoleID(ctx, role.ID)
+	if err != nil {
+		return err
+	}
+	policyChanged, err := s.roleRepo.MenuPolicyChanged(ctx, role, apis)
+	if err != nil {
+		return err
+	}
+	if !policyChanged && slices.Equal(previous, menuIDs) {
+		if originalIDs != nil && !slices.Equal(previous, canonicalIAMIDs(*originalIDs)) {
+			return errcode.ErrConcurrentModification
+		}
+		return s.roleRepo.RecordMenuAudit(ctx, op, previous, menuIDs, false, s.auditCollector)
 	}
 	if err := s.roleRepo.AssignMenus(ctx, role, menuIDs, apis, original...); err != nil {
 		return fmt.Errorf("assign menus: %w", err)
 	}
-	if role.Code != "admin" && role.Code != "superadmin" {
+	if err := s.roleRepo.RecordMenuAudit(ctx, op, previous, menuIDs, policyChanged, s.auditCollector); err != nil {
+		return err
+	}
+	if policyChanged {
 		if err := s.schedulePolicyReload(ctx, role.Code); err != nil {
 			return err
 		}

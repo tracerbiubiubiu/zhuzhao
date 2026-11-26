@@ -22,6 +22,12 @@
 
 两答来源及对历史待答的后继见[后继索引F017](../planning/planning-followups.json)。政策已定与产品已实现分别记录。
 
+### 第 10 项两条改权命令的回执
+
+`SetRoles`、`AssignMenus` 接受可选的 `X-Operation-ID` 或 `Idempotency-Key`。同时使用时两者须相同。客户端保存原操作号，未知提交用 `GET /api/v1/operations/receipt` 查询，带一个 `operation_id` 或 `idempotency_key`。查询复验原操作者的当前凭据、功能权限和目标管理范围。
+
+原操作回执、本地业务变化、非空差量审计和适用外送意图同事务提交。相同原键重放只回原结果，异内容或跨动作复用拒绝。真实无变化操作只写回执。同一菜单集合发生 Casbin 策略修复时仍记录事实。回执的 `domain_committed` 表示本地提交。该操作确实改了策略时，`local_policy_projection` 另报告当前实例的 `pending` 或 `available`。collector 的恢复以原审计事实 ID 为准。
+
 ## 2. 三个IAM子批，先完成A的开工准备
 
 | 子批 | 范围与当前证据 | 完成应证明 | 边界 |

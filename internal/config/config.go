@@ -163,8 +163,9 @@ type CompatAKSKConfig struct {
 // AuditConfig 审计管道（B11① 判定日志 L2，03-audit-l2 §2.3；P3 拍板 2026-09-03：
 // 判定日志异步写。audit_logs 主审计仍为中间件同步写，不在此段管辖）。
 type AuditConfig struct {
-	PolicyEval PolicyEvalConfig `mapstructure:"policy_eval"`
-	Archive    ArchiveConfig    `mapstructure:"archive"`
+	IAMCollectorURL string           `mapstructure:"iam_collector_url"`
+	PolicyEval      PolicyEvalConfig `mapstructure:"policy_eval"`
+	Archive         ArchiveConfig    `mapstructure:"archive"`
 }
 
 // ArchiveConfig 审计归档（B11②，03-audit-l2 §4；P4 拍板 2026-09-03：本地 JSONL + 卷备份）。
@@ -354,6 +355,8 @@ func Load(path string) (*Config, error) {
 	// 模板注入后由下方后处理 split；空 env 保持 config.yaml 值）
 	viper.BindEnv("server.trusted_proxies", "APP_SERVER_TRUSTED_PROXIES")
 	viper.BindEnv("audit.archive.cron_enabled", "APP_AUDIT_ARCHIVE_CRON_ENABLED")
+	viper.BindEnv("audit.iam_collector_url", "APP_AUDIT_IAM_COLLECTOR_URL")
+	viper.SetDefault("audit.iam_collector_url", "")
 	viper.SetDefault("audit.archive.cron_enabled", false)
 	viper.BindEnv("audit.archive.cron_tick", "APP_AUDIT_ARCHIVE_CRON_TICK")
 	viper.SetDefault("audit.archive.cron_tick", "30s")

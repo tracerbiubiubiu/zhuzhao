@@ -2,16 +2,10 @@ package directorymock
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -74,34 +68,10 @@ func ApplyPrimaryTransfer(ctx context.Context, pool *pgxpool.Pool, event Primary
 	if !event.valid() {
 		return TransferReceipt{}, ErrInvalidTransfer
 	}
-	encoded, err := json.Marshal(event)
-	if err != nil {
-		return TransferReceipt{}, fmt.Errorf("encode mock transfer: %w", err)
-	}
-	digest := sha256.Sum256(encoded)
-	hash := hex.EncodeToString(digest[:])
-	return repository.WithIAMGuardValue(ctx, pool, func(ctx context.Context) (TransferReceipt, error) {
-		db := repository.IAMDB(ctx, pool)
-		stored, storedHash, err := readTransferReceipt(ctx, db, event.ScopeRef, event.OperationID)
-		switch {
-		case err == nil && storedHash == hash:
-			return stored, nil
-		case err == nil:
-			return TransferReceipt{}, ErrTransferConflict
-		case !errors.Is(err, ErrTransferReceiptAbsent):
-			return TransferReceipt{}, err
-		}
-
-		var knownScope bool
-		if err := db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM directory_mock_scopes WHERE scope_ref=$1)", event.ScopeRef).
-			Scan(&knownScope); err != nil {
-			return TransferReceipt{}, fmt.Errorf("resolve mock scope: %w", err)
-		}
-		if !knownScope {
-			return TransferReceipt{}, ErrInvalidTransfer
-		}
+	key := operationKey{scope: event.ScopeRef, id: event.OperationID}
+	receipt, err := recordOperation(ctx, pool, key, event, func(ctx context.Context, db repository.IAMDBTX, runID string) (TransferReceipt, error) {
 		receipt := TransferReceipt{
-			RunID: uuid.NewString(), ScopeRef: event.ScopeRef, OperationID: event.OperationID,
+			RunID: runID, ScopeRef: event.ScopeRef, OperationID: event.OperationID,
 			SourceRevision: event.SourceRevision, Status: StatusTransferApplied,
 		}
 		problem, err := transferAppointment(ctx, db, repository.NewOrgRepo(pool), event)
@@ -111,12 +81,15 @@ func ApplyPrimaryTransfer(ctx context.Context, pool *pgxpool.Pool, event Primary
 		if problem != "" {
 			receipt.Status, receipt.Problem = statusTransferHeld, problem
 		}
-		if _, err := db.Exec(ctx, `INSERT INTO directory_mock_transfer_runs(scope_ref,operation_id,run_id,input_hash,receipt)
-			VALUES ($1,$2,$3,$4,$5)`, receipt.ScopeRef, receipt.OperationID, receipt.RunID, hash, receipt); err != nil {
-			return TransferReceipt{}, fmt.Errorf("save mock transfer receipt: %w", err)
-		}
 		return receipt, nil
 	})
+	switch {
+	case errors.Is(err, errScopeAbsent):
+		err = ErrInvalidTransfer
+	case errors.Is(err, errOperationConflict):
+		err = ErrTransferConflict
+	}
+	return receipt, err
 }
 
 // LookupTransferReceipt reads a committed receipt without resubmitting the event.
@@ -124,20 +97,9 @@ func LookupTransferReceipt(ctx context.Context, pool *pgxpool.Pool, scope, opera
 	if !validRef(scope) || !validRef(operation) {
 		return TransferReceipt{}, ErrInvalidTransfer
 	}
-	receipt, _, err := readTransferReceipt(ctx, pool, scope, operation)
+	receipt, _, err := readOperationReceipt[TransferReceipt](ctx, pool, operationKey{scope: scope, id: operation})
+	if errors.Is(err, errOperationAbsent) {
+		err = ErrTransferReceiptAbsent
+	}
 	return receipt, err
-}
-
-func readTransferReceipt(ctx context.Context, db repository.IAMDBTX, scope, operation string) (TransferReceipt, string, error) {
-	var receipt TransferReceipt
-	var hash string
-	err := db.QueryRow(ctx, `SELECT receipt,input_hash FROM directory_mock_transfer_runs WHERE scope_ref=$1 AND operation_id=$2`,
-		scope, operation).Scan(&receipt, &hash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return TransferReceipt{}, "", ErrTransferReceiptAbsent
-	}
-	if err != nil {
-		return TransferReceipt{}, "", fmt.Errorf("read mock transfer receipt: %w", err)
-	}
-	return receipt, hash, nil
 }
