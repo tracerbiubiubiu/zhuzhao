@@ -2,6 +2,8 @@
 
 日期：2026-11-12。状态：**有范围和前提的工程估算候选，不是实施或企业政策批准**。唯一数字源为[估算注册表](uaa-implementation-estimate.json)，总账镜像C/P/R，派生[完整排期](execution-schedule.md)只读冻结数字。真实条件与具体确认场景见[条件册](uaa-real-integration-conditions.json)。
 
+2026-11-26 后续开发优先仅 SSO、本地授权，按[仅 SSO 的四项任务](uaa-sso-local-authorization-plan.md#验收与净估)单独核算。以下 C/P/R 数字只用于完整纳管对照，若以后启动 B5，再扣除已验可复用的认证、绑定、最小 UI 及运维演练。
+
 ## 估算结果
 
 | 出口 | 工程日 | 计价范围 |

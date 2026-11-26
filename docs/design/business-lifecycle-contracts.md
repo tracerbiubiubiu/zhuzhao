@@ -296,8 +296,8 @@ CMDB 返回 `asset_ref={provider,external_id}`、可选本地映射 ref、`owner
 ### 7.2 写主、映射与发布
 
 - `(provider_ref,entity_kind,external_id)` 维护外部身份到本地 ID 的唯一绑定及 source revision，组织/用户活跃关系按此防并发串号。employee_no/domain 可辅助**发现冲突**，不自动把两个人合并；外部 ID 重用/复职必须显式核实身份世代，不能仅同工号就继承旧账号权限。现有用户外部 ID 未有该唯一数据库保证，迁移前先扫重复/冲突，隔离疑似记录。
-- HR写人员真实姓名、主部门、manager、岗位和来源生命周期等provider-owned字段；企业模式另按[UAA合同](uaa-governance-integration.md)划分账号、受管角色/资源和条件数据属性写主，本地IAM不能覆盖中央分配结果。独立模式保留本地账号/角色管理；企业模式本地保留非受管业务授权、虚拟组/临时成员及安全封禁，受管能力不能借组织或继承绕过撤权。同步不能重启本地已封禁账号；有效可登录性取本地active、账户安全条件及**该账号已登记且适用的权威来源约束**的交集。HR与UAA均参与时，任一路active不能解除另一路或本地安全停用；独立本地账号不因缺少HR/UAA投影、新鲜度或企业网络而被拒登。当前单 `users.status` 的来源/本地状态拆分是目标，须数据迁移说明，不能直接拿 active HR 事件覆盖 status=0。
-- 人工兜底不直接改 provider 原始事实。`DirectoryOverride` 记录 field/value/reason/actor/expiry/source_baseline；有效展示值可采用 override，权限锚点/禁用态不得被 override 静默放宽。HR明确active/terminated状态只决定其管辖的来源生命周期，不授角色；独立模式的角色由本地批准，企业模式按UAA与本地各自管辖来源批准，不能借override改写中央受管授权。
+- HR写人员真实姓名、主部门、manager、岗位和来源生命周期等provider-owned字段；完整纳管另按[UAA合同](uaa-governance-integration.md)划分账号、受管角色/资源和条件数据属性写主，本地IAM不能覆盖中央分配结果。本地账密和仅 SSO 继续由本地管理账号准入和角色；完整纳管时本地保留非受管业务授权、虚拟组/临时成员及安全封禁，受管能力不能借组织或继承绕过撤权。同步不能重启本地已封禁账号；有效可登录性取本地active、账户安全条件及**该账号已登记且适用的权威来源约束**的交集。HR与UAA均参与时，任一路active不能解除另一路或本地安全停用；独立本地账号不因缺少HR/UAA投影、新鲜度或企业网络而被拒登。当前单 `users.status` 的来源/本地状态拆分是目标，须数据迁移说明，不能直接拿 active HR 事件覆盖 status=0。
+- 人工兜底不直接改 provider 原始事实。`DirectoryOverride` 记录 field/value/reason/actor/expiry/source_baseline；有效展示值可采用 override，权限锚点/禁用态不得被 override 静默放宽。HR明确active/terminated状态只决定其管辖的来源生命周期，不授角色；本地账密及仅 SSO 的角色由本地批准，完整纳管按 UAA 与本地各自管辖来源批准，不能借override改写中央受管授权。
 - 先完整 stage/验证组织，再应用无环父树；随后用户/manager 解析。manager 可能晚到：引用保留 unresolved，不报“已找到上级”，后续事件/重跑补解；负责人需 active，目标层级无负责人时返回 unavailable 不无限向上广播。
 - 批处理状态：`staging→validated→applying→succeeded/partial/failed`，另有 `rejected`（合同/基线不符）。整 domain/scope 只有完整校验后才允许 absence reconcile；任一页失败/重复页冲突/父树环/大量异常缺失先停缺失处理，保留上次成功基线。partial 的正常 upsert 可保留并逐项报结果，**不得**顺带对缺失者禁用/撤部。
 - 同 provider/scope 一次一个 apply，持久 run_id/基线/阶段水位，lease 失效不能并发推广同一批。短事务按完整顶层子树更新，失败子树回滚并标 partial；已提交子树不回滚为“全没发生”。reconcile 完成后才推进成功 baseline/cursor；同批重放返回原收据。

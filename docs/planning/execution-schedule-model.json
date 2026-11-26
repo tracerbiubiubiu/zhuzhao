@@ -505,12 +505,12 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R在核心稳定后交。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
+    "core_target_note": "本地账号先正式；核心稳定后优先仅 SSO，完整 P/R 为条件对照。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
     "iam_estimate_note": "本地IAM A/B/C/TASK/C05已按源映射扣重整合入首版净估；S2共用2–3日是明确假设，保守视图另列。长期76父包保持原有界价格，不能据此把首版净价再加到父包总价；实际实耗仍待首批校准。",
     "maintenance_reserve_note": "长期with/without reserve保留原1–2日条件容量对照；现有已完成版本维护/合main不再派发或计价，首版本地Q2已排除该信用，不能把历史对照当今日剩余报价。"
   },
-  "priority_policy": "maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
-  "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
+  "priority_policy": "Priced baseline comparisons only; the selected SSO-only successor is not dispatched by this model. Comparison ordering: maintenance; foundation targets U01/U02/C02/X01-B/X02-Q and their actual ancestors; existing S01/S02 safety work; E10 finite investigation before risk implementation; D10/D15 first risk chain and ancestors; public UAA P positive tasks priority 7.5 before P7 work. If enterprise R is selected and its external conditions are ready, promote P/R after foundation and S01/S02 safety work. This is capacity ordering, not enterprise activation approval.",
+  "endpoint_semantics": "Two all-low/all-high scenarios for the priced baseline, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded. The full-governance P/R windows are conditional comparisons. The preferred post-B4 SSO-only path is pending net estimate and excluded from this priced projection; see planning-backlog.json#/release_gates/company_sso_local_authorization.",
   "external_waiting_refs": [
     "docs/planning/uaa-real-integration-conditions.json",
     "docs/planning/planning-scope-estimates.json#/items/LS05",
@@ -550,7 +550,7 @@
     },
     "public_uaa_positive_tasks": {
       "priority": 7.5,
-      "window": "公开主参考在基础/风险首链及P6.E优先工作之后、P7正任务之前；仍保留P6.1起可施工的明确合同/验收窗口，不代表真实激活"
+      "window": "仅表示已计价完整纳管对照中公共 P 的相对排序，P6.1 是原技术归属。实际 P/R 立项和仅 SSO 优先顺序见总账发布证据门"
     }
   },
   "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
@@ -1012,7 +1012,7 @@
       },
       {
         "requirement_ref": "/must_have/5",
-        "requirement_sha256": "4f61eb43630b4ffa74a1b893d3da8cd763987236973895a638894decec3f55a8",
+        "requirement_sha256": "59350b8e6e8d02233c4f565b1c46c5fe445e1ffaa65de9efe3bb4e3546f5f026",
         "wbs_ids": [
           "S1",
           "U1"
@@ -1133,6 +1133,6 @@
   "uaa_capacity_gate_binding": {
     "local_core_exit_id": "uaa_capacity_transition",
     "owner_action_key": "Q12_core_stability",
-    "scope": "Actual main development capacity for complete UAA P/R; not preparatory contact/public mocks and not the whole P6.3 completion barrier; no new priced package."
+    "scope": "Q12 core stability binds main development capacity for the preferred SSO-only path and any separately selected full governance P/R. Preparation can precede the gate. This binding adds no priced package."
   }
 }

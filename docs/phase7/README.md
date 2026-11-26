@@ -32,7 +32,11 @@ I04先两类代表源可见/去重/通知/受权人工派单及隔离回放，D1
 
 Phase 6 的设备目录、状态与人工入口先验合成查询和权限。启用真实设备供给时，按 X03 合同逐个核来源、当前字段权、目标限制及故障处置，归本阶段真实接入窗口，适用时由 I04/E01 承接。 [设备合同](../phase6/extension-ai-module-detail.md#4-x03设备目录状态与人工登录)
 
-E01-UAA-C 随本地首版交公共规则与来源接缝。E01-UAA-P（实现共用的身份与权限治理）的阶段归属仍为 P6.1，实际主研发产能在本地核心稳定验收后投入完整 P/R。E01-UAA-P 消费 C04、D06、X01-C 与 X02-F 的适用实物和验收。E01-UAA-R（真实接入与联调）在 E01-UAA-P 与真实测试资源就绪后开始联调。协议联系及公共准备可以先推进。I02 承接非人主体，企业用户登录归 UAA。独立模式按本地正式门放行。见[双模式方案](../design/uaa-governance-integration.md)及[贯通排期](../planning/intranet-uaa-release-schedule.md)。
+E01-UAA-C 随本地首版交公共规则与来源接缝，B4 按独立模式的正式门放行，使用本地账号密码首发。核心稳定后优先实施仅 SSO，复用实际需要的 C04/C05 等本地权限与会话撤权出口。公司负责认证，本地沿用已绑定账号，继续管理准入、角色、菜单与三层权限。真实联调以公司同意仅接认证为前提，首批真实启用须获批试点，试点通过后由所有者批准正式范围和窗口。 [仅 SSO 实施计划](../planning/uaa-sso-local-authorization-plan.md) · [贯通排期](../planning/intranet-uaa-release-schedule.md)
+
+完整 P/R 只在公司要求纳管或所有者另行批准时按需启动。E01-UAA-P 的技术归属仍为 P6.1，消费 C04、D06、X01-C 与 X02-F 的适用实物和验收。协议联系及公共准备可先推进，E01-UAA-R 在 P 与真实测试资源就绪后联调，首次正式纳管须过 R 的真实激活条件及 R.pre_apply。 [完整治理合同](../design/uaa-governance-integration.md) · [真实联调条件](../planning/uaa-real-integration-conditions.md)
+
+I02 按自己的主体与委托合同承接非人主体。MCP 及 OAuth AS 依 MCP 首批合同各自验收，HR、设备及专业供给按相应合同和获准范围接入。这些批次无需等待公司 SSO。 [MCP 首批合同](../design/mcp-first-contract.md)
 
 G05/E09区分通用生产硬项与后继增强：实际首发早于P7时只将所选形态的TLS/边界、制品/迁移、恢复/回退及故障可见等适用硬项前移并复估，不机械要求完整I03或全P7。R不能代替这些生产证据；按模式检查的门见[总账](../planning/planning-backlog.md#按运行模式检查的发布证据门)，当前不作已通过声明。
 

@@ -1,18 +1,18 @@
 {
   "date": "2026-11-16",
-  "status": "fully_priced_bounded_candidate_not_implemented",
+  "status": "priced_baseline_with_unpriced_sso_successor_not_implemented",
   "calendar": null,
   "estimate_source": ["docs/planning/planning-backlog.json", "docs/planning/execution-schedule-model.json", "docs/planning/planning-scope-estimates.json", "docs/planning/uaa-implementation-estimate.json", "docs/planning/uaa-real-integration-conditions.json", "docs/planning/local-core-release-estimate.json", "docs/planning/first-usable-release-target.json", "docs/planning/owner-decision-agenda.json"],
   "source_input_sha256": {
-    "docs/planning/planning-backlog.json": "a1d4c5f49db8da243b6ec430f68d1536163100e3505ac09551e8225d5cdbd86b",
-    "docs/planning/execution-schedule-model.json": "0025f3af52c56b17423920298bfa3be686218c5ef4878b8d93b4494cb82d8dc9",
+    "docs/planning/planning-backlog.json": "32ab93f5ec066ec4e28f5ce8e5457714684a1bc9e048f7c7215c7eb9ade9a72a",
+    "docs/planning/execution-schedule-model.json": "7828c29c012f53e4559f0c862b8fad3d898416c53c855247574364fd8f650a1c",
     "docs/planning/planning-scope-estimates.json": "005ae9f1c128fe9992661af5a61990c618d1b1923deab6b7b13e3f7504aa4981",
     "docs/planning/uaa-implementation-estimate.json": "ba0221b562533c8b34d19cc8c90c325f76da4e0be72bb12a51859413a60e015c",
     "docs/planning/uaa-real-integration-conditions.json": "8391462c9c7654c806b9a5149478df694578d80e138f4cab038f01da3d922800",
     "docs/planning/local-core-release-estimate.json": "7609ccaebf095cbd03aaacd6d5807699f0fa8004f790ac631a67bdaa645ef02c",
-    "docs/planning/first-usable-release-target.json": "7ede04496a915b1ccedf63742fb4f82e47669f7f58aab6a007e2e3133b8d01d9",
-    "docs/planning/owner-decision-agenda.json": "9c277fc0ecc0c839b021c2300f17cd6ff50236f82b0a2bae5db8d277680f96aa",
-    "scripts/calculate-planning-schedule.py": "40238df4bba20b23ff9fec4119a7b0b994c34e8d40536ca071034da7ab8f16a6"
+    "docs/planning/first-usable-release-target.json": "d7fc5be32ac979a4d8094ec60521914cc4e257647b7d7ddabc7274dbab0a9297",
+    "docs/planning/owner-decision-agenda.json": "dc78313c5be63cb18dd496790e3e49bfc6f2733ad7528516490de130c9c25583",
+    "scripts/calculate-planning-schedule.py": "526ccb86f99f9ba52dd69af34c0f37936fab82b1237f2e5fcd6869c724dafe88"
   },
   "resource_assumptions": {
     "owner_resource_answer": "owner_confirmed",
@@ -25,7 +25,7 @@
     "confirmed_on": "2026-11-13",
     "T0_policy": "尽快；实际开工日记T0，不要求严格自然日截止",
     "calendar_status": "relative_schedule_by_owner_preference",
-    "core_target_note": "公司允许本地账号先正式，质量优先，1月试用仅争取；完整UAA P/R在核心稳定后交。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
+    "core_target_note": "本地账号先正式；核心稳定后优先仅 SSO，完整 P/R 为条件对照。长期相对排程与同生成器的local_core净额投影分列；一席为主，T0未启动，未知外部等待不作为0。",
     "iam_estimate_note": "本地IAM A/B/C/TASK/C05已按源映射扣重整合入首版净估；S2共用2–3日是明确假设，保守视图另列。长期76父包保持原有界价格，不能据此把首版净价再加到父包总价；实际实耗仍待首批校准。",
     "maintenance_reserve_note": "长期with/without reserve保留原1–2日条件容量对照；现有已完成版本维护/合main不再派发或计价，首版本地Q2已排除该信用，不能把历史对照当今日剩余报价。"
   },
@@ -4638,7 +4638,7 @@
     "additional_refs": ["docs/planning/uaa-real-integration-conditions.json", "docs/planning/planning-scope-estimates.json#/items/LS05", "docs/planning/planning-scope-estimates.json#/items/LS06"],
     "rule": "Waiting, approval, provider fixes and formal activation dates are outside engineering effort. Public mock/contract delivery is not blocked by unavailable real providers."
   },
-  "endpoint_semantics": "Two all-low/all-high scenarios, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded",
+  "endpoint_semantics": "Two all-low/all-high scenarios for the priced baseline, not a confidence interval or guaranteed upper bound for mixed estimates; external waiting excluded. The full-governance P/R windows are conditional comparisons. The preferred post-B4 SSO-only path is pending net estimate and excluded from this priced projection; see planning-backlog.json#/release_gates/company_sso_local_authorization.",
   "reference_algorithm": {
     "kind": "deterministic list scheduling; priority then remaining critical chain then ID",
     "reproduction": "python3 scripts/calculate-planning-schedule.py --check",
@@ -4660,8 +4660,16 @@
     "with_conditional_R_ready": [407, 678]
   },
   "scope_estimate_registry": "docs/planning/planning-scope-estimates.json",
-  "no_unpriced_required_increment": true,
-  "no_unpriced_required_increment_scope": "priced_76_parent_baseline_only_excludes_F004_new_detail_and_OBS_not_complete_B0_B1_price",
+  "current_uaa_delivery": {
+    "source_ref": "docs/planning/planning-backlog.json#/release_gates/company_sso_local_authorization",
+    "development_priority": "preferred_after_local_core_stability",
+    "plan_ref": "docs/planning/uaa-sso-local-authorization-plan.md",
+    "estimate_status": "pending_net_estimate",
+    "engineering_days": null,
+    "included_in_priced_schedule_baseline": false
+  },
+  "no_unpriced_required_increment": false,
+  "no_unpriced_required_increment_scope": "current_delivery_includes_unpriced_sso_successor; priced_76_parent_baseline_excludes_F004_new_detail_and_OBS",
   "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
   "local_core_net_estimate_ref": "docs/planning/local-core-release-estimate.json",
   "local_core_view_note": "The same generator exposes local_core from the selected net WBS and mandatory journeys. It is not added to the 76-parent totals; real waiting and activation dates remain unknown, and evidence gates are not proven by scheduling.",
@@ -5038,8 +5046,8 @@
       },
       {
         "requirement_ref": "docs/planning/first-usable-release-target.json#/must_have/5",
-        "text": "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继",
-        "requirement_sha256": "4f61eb43630b4ffa74a1b893d3da8cd763987236973895a638894decec3f55a8",
+        "text": "完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；后续公司认证和完整治理各按其启用窗口验收",
+        "requirement_sha256": "59350b8e6e8d02233c4f565b1c46c5fe445e1ffaa65de9efe3bb4e3546f5f026",
         "targets": ["S1", "U1"],
         "dependency_closure": ["S1", "S2", "U1"],
         "overlapping_effort_do_not_add": [34.5, 56]
@@ -5340,11 +5348,13 @@
       },
       {
         "id": "uaa_public",
+        "conditional_full_governance": true,
         "engineering_candidate_days": [126.5, 203.0],
         "conservative_days": 228.0
       },
       {
         "id": "uaa_managed",
+        "conditional_full_governance": true,
         "engineering_candidate_days": [139.5, 225.0],
         "conservative_days": 250.0
       }
@@ -5372,7 +5382,7 @@
     "readiness": "not_verified_by_schedule",
     "preparation_contact_is_blocked": false,
     "added_engineering_days": [0, 0],
-    "rule": "Actual main-capacity transfer to complete UAA P/R requires this existing evidence exit; long-horizon D windows remain conditional engineering comparisons, not permission or dates. Contract contact and public mock preparation may precede it."
+    "rule": "Q12 core stability binds main development capacity for the preferred SSO-only path and any separately selected full governance P/R. Preparation can precede the gate. This binding adds no priced package."
   },
   "long_horizon_accounting": {
     "baseline_public_days": [292, 496],

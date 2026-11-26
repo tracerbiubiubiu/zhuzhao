@@ -1418,6 +1418,22 @@
       "estimate_policy": "未单独计价；按可复用认证和本地能力净估，完整 P/R 历史基线仍按原范围。",
       "implementation_state": "场景和任务已落档；产品与真实联调未实施。",
       "historical_34_formal_decisions_unchanged": true
+    },
+    {
+      "id": "F025-uaa-sso-first-delivery",
+      "supersedes_scope": "F013 的 UAA 研发先后改为优先仅 SSO；本地首发决定以及完整纳管设计与原估算范围保留。",
+      "date": "2026-11-26",
+      "source": "所有者确认后续开发以公司仅负责 SSO、应用自管权限和菜单的方案为主，要求同步相关规划并独立交叉核查。",
+      "scope": "B4 本地账密首发及现有业务优先级；核心稳定后优先实施仅 SSO。完整 B5 纳管仅在公司要求或所有者另行批准时立项。",
+      "design_refs": [
+        "docs/planning/uaa-sso-local-authorization-plan.md",
+        "docs/planning/planning-backlog.json#/release_gates/company_sso_local_authorization",
+        "docs/planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做"
+      ],
+      "authorization": "确认后续研发方向与规划修订。公司允许仅接认证、真实试点范围和正式启用分别核验与批准。",
+      "estimate_policy": "仅 SSO 待净估；既有 P/R 数字保留为条件对照，共用认证工作按可验复用扣重一次。",
+      "implementation_state": "计划已同步，产品和真实接入证据待交。",
+      "historical_34_formal_decisions_unchanged": true
     }
   ]
 }

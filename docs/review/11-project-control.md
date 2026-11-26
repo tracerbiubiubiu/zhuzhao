@@ -24,7 +24,7 @@
 
 - **人工漏洞整改（发布验收点 B2）**。第 1–5 项通过隔离联合验收并已合入主线。第 6–8 项隔离候选通过登记、个人派单、部门调转、逐项复测、证据保留和接单提醒主路径。第 9 项由不同助手独立执行丢响应和复核，核到原号回读及实际重启无重复写入。普通门禁含独占栈 55 条既有浏览器回归。第 6–9 项保留候选与报告，真实试用由所有者按 Q12 另批。 [实施分工与门禁](../planning/phase6-b2-stage6-9-plan.md) · [第 6–9 项验证](reports/phase6-b2-stage9-validation-2026-11-23.md) · [第 1–3 项验收](reports/phase6-b2-stage3-acceptance-2026-11-22.md) · [第 4–5 项验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)
 
-- **最后进入内网，首发用本地账号密码（B4）**。先在外部完成本次已定 Phase 6 能力和原前端需求，所有公司内网依赖用 mock 验收，完成离线安装和恢复演练。获准进入后按目标环境预演（B0）、所选真实服务、业务试用的顺序验证。完整公司统一登录与权限双模式及其完整 mock 后续单独排。 [入网顺序](../planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做)
+- **最后进入内网，首发用本地账号密码（B4）**。先在外部完成本次已定 Phase 6 能力和原前端需求，所有公司内网依赖用 mock 验收，完成离线安装和恢复演练。获准进入后按目标环境预演（B0）、所选真实服务、业务试用的顺序验证。核心稳定后优先公司仅 SSO、本地授权。完整公司权限纳管及其模拟验收按条件另立项。 [入网顺序](../planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做)
 
 - **2026-11-20 全文审计余项续修**。工单图与保留元数据共同校验；关联选择按当前写资格，现行办理和协作写加入授权守卫。字典删除与字段引用互斥，组织删除保护其角色绑定。头像变更与 GC 保护历史引用，任务补偿隔离坏快照，前端区分故障和真实空态。[本轮范围与验收](reports/audit-remainder-2026-11-20.md)
 
@@ -79,7 +79,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 |------|------|------|-------------|
 | **认证** | 登录、双 Token（AT/RT）、RT 轮换、登出、黑名单、登录限流、会话吊销、改密 | ✅ Phase 1。C05 隔离候选的停用撤权、原操作核查及跨重启恢复通过联合验收 | `internal/service/auth_service.go`、`internal/service/session_security.go`；[隔离验收](reports/phase6-b2-stage3-acceptance-2026-11-22.md#实际结果) |
 | **用户** | CRUD、启用/禁用、密码修改/重置、角色绑定、组织绑定、超管保护；直接角色差量往返、任职属性保留及组织派生强权目标敏感写保护 | ✅ Phase 1；2026-11-17修复已合入main、适用CI通过；准确提交见本批后继记录，未部署 | `internal/service/user_service.go` 的 `ensureSensitiveCanManage`、`ensureTargetProtection`；`internal/service/iam_guard.go`；[本批报告](reports/audit-baseline-repair-2026-11-17.md) |
-| **公司 SSO、本地授权** | 公司认证后签发本地会话，本地继续管理角色、菜单及三层鉴权 | 📋 场景已纳入设计，运行接线和联调待实施 | [接入合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单) · [实施计划](../planning/uaa-sso-local-authorization-plan.md) |
+| **公司 SSO、本地授权** | 公司认证后签发本地会话，本地继续管理角色、菜单及三层鉴权 | 📋 已确认为核心稳定后的 UAA 研发主线；运行接线、联调和净估待交 | [接入合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单) · [实施计划](../planning/uaa-sso-local-authorization-plan.md) |
 | **角色** | CRUD、菜单分配、Casbin 策略同步、角色优先级（防提权） | ✅ Phase 1 | `internal/service/rbac_service.go` |
 | **组织** | 树形 CRUD、ltree路径、move、成员管理、owner/成员角色、虚拟组、scope；来源随实际父ID链暂停、细分粗门及身份子树级联 | ✅ Phase 1+2；MyOrg名册与写入保护见[本地验证](#2026-11-18-ui错对象写入修复) | `internal/service/org_service.go`、`org_delegation.go`；`internal/repository/org_authorization.go`、`org_repo.go` |
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
@@ -372,8 +372,8 @@ Core 短分支更新了触发 GO-2026-6974 的 OpenTelemetry 依赖，并将串�
 | 3 · 条件性 P1 · C03/F2b、TD/AD 的对象权与实际效果 | 维护资格、取消迟到副本、坏快照隔离、实际表补列和只读诊断已交。TR 通用路由和 AL 网关目前仍主要依路由授权及验签。受限对象的当下读/写、字段保护、效果未知和跨仓回执仍开放。 | 开放受限任务和清单前验不同组织/服务身份的路由及对象反例、所选写方重验、重启/重投零重复效果和 Q09 真实自动化批准。 |
 | 4 · 正式启用阻塞 · D15/MH/MR | 站内信、现有规则校验及偏好/发送记录失败可见已有窄修。`internal/pkg/channelsender/port.go` 的 `UIPStubSender.Send` 在 release 仍缺实际 HTTP 实现，现行 hook 还需持久应发与对账。 | 实测一条真实渠道、合法收件范围、受理与送达的证据、失败/未知恢复及备用处置。 |
 | G05/E09 与 Q12 目标发布 | 主仓及 TR 停机预算修复已交，AL 默认编排与目标组合停机仍需验证。已有代表性恢复和组件锁。 | 目标环境校验制品、安装/回滚、实际排空与接管、备份恢复和告警的可操作证据。 |
-| B4 后仅 SSO、本地授权 | 已补独立验收路径及分工，真实公司是否允许、协议及撤权机制待核。 | 本地核心稳定，合成登录及本地改权通过，内网实测身份绑定、会话失效、故障与退出并获批。 [验收计划](../planning/uaa-sso-local-authorization-plan.md) |
-| B5 企业纳管 | 公共合同和离线 mock 可复用，UAA 产品 P/R、真实接入与切换未交。 | 已验本地核心稳定，按 R01–R11 得到真实测试、批准映射与应急退出、正式切换和观察。 |
+| B4 后仅 SSO、本地授权 | 已选为 UAA 研发主线并拆分四项任务；独立净估和真实认证条件待核。 | 本地核心稳定，合成登录及本地改权通过，内网实测身份绑定、会话失效、故障与退出并获批。 [验收计划](../planning/uaa-sso-local-authorization-plan.md) |
+| B5 企业纳管（条件路线） | 公司要求纳管或所有者另行批准后立项；公共合同和离线 mock 可复用，产品 P/R、真实接入与切换未交。 | 已验本地核心稳定，按 R01–R11 得到真实测试、批准映射与应急退出、正式切换和观察。 |
 
 非阻塞后继按原归属承接。配置旧客户端稳定 ID 的强制窗口、菜单集合变更后恢复同值的检测、附件历史归属回填、真实情报接入时的桩结果区分、仅有 API 的工单模板发起体验继续开放。随启用画像确有消费时进入对应 U04/U06、C02、U05 或发布复核。 [余项交接](reports/audit-remainder-2026-11-20.md#保留依赖与验收条件)
 

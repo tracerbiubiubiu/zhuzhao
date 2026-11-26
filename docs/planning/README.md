@@ -37,8 +37,8 @@
 - 看余项归属、前置和验收：[全文审计剩余待修项续修计划](audit-remainder-2026-11-20.md)与[逐项交接](../review/reports/audit-remainder-2026-11-20.md)。
 - 看本轮存量问题的修复顺序和验收：[五仓审计整改实施计划](audit-repair-plan-2026-11-19.md)。
 - 想在开工前弄懂系统怎样工作，读[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先记录实际软件版本和功能，再选一件用户操作，从页面、权限检查到保存结果，分别讲清成功和被拒的情况。前三个交付小批再补使用故事和时间线，当前这些样例尚未整理。
-- 看[公司仅 SSO、本地授权分工与验收](uaa-sso-local-authorization-plan.md)，以及[认证与授权合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单)。
-- 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
+- 看 B4 稳定后的 UAA 研发主线：[公司仅 SSO、本地授权分工与验收](uaa-sso-local-authorization-plan.md)，以及[认证与授权合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单)。
+- 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地账密首发，后续优先仅 SSO，完整治理按条件立项。
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[机器复算与历史底账](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
 - 看存量修复的设计与当前承接：[2026-11-17修复计划](audit-repair-plan-2026-11-17.md) → [三仓合入及工作区收尾](../review/reports/audit-baseline-main-merge-2026-11-17.md)。目标账号保护等本批窄修已合main，未部署；完整IAM及其它后继仍按原包扣重，不叠加第二套总价。
@@ -49,7 +49,7 @@
 
 工作包/依赖归[planning-backlog.json](planning-backlog.json)，设计成熟度归[planning-design-status.json](planning-design-status.json)，政策状态归[planning-decisions.json](planning-decisions.json)，新增净估和扣重归[planning-scope-estimates.json](planning-scope-estimates.json)及[后继净估册](post-baseline-scope-estimates.json)。[闭环册](planning-closure.json)绑定冻结来源、动作和必要检查；[排程模型](execution-schedule-model.json)生成[排程JSON](execution-schedule.json)与人读摘要。不要手改生成数字或另建一套报价。
 
-UAA完整双模式的边界、公共实现和条件真实出口见[补估说明](uaa-implementation-estimate.md)/[数字册](uaa-implementation-estimate.json)、[真实条件](uaa-real-integration-conditions.md)/[条件册](uaa-real-integration-conditions.json)。公开[合成mock](../design/examples/uaa-reference-mock/README.md)用于复验合同，不能证明真实IdP/MQ已接通。新增日志审计与其他后继范围按净估册、实际选项及开工窗口纳入。
+仅 SSO 按[实施计划](uaa-sso-local-authorization-plan.md)独立净估。完整纳管的条件对照见[补估说明](uaa-implementation-estimate.md)/[数字册](uaa-implementation-estimate.json)、[真实条件](uaa-real-integration-conditions.md)/[条件册](uaa-real-integration-conditions.json)。公开[合成mock](../design/examples/uaa-reference-mock/README.md)用于复验合同，不能证明真实IdP/MQ已接通。新增日志审计与其他后继范围按净估册、实际选项及开工窗口纳入。
 
 来源追溯还可查[来源映射](planning-source-map.json)、[文档范围](planning-document-scope.json)、[能力连续性](roadmap-capability-continuity.md)/[逐项JSON](roadmap-capability-continuity.json)、[全会话再核](conversation-reaudit.md)/[矩阵](conversation-reaudit.json)、[关注点深度](focus-depth-verification.json)和[补研究窗口](research-supplement-status.json)。这些材料各有截止；有来源或排期不等于内容已审透。
 

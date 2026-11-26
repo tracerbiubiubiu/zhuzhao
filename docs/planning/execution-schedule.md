@@ -9,7 +9,7 @@
 原71父包完整承接，正式纳入CE五项后为76父包、17正式子出口、6项LS额外范围任务、13发布切片。
 LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父价；UAA C/P/R仍为独立增量。
 本页长程总量只覆盖76包既有计价基线，不是基础版B0/B1工期，也未合并F004新增未净估细项及OBS候选补充；后继范围见[补充册](post-baseline-scope-estimates.json)。
-首个本地正式核心获准先用本地账号，质量优先；1月试用是争取窗口，完整UAA P/R核心稳定后交。见[阶梯](../phase6/first-usable-release-plan.md)、[首版净估候选](local-core-release-estimate.json)和[变化对照](core-release-change-comparison.md)；本页长期DAG/日窗不是该首版顺序或日期承诺。
+B4 以本地账号密码首发，核心稳定后优先仅 SSO、本地授权。仅 SSO 工日待独立净估，未计入下列总量；完整 UAA P/R 工日与日窗仅供按条件立项时对照。见[首版阶梯](../phase6/first-usable-release-plan.md)与[仅 SSO 计划](uaa-sso-local-authorization-plan.md)。
 六项RP替换原基价，不能替换后又把净差额再加一次。
 数字源为[净增册](planning-scope-estimates.json)、[UAA估算](uaa-implementation-estimate.json)和[总账](planning-backlog.json)。
 切片、UAA接线及分阶段迁移配额见[排程模型](execution-schedule-model.json)；逐任务/资源槽/输入哈希见[JSON](execution-schedule.json)。
@@ -22,13 +22,13 @@ LS不新增父业务包，普通子出口与CE02内部迁移配额只分解父�
 G07A/G07B历史开发8–14日不再排；已完成的版本维护/合main不再派发或重复计价。原with/without reserve保留1–2日历史/条件容量对照，不是今日剩余交付承诺；本地Q2已扣除该维护信用。
 
 
-## 当前审计候选的累计工程量
+## 既有审计画像的累计工程量
 
 - 人工风险整改，52.5–88.5 日，保守 110.5 日。
 - 自动任务、清单和公共消息组合，83.0–134.0 日，保守 156 日。
 - 本地核心正式和稳定，95.5–153.0 日，保守 175 日。
-- 公共 UAA 双模式，126.5–203.0 日，保守 228 日。
-- 真实 UAA 纳管，139.5–225.0 日，保守 250 日。
+- 公共 UAA 治理（完整纳管条件对照），126.5–203.0 日，保守 228 日。
+- 真实 UAA 纳管（完整纳管条件对照），139.5–225.0 日，保守 250 日。
 
 日期、目标环境和外部等待另列。累计值有重叠，按[交付排期](intranet-uaa-release-schedule.md#2-最早与保守排期)阅读。
 
@@ -55,7 +55,7 @@ B0既有制品/mock技术预演见[首版阶梯](../phase6/first-usable-release-
 - [/must_have/2](first-usable-release-target.json#/must_have/2) 工单→taskrunner→原任务结果/activelist受权更新；目标`TD01, TD02, TD03, TD04, TD05, U4`。
 - [/must_have/3](first-usable-release-target.json#/must_have/3) activelist变化→获权TR后继任务；仅消息/刷新不代验；目标`AD01, AD02, AD03, AD04, U5`。
 - [/must_have/4](first-usable-release-target.json#/must_have/4) 公共HTTP sender及一条实际公司消息映射/实测，明确受理与送达；真实条件未知不代验；目标`MH01, MH02, MH03, MH04, MR1, U6`。
-- [/must_have/5](first-usable-release-target.json#/must_have/5) 完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；完整P/R后继；目标`S1, U1`。
+- [/must_have/5](first-usable-release-target.json#/must_have/5) 完整本地账号/角色/菜单管理及L1/L2/L3，必要UAA-C来源/稳定键/私有adapter接缝；后续公司认证和完整治理各按其启用窗口验收；目标`S1, U1`。
 - [/must_have/6](first-usable-release-target.json#/must_have/6) 当前授权/幂等/必要持久交接/失败结果/业务与审计历史/薄UI；目标`S1, S2, S3, TD05, MH02, MH04, U7`。
 - [/must_have/7](first-usable-release-target.json#/must_have/7) 核心公共合同与私有adapter隔离；旧参考adapter×新核心兼容验收；目标`S1, MH01, Q1`。
 - [/must_have/8](first-usable-release-target.json#/must_have/8) 首次本地正式生产适用制品/漏洞/运行配置/备份恢复/回退与故障接管证据；目标`Q1, Q2`。
@@ -188,17 +188,19 @@ L内部配额为P6.1 2–3、P6.3 3–4、P7 2–3、P9 2–3日，随IAM/组织
 D12只依CE02-D可靠入口，不反依I01；I01/I02/I03消费D12。CE03/04/05在P7，LS01–04在P6.3，LS05/06在P7。
 X01-C2–3/X01-B3–4/X01-H3–5仍合计原8–12日；B为配置后重启的受信接缝，H在S09/P7交完整管理增强。X02-Q独立依X01-C，不等D06/feed；X03只依U02、X01-B和X02-Q，资源授权不因此削弱。
 
-## UAA在现有13切片中的跨阶段硬出口
+<a id="uaa在现有13切片中的跨阶段硬出口"></a>
 
-完整UAA P/R的实际主研发产能投入须通过既有`local_core.delivery_exits.uaa_capacity_transition`，对应`Q12_core_stability`业务/工程证据，当前仍为`not_verified_by_schedule`。这不是新增有价任务，不要求整个P6.3完成，也不阻协议联系、条件索取和公共mock准备；下方长期日窗不是该门已通过的证明。
+## 后续 UAA 主线与完整纳管条件对照
+
+核心稳定后优先仅 SSO；实际主研发容量须先满足既有`local_core.delivery_exits.uaa_capacity_transition`，对应`Q12_core_stability`业务/工程证据，当前仍为`not_verified_by_schedule`。此门也适用于另行立项的完整纳管。证据门本身无新增工日，协议联系与合成准备可以先行。仅 SSO 净估独立于下方完整治理日窗。
 公共范围保留mock/contract，不因公司资源未到而阻断独立IAM和公共开发；真实成功不能由合成用例代验。
-UAA测试进入须P、测试应用/协议、网络和专属测试权限；R内部才产出影子差异、私有制品/runbook。
+仅 SSO 的真实测试按认证计划验收。完整纳管联调须 P、测试应用、协议、网络和专属测试权限；R 内产出影子差异与私有制品。
 正式apply前另需映射/影子差异批准、正式资源/窗口、应急退出与适用公共生产门；apply后观察才是R整体收口。
 不把R整体收口倒置为自己apply前提，也不编造pre_apply具体天数或正式激活日。
 真实专业数据源/第二类adapter、标准OAuth AS/主体桥、SOAR/知识/Agent等依赖各自提供方合同、身份与权限。
 外部排队、修复、审批和窗口等待不在工程日内；LS05/06已计有限公共实现，真实条件未具备时保持未激活。
 未选Office/供应商门户/草稿等整套产品、获准后三类导入/merge建设仍按净增册条件另估，不由E05/E10小包包干。
-独立首次生产仍验G05/E09适用硬项；公司UAA纳管模式加R.pre_apply。早期首发只前移硬证据，不机械等全部P7/I03。
+各形态正式启用均验证 G05/E09 适用硬项。仅 SSO 另验真实认证、会话和回退；完整纳管追加 R.pre_apply。
 详细条件和阶段见[真实接入条件](uaa-real-integration-conditions.json)；各提供方激活窗口由对应Owner确认。
 
 ## 全部正工时任务派发顺序

@@ -1,7 +1,7 @@
 {
   "date": "2026-11-15",
   "active_work_links": {
-    "scope": "核对日期：2026-11-20。覆盖当前修复交接及具名后继、首版本地核心与实际放行条件。[贯通排期](intranet-uaa-release-schedule.md)按交付顺序给出人工风险、工单引擎、完整 P6、跨仓和企业接管的细化验收及剩余工日。待确认表示缺少本切片的准确合同、交接或证据。",
+    "scope": "核对日期：2026-11-26。覆盖当前修复交接及具名后继、首版本地核心、后续仅 SSO 主线与完整纳管条件。[贯通排期](intranet-uaa-release-schedule.md)按交付顺序给出人工风险、工单引擎、完整 P6、跨仓和企业接管的细化验收及剩余工日。待确认表示缺少本切片的准确合同、交接或证据。",
     "groups": [
       {
         "title": "正在承接的修复及具名后继",
@@ -72,9 +72,15 @@
             "admission": "[B0 与真实业务试用](../phase6/first-usable-release-plan.md#41-b0预演与真实业务试用准入)、[本总账发布证据门](#按运行模式检查的发布证据门)，分开核合成预演、真实试用和所选生产形态，不能相互替代。"
           },
           {
-            "label": "E01-UAA-P/R（条件触发，非本地首版阻断项）",
+            "label": "公司仅 SSO、本地授权（核心稳定后的 UAA 研发主线）",
+            "contract": "[仅 SSO 接入合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单)",
+            "handoff": "[四项分工及交叉复核](uaa-sso-local-authorization-plan.md)。认证合同先行，Core 和最小 UI 并行，合成产品验收后再进真实试点。净估待定。",
+            "admission": "按[核心稳定出口](../phase6/first-usable-release-plan.md#42-核心稳定的过渡出口)转入主研发。公司允许后审批真实试点及正式启用，沿适用 C04/C05 与通用生产门，独立于完整投影、X02-F 和企业 MCP AS。"
+          },
+          {
+            "label": "E01-UAA-P/R（完整纳管条件路线）",
             "contract": "[UAA 治理合同](../design/uaa-governance-integration.md)",
-            "handoff": "[联调条件与提供方责任](uaa-real-integration-conditions.md)，实际人员、窗口、批准映射待确认",
+            "handoff": "仅在公司要求纳管或所有者另行批准后立项。[联调条件与提供方责任](uaa-real-integration-conditions.md)按真实映射和窗口取证",
             "admission": "[运行模式证据门](#按运行模式检查的发布证据门)与[条件册](uaa-real-integration-conditions.json)：R 切换前查 `pre_apply`，切换后观察另记；合成 mock 不替代真实复验。"
           }
         ]
@@ -1480,11 +1486,11 @@
         "A01",
         "I02"
       ],
-      "acceptance": "其他provider自P6.1逐项列合同/owner/私有connector/真实子窗，P7至少一条real纵切；UAA另经E01-UAA-C/P/R，P6.0先定合同、P6.1公共port和mock、真实接入自P6.1可前移且公司UAA纳管企业模式首次正式激活前必过，不能由风险或HR的real替代；长期保留mock。",
+      "acceptance": "其他provider自P6.1逐项列合同/owner/私有connector/真实子窗，P7至少一条real纵切；E01-UAA-C保留公共接缝；核心稳定后优先仅 SSO、本地授权，认证产品与真实试点各自验收；选中完整纳管后再启动 E01-UAA-P/R，真实接管须在 B5 正式激活前通过。长期保留合成验收。",
       "state": "planned_not_implemented",
-      "decision_due": "E01-UAA-C在P6.0；P在P6.1；R自P6.1具备合同后启动且公司UAA纳管企业模式首次正式激活前；其他provider P6.1出口起逐项核实/P7复核",
+      "decision_due": "E01-UAA-C在P6.0；核心稳定后优先仅 SSO。P/R 原阶段归属用于估算对照，立项由完整纳管触发；其他provider P6.1出口起逐项核实/P7复核",
       "disposition": "按明确窗口完成接入/建设/退出裁决",
-      "estimate_scope": "原3–6日保留其他provider基础验证，UAA-C/P/R是本轮单列增量：C2–3、P25–39、R13–22工程日；不含外部等待。P含后端16–25、四页最小UI5–8、公开运维2–3、CI1–2和质量固定1；R含后端10–17、真实UI1–2、私有运维2–3。依照唯一估算注册表扣除C04/D06/X01-C/X02-F/G03/G04/U06/G05/E09共有范围，不把原15–24历史估算再次相加。",
+      "estimate_scope": "原3–6日保留其他provider基础验证，UAA-C/P/R是本轮单列增量：C2–3、P25–39、R13–22工程日；不含外部等待。仅 SSO 独立净估，完整纳管基线中的可复用认证只计一次。P含后端16–25、四页最小UI5–8、公开运维2–3、CI1–2和质量固定1；R含后端10–17、真实UI1–2、私有运维2–3。依照唯一估算注册表扣除C04/D06/X01-C/X02-F/G03/G04/U06/G05/E09共有范围，不把原15–24历史估算再次相加。",
       "decision_inputs": "现有实现、业务场景和提供方契约/供给证据；不以前述实施依赖全部完成作为早期决策前提",
       "delivery_rule": "其他provider调查不等于接入完成；UAA合同、公共mock及私有真实接入分别验收，R是公司UAA纳管企业模式首次正式激活硬出口，可提前于P7，不被其他real替代。真实未知字段只阻塞对应real激活，mock不删；父E01的P7标签不能机械推迟其跨阶段子出口。",
       "design_refs": [
@@ -2390,6 +2396,8 @@
     "scoped_milestone_dependencies": "仅约束scope所述部分；不阻塞同包无关mock业务。不得据此绕过对应真实能力激活或上线门。"
   },
   "uaa_estimate_completeness": {
+    "current_scope_note": "完整纳管已计价画像，当前仅 SSO 研发主线另做净估",
+    "selected_unpriced_route_ref": "docs/planning/planning-backlog.json#/release_gates/company_sso_local_authorization",
     "complete": true,
     "scope": "本轮UAA有限接入画像的工程投入已补估，非无限provider/协议/远期选配总价或日期承诺",
     "estimate_registry_ref": "docs/planning/uaa-implementation-estimate.json",
@@ -2417,6 +2425,7 @@
     "common_production": {
       "applies_to": [
         "正式独立部署",
+        "公司仅 SSO、本地授权正式启用",
         "公司UAA纳管企业模式正式部署"
       ],
       "scope_carriers": [
@@ -2435,8 +2444,35 @@
       "state": "planned_evidence_gate_not_accepted",
       "estimate_rule": "复用G05/E09已列机制及接线范围，仅前移首发适用硬项并拆分复估，不双算整包或自动扩建。"
     },
+    "company_sso_local_authorization": {
+      "applies_to": "公司 UAA 仅认证、本地授权的试点与正式启用",
+      "development_priority": "preferred_after_local_core_stability",
+      "plan_ref": "docs/planning/uaa-sso-local-authorization-plan.md",
+      "capacity_gate_ref": "docs/phase6/first-usable-release-plan.md#42-核心稳定的过渡出口",
+      "required_local_outcomes": [
+        "E01-UAA-C 公共接缝",
+        "C05 适用的本地会话及持久撤权",
+        "C04 适用的当前本地授权"
+      ],
+      "requires_common_production_gate": true,
+      "trial_requires": [
+        "公司允许仅接认证",
+        "合成 IdP、Core 和 UI 验收",
+        "测试资源及批准试点、撤权时效、应急与退出"
+      ],
+      "activation_requires": [
+        "通过真实试点和适用生产门",
+        "所有者另行批准正式范围与窗口"
+      ],
+      "state": "selected_delivery_direction_pending_implementation_and_real_evidence",
+      "estimate_status": "pending_net_estimate",
+      "engineering_days": null,
+      "included_in_priced_schedule_baseline": false,
+      "reuse_rule": "仅 SSO 与条件完整纳管共用的认证、身份绑定、最小 UI 与运维成果按实际可验证的复用扣重一次。"
+    },
     "company_uaa_activation": {
       "applies_to": "公司UAA纳管企业模式首次正式激活，不按所在网络一刀切",
+      "project_trigger": "公司要求完整纳管或所有者另行批准纳管范围；真实启用遵公司政策和完整 B5 门。",
       "additional_required_milestone": "E01-UAA-R",
       "requires_common_production_gate": true,
       "independent_mode_rule": "完整独立部署不等待UAA-R/企业凭据或E01父包全部完成；企业接入待办仍保留，不能标成已实现或取消。",
@@ -2777,7 +2813,7 @@
     }
   ],
   "dated_core_release_target_ref": "docs/planning/first-usable-release-target.json",
-  "dated_core_release_boundary": "长期76包保留；当前首版本地正式核心含风险/工单/TR/AL/真实HTTP消息及完整本地三层，UAA-C接缝先留、完整P/R后继；已有联合净估候选但未冻结派发，排期和日期仅参考，不强迫按期交不可用版本",
+  "dated_core_release_boundary": "长期76包保留；当前首版本地正式核心含风险/工单/TR/AL/真实HTTP消息及完整本地三层，先交 UAA-C 接缝，核心稳定后优先仅 SSO、完整 P/R 按条件立项。已有联合净估候选但未冻结派发，排期和日期仅参考，不强迫按期交不可用版本",
   "mainline_sync_followup_ref": "docs/planning/planning-followups.json#F014-mainline-plan-and-validated-upgrade-sync",
   "hierarchy_permission_supplement_ref": "docs/design/rbac-inheritance-and-cascade.md#8-层级关系场景合同与实施归属2026-11-15候选",
   "authorization_gap_closure": {
