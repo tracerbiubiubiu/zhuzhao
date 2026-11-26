@@ -88,6 +88,9 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 				return err
 			}
 			committed = ticketFromEvidenceReceipt(ticket.ID, ref, receipt)
+			if ticket.Status != req.To {
+				return s.stageB3Actions(ctx, tx, tm, committed, cmd, actorUserID)
+			}
 			return nil
 		}
 		sm, err := FromTicketType(ttype)
@@ -197,6 +200,9 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 	tm, err := s.checkTransitionCondition(ctx, ticket, toStatus, actorUserID, ttype)
 	if err != nil {
 		return nil, err
+	}
+	if hasB3Actions(tm) {
+		return nil, errcode.New(errcode.ErrConflict.Code, "此转换需带工单版本和幂等键")
 	}
 	if err := rejectLegacyEvidenceTransition(ttype.TransitionMeta, ticket.Status, toStatus, tm); err != nil {
 		return nil, err

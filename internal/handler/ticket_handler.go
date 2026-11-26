@@ -213,7 +213,7 @@ func (h *TicketHandler) Create(c *gin.Context) {
 //	@Tags		ticket
 //	@Produce	json
 //	@Param		id	path		int	true	"工单 ID"
-//	@Success	200	{object}	response.Response
+//	@Success	200	{object}	response.Response{data=model.Ticket}
 //	@Router		/api/v1/tickets/{id} [get]
 func (h *TicketHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

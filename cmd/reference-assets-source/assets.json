@@ -1,0 +1,5 @@
+[
+  {"device_id":"93001","name":"Synthetic asset A","owner_org_ref":"1","category":"reference","status":"healthy","observed_at":"2026-11-26T00:00:00Z","stale":false},
+  {"device_id":"93002","name":"Synthetic asset B","owner_org_ref":"1","category":"reference","status":"unknown","observed_at":null,"stale":false},
+  {"device_id":"93003","name":"Synthetic asset C","owner_org_ref":"2","category":"reference","status":"down","observed_at":"2026-11-26T00:00:00Z","stale":true}
+]

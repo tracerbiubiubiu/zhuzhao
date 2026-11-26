@@ -10,8 +10,10 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
+	"github.com/tracerbiubiubiu/zhuzhao/pkg/referencequery"
 )
 
 // RequestID 生成或传递 trace ID，串联 slog 日志。
@@ -102,7 +104,7 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		c.Next()
 
 		query := ""
-		if !isRiskLogRoute(c) {
+		if !isMetadataOnlyLogRoute(c) {
 			query = truncStr(c.Request.URL.RawQuery, 4096)
 		}
 
@@ -129,6 +131,20 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 
 func isRiskLogRoute(c *gin.Context) bool {
 	return audit.IsRiskRoute(c.FullPath()) || audit.IsRiskRoute(c.Request.URL.Path)
+}
+
+func isMetadataOnlyLogRoute(c *gin.Context) bool {
+	return isRiskLogRoute(c) || isReferenceAssetsLogPath(c.FullPath()) || isReferenceAssetsLogPath(c.Request.URL.Path)
+}
+
+func isReferenceAssetsLogPath(path string) bool {
+	switch path {
+	case referencequery.QueryPath, referencequery.AdmissionPath, config.ReferenceAssetsPage,
+		config.ReferenceAssetsPage + "/app.js", config.ReferenceAssetsPage + "/app.css":
+		return true
+	default:
+		return false
+	}
 }
 
 // operationLogPath omits user-controlled path arguments on risk routes.

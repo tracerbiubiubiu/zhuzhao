@@ -249,6 +249,9 @@ func JWT(jwtManager *jwt.Manager, rdb *redis.Client, pats PATGetter, opts ...JWT
 		c.Set("username", claims.Username)
 		c.Set("jti", claims.JTI)
 		c.Set("must_change_password", claims.MustChangePassword)
+		if o.requireAccountSnapshot && claims.ExpiresAt != nil {
+			c.Set(verifiedReadCredential, ReadCredential{UserID: claims.UserID, Epoch: sessionEpoch, JTI: claims.JTI, ExpiresAt: claims.ExpiresAt.Time})
+		}
 
 		c.Next()
 	}
@@ -288,39 +291,60 @@ func positiveSessionEpoch(raw string) (int64, error) {
 }
 
 func dbSessionProjectionReady(c *gin.Context, rdb *redis.Client, claims *jwt.AccessClaims, snap AccountSnapshot) bool {
-	if rdb == nil {
-		response.ServiceUnavailable(c)
-		c.Abort()
-		return false
-	}
-	pipe := rdb.Pipeline()
-	blacklist := pipe.Exists(c, "blacklist:at:"+claims.JTI)
-	epoch := pipe.Get(c, fmt.Sprintf("user:session_epoch:db1:%d", claims.UserID))
-	disabled := pipe.Exists(c, fmt.Sprintf("user:session_disabled:db1:%d", claims.UserID))
-	if _, err := pipe.Exec(c); err != nil && !errors.Is(err, redis.Nil) {
-		response.ServiceUnavailable(c)
-		c.Abort()
-		return false
-	}
-	if revoked, err := blacklist.Result(); err != nil {
-		response.ServiceUnavailable(c)
-		c.Abort()
-		return false
-	} else if revoked > 0 {
+	credential := ReadCredential{UserID: claims.UserID, Epoch: snap.SessionEpoch, JTI: claims.JTI}
+	revoked, ready := CheckReadSessionProjection(c.Request.Context(), rdb, credential, snap.ProjectionEpoch)
+	if revoked {
 		response.UnauthorizedError(c, errcode.ErrTokenInvalid)
 		c.Abort()
 		return false
 	}
+	if !ready {
+		response.ServiceUnavailable(c)
+		c.Abort()
+	}
+	return ready
+}
+
+const verifiedReadCredential = "verifiedReadCredential"
+
+// ReadCredential contains the verified session facts needed by a bounded read.
+// It carries neither the bearer token nor the user's password.
+type ReadCredential struct {
+	UserID    int64
+	Epoch     int64
+	JTI       string
+	ExpiresAt time.Time
+}
+
+func AuthenticatedReadCredential(c *gin.Context) (ReadCredential, bool) {
+	value, _ := c.Get(verifiedReadCredential)
+	credential, ok := value.(ReadCredential)
+	return credential, ok
+}
+
+// CheckReadSessionProjection reuses the normal login session projection checks
+// for current authorization of an already authenticated read.
+func CheckReadSessionProjection(ctx context.Context, rdb *redis.Client, credential ReadCredential, projectionEpoch int64) (revoked, ready bool) {
+	if rdb == nil {
+		return false, false
+	}
+	pipe := rdb.Pipeline()
+	blacklist := pipe.Exists(ctx, "blacklist:at:"+credential.JTI)
+	epoch := pipe.Get(ctx, fmt.Sprintf("user:session_epoch:db1:%d", credential.UserID))
+	disabled := pipe.Exists(ctx, fmt.Sprintf("user:session_disabled:db1:%d", credential.UserID))
+	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
+		return false, false
+	}
+	if revoked, err := blacklist.Result(); err != nil {
+		return false, false
+	} else if revoked > 0 {
+		return true, false
+	}
 	raw, err := epoch.Result()
 	projected, parseErr := positiveSessionEpoch(raw)
 	marker, markerErr := disabled.Result()
-	if err != nil || parseErr != nil || markerErr != nil || marker != 0 ||
-		snap.ProjectionEpoch != snap.SessionEpoch || projected != snap.SessionEpoch {
-		response.ServiceUnavailable(c)
-		c.Abort()
-		return false
-	}
-	return true
+	return false, err == nil && parseErr == nil && markerErr == nil && marker == 0 &&
+		projectionEpoch == credential.Epoch && projected == credential.Epoch
 }
 
 func hasMixedAuth(c *gin.Context) bool {

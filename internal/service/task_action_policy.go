@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
@@ -246,6 +247,9 @@ func sameMaintenanceFact(a, b *repository.MaintenanceAdmission) bool {
 	return err == nil && equal && a.Action == b.Action && a.Origin == b.Origin && a.PrincipalUserID == b.PrincipalUserID && a.JobID == b.JobID && a.DefinitionSHA256 == b.DefinitionSHA256 && a.RetentionDays == b.RetentionDays && a.ApprovalID == b.ApprovalID && a.Reason == b.Reason && sameTime(a.ValidFrom, b.ValidFrom) && sameTime(a.ValidUntil, b.ValidUntil)
 }
 func (p *TaskActionPolicy) prepareTask(ctx context.Context, id, action string, params json.RawMessage) error {
+	if b3protocol.IsAction(action) {
+		return errcode.ErrForbidden
+	}
 	if action != maintenanceAction {
 		return nil
 	}
@@ -263,6 +267,9 @@ func (p *TaskActionPolicy) prepareTask(ctx context.Context, id, action string, p
 	return nil
 }
 func (p *TaskActionPolicy) authorizeAction(ctx context.Context, action string, params json.RawMessage) error {
+	if b3protocol.IsAction(action) {
+		return errcode.ErrForbidden
+	}
 	if action != maintenanceAction {
 		return nil
 	}
@@ -274,6 +281,9 @@ func (p *TaskActionPolicy) authorizeAction(ctx context.Context, action string, p
 // rows remain denied. Fixed cron facts require an actual TR run, a reviewed exact
 // definition, and enqueue after the configuration's approval window began.
 func (p *TaskActionPolicy) AuthorizeCallback(ctx context.Context, taskID, action string, params json.RawMessage) (context.Context, error) {
+	if b3protocol.IsAction(action) {
+		return ctx, errcode.ErrForbidden
+	}
 	if action != maintenanceAction {
 		return ctx, nil
 	}
@@ -374,6 +384,9 @@ func MaintenanceDefinitionDigest(raw json.RawMessage) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 func (p *TaskActionPolicy) authorizeDefinition(ctx context.Context, d taskDefinition) error {
+	if b3protocol.IsAction(d.ActionID) {
+		return errcode.ErrForbidden
+	}
 	if d.ActionID != maintenanceAction {
 		return nil
 	}

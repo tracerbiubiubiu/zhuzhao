@@ -12,6 +12,10 @@
 
 ## 1. 当前代码、变化及分期
 
+2026-11-26 第 12–14 项候选实现按[本批计划](../planning/phase6-steps12-14-b3-plan.md)追踪。以下存量接线描述指所核对的开工基线，运行验收以固定候选和隔离证据为准。
+
+候选实现将原已发布流转边的职责条件随任务保存在回执中。任务执行会按当前处理人、创建人、组织职责和有效角色复核原条件。工单推进后，仍具资格的操作者可完成原任务，结果仍归原修订。ActiveList 侧的拒绝语义和元数据范围见 [B3 受控命令](../../../activelist/docs/api/contract.md#b3-受控活动清单命令)。
+
 实际代码锚点均按文件与符号定位；兄弟仓路径相对于各自仓根：
 
 - 主仓`internal/service/ticket/actions_builtin.go`的`SpawnTaskAction.Execute`调用Submit且丢弃任务响应；`internal/service/taskrunner_service.go`的`TaskrunnerService.Submit/Trigger`先调用TR再记本地凭证。目标是先持久意图/快照，保存原节点与operation，再提交TR，消除“票显示已安排但无可靠交接”的窗口。
@@ -71,6 +75,8 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→组织/所钉定义→group/family稳定键→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
 
+普通任务详情、取消和重试以 Taskrunner 保存的任务号和动作为准。三种 B3 动作经受控入口访问，使用相同编号前缀的普通任务仍可经原入口访问。
+
 存量兼容：旧job_submissions/status/message_log列继续可读；无法证明的历史成功只标legacy_observed。切换按consumer停旧Hook/旧直接spawn路径后启新意图，影子阶段只产不投，避免双发。回退先停新副作用，兼容reader/对账worker保留到在途收敛；不down删除unknown/receipt或正式历史，不让不理解新状态的旧worker接手自动执行。
 
 ## 4. 工单节点→TR→结果与AL写
@@ -91,7 +97,7 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 AL验证可信服务、claims与command绑定及字段子集后进入同库事务；检查generation、CAS、schema、唯一值，保存数据/源事实/receipt。合法同值patch可回noop receipt，不增加revision/cursor、不触发后继。代际变化/行版本冲突409且无效果，不能自动读取新version覆盖用户修改。TR绝不直写AL库。
 
-发送后超时进入unknown，按原operation查询AL效果收据；查到succeeded只补投影。查询空结果若不能证明旧请求已不可能迟到生效，继续unknown；不基于一次not_found盲重发非幂等动作。新worker持新fence只能更新自己认领阶段，旧writer无权覆盖新状态；AL效果唯一键及版本条件才是效果防重底线，租约不是exactly-once。
+发送后超时进入unknown，按原operation查询AL效果收据；查到succeeded只补投影。查询空结果若不能证明旧请求已不可能迟到生效，继续unknown；不基于一次not_found盲重发非幂等动作。队列取消后，已发送的写仍按原操作号查回执。命令到期后只能查询，查无回执时保留结果待核实。新worker持新fence只能更新自己认领阶段，旧writer无权覆盖新状态；AL效果唯一键及版本条件才是效果防重底线，租约不是exactly-once。
 
 core结果投影验证已登记来源、operation/input_hash、原ticket/node_run/definition_hash，CAS receipt_revision后保存。投影失败只重放投影，不重做已成功效果；原节点已取消/流程换版，迟到结果只挂原运行视图及历史。首版仅展示有界摘要/artifact引用，**不自动改票状态/关风险**；后续字段写回另验字段ACL/CAS和发布映射。artifact下载每次验当前资源读权，临时URL不作长期权限凭证。
 

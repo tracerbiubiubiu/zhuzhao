@@ -15,14 +15,16 @@ import (
 
 // Config 全局配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Casbin   CasbinConfig   `mapstructure:"casbin"`
-	Log      LogConfig      `mapstructure:"log"`
-	Audit    AuditConfig    `mapstructure:"audit"`
+	ReferenceAssets ReferenceAssetsConfig `mapstructure:"-"`
+	Server          ServerConfig          `mapstructure:"server"`
+	Database        DatabaseConfig        `mapstructure:"database"`
+	Redis           RedisConfig           `mapstructure:"redis"`
+	JWT             JWTConfig             `mapstructure:"jwt"`
+	Casbin          CasbinConfig          `mapstructure:"casbin"`
+	Log             LogConfig             `mapstructure:"log"`
+	Audit           AuditConfig           `mapstructure:"audit"`
 
+	B3                     B3Config                 `mapstructure:"b3"`
 	InternalJobs           InternalJobsConfig       `mapstructure:"internal_jobs"`
 	RiskIngest             RiskIngestConfig         `mapstructure:"risk_ingest"`
 	RiskAssetDirectory     RiskAssetDirectoryConfig `mapstructure:"risk_asset_directory"`
@@ -332,6 +334,8 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
+	viper.BindEnv("b3.al_command_sk", "B3_AL_COMMAND_SK")
+	viper.BindEnv("b3.source_sk", "B3_SOURCE_SK")
 	viper.BindEnv("risk_ingest.enabled", "RISK_INGEST_ENABLED")
 	viper.BindEnv("risk_ingest.source_ref", "RISK_INGEST_SOURCE_REF")
 	viper.BindEnv("risk_ingest.ak", "RISK_INGEST_AK")
@@ -399,6 +403,9 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	if err := loadReferenceAssets(path, &cfg.ReferenceAssets); err != nil {
+		return nil, err
 	}
 	// slice env 后处理：BindEnv 命中时 Unmarshal 拿到整串，按逗号拆为网段列表
 	if raw := viper.GetString("server.trusted_proxies"); raw != "" {

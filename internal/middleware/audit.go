@@ -38,15 +38,15 @@ type AuditLogEntry struct {
 }
 
 // AuditLog 操作日志中间件（同步写入 DB）。
-// 风险 API 只记操作元数据，审计权限不能代替风险对象读取权限。
+// 风险及参考资产 API 只记操作元数据，审计权限不能代替对象读取权限。
 // skipBodyPrefixes：命中前缀的路径跳过 body 捕获（审计行仍写、RequestBody 为空）——
 // 批次 B 反代路由（大文件/流式 body，如 /al 导入）与二进制载荷场景使用。
 func AuditLog(auditLogger AuditLogger, skipBodyPrefixes ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// 风险和反代接口在下游处理前就关闭正文捕获，覆盖拒绝及成功响应。
-		skipBody := isRiskLogRoute(c)
+		// 受保护读取和反代接口在下游处理前就关闭正文捕获，覆盖拒绝及成功响应。
+		skipBody := isMetadataOnlyLogRoute(c)
 		for _, p := range skipBodyPrefixes {
 			if p != "" && strings.HasPrefix(c.Request.URL.Path, p+"/") {
 				skipBody = true

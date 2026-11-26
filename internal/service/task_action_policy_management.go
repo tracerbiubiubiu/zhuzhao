@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
+
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
-	"strings"
 )
 
 // objectFields validates the complete JSON before any raw-field merge. This
@@ -122,18 +124,34 @@ func (s *TaskrunnerService) updateJobChecked(ctx context.Context, id string, bod
 	return s.client.UpdateJob(ctx, id, raw, taskCreator(ctx))
 }
 func strQuote(value string) []byte { raw, _ := json.Marshal(value); return raw }
-func (s *TaskrunnerService) authorizeExistingTask(ctx context.Context, id string, retry bool) error {
+
+type gatewayTaskIdentity struct {
+	TaskID string `json:"task_id"`
+	Action string `json:"action"`
+	Params string `json:"params"`
+}
+
+// The Taskrunner ledger binds the task ID to an immutable action. Ordinary
+// callers have always been able to choose their own IDs, including prefixes.
+func (s *TaskrunnerService) readGatewayTask(ctx context.Context, id string) (json.RawMessage, gatewayTaskIdentity, error) {
+	var task gatewayTaskIdentity
 	raw, err := s.client.GetTask(ctx, id)
 	if err != nil {
-		return err
-	}
-	var task struct {
-		TaskID string `json:"task_id"`
-		Action string `json:"action"`
-		Params string `json:"params"`
+		return nil, task, err
 	}
 	if json.Unmarshal(raw, &task) != nil || task.TaskID != id || task.Action == "" {
-		return errcode.ErrServiceUnavailable
+		return nil, task, errcode.ErrServiceUnavailable
+	}
+	if s.hideB3 && b3protocol.IsAction(task.Action) {
+		return nil, task, errcode.ErrNotFound
+	}
+	return raw, task, nil
+}
+
+func (s *TaskrunnerService) authorizeExistingTask(ctx context.Context, id string, retry bool) error {
+	_, task, err := s.readGatewayTask(ctx, id)
+	if err != nil {
+		return err
 	}
 	if task.Action != maintenanceAction {
 		return nil

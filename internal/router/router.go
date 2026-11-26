@@ -22,18 +22,22 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/pkg/referencequery"
 )
 
 // Deps 路由依赖
 type Deps struct {
-	AuthHandler         *handler.AuthHandler
-	UserHandler         *handler.UserHandler
-	RoleHandler         *handler.RoleHandler
-	OrgHandler          *handler.OrgHandler
-	MenuHandler         *handler.MenuHandler
-	AuditHandler        *handler.AuditHandler
-	TicketHandler       *handler.TicketHandler
-	TicketPeopleHandler *handler.TicketPeopleHandler
+	ReferenceAssetsHandler *handler.ReferenceAssetsHandler
+	AuthHandler            *handler.AuthHandler
+	UserHandler            *handler.UserHandler
+	RoleHandler            *handler.RoleHandler
+	OrgHandler             *handler.OrgHandler
+	MenuHandler            *handler.MenuHandler
+	AuditHandler           *handler.AuditHandler
+	TicketHandler          *handler.TicketHandler
+	TicketPeopleHandler    *handler.TicketPeopleHandler
+	B3Handler              *handler.B3Handler
+	B3                     config.B3Config
 
 	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
 	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
@@ -183,10 +187,18 @@ func New(deps Deps) *gin.Engine {
 		verifier := &aksk.Verifier{Keys: map[string][]byte{
 			deps.InternalJobs.AK: []byte(deps.InternalJobs.SK),
 		}}
-		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
+		internalGroup := r.Group(config.InternalJobsPrefix, aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
+		if deps.B3Handler != nil {
+			internalGroup.POST(config.B3TaskStatusRoute, deps.B3Handler.Status)
+		}
 		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
 		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
+	}
+
+	if deps.B3Handler != nil {
+		verifier := &aksk.Verifier{Keys: map[string][]byte{deps.B3.SourceAK: []byte(deps.B3.SourceSK)}}
+		r.POST(config.B3SourcePushPath, aksk.GinMiddleware(verifier, response.AKSKFail()), deps.B3Handler.Push)
 	}
 
 	// 存量协议兼容层（2026-10-14 预接线，翻案决策见 phase1/02-auth §存量迁移
@@ -194,6 +206,12 @@ func New(deps Deps) *gin.Engine {
 	//（可测——开关/验签/归因的装配层断言见 compat_mount_test.go）。
 	mountCompatGroup(r, deps.CompatAKSK)
 	mountRiskFeed(r, deps.RiskIngest, deps.RiskHandler.ReportFromSource)
+	if deps.ReferenceAssetsHandler != nil {
+		r.POST(referencequery.AdmissionPath, deps.ReferenceAssetsHandler.Admit)
+		r.GET(config.ReferenceAssetsPage, handler.ReferenceAssetsPage)
+		r.GET(config.ReferenceAssetsPage+"/app.js", handler.ReferenceAssetsPageScript)
+		r.GET(config.ReferenceAssetsPage+"/app.css", handler.ReferenceAssetsPageStyles)
+	}
 	accountSnapshots := deps.AccountSnapshots
 	if accountSnapshots == nil {
 		accountSnapshots = accountSnapshotSource{lookup: repository.NewAccountSecurityLookup(deps.DBPool)}
@@ -221,6 +239,11 @@ func New(deps Deps) *gin.Engine {
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
+		if deps.ReferenceAssetsHandler != nil {
+			// This exact route uses the separately registered profile's current
+			// role grant. It is never registered as a self-service route.
+			authed.GET("/extensions/reference-assets", deps.ReferenceAssetsHandler.Query)
+		}
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
 			// 注意：SelfService 必须先于 CasbinAuth 注册（router_test.go 行为测试守护此顺序）
