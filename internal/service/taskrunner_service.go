@@ -5,16 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"log/slog"
 	"net/url"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -182,13 +181,14 @@ func (s *TaskrunnerService) HideB3Runs() { s.hideB3 = true }
 // ---- 透传查询/管理（无本地状态；权限码在路由层） ----
 
 func (s *TaskrunnerService) GetTask(ctx context.Context, taskID string) (json.RawMessage, error) {
-	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
-		return nil, errcode.ErrNotFound
-	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
-	return s.client.GetTask(ctx, taskID)
+	if !s.hideB3 {
+		return s.client.GetTask(ctx, taskID)
+	}
+	raw, _, err := s.readGatewayTask(ctx, taskID)
+	return raw, err
 }
 
 func (s *TaskrunnerService) ListRuns(ctx context.Context, query url.Values) (json.RawMessage, error) {
@@ -223,9 +223,6 @@ func (s *TaskrunnerService) UpdateJob(ctx context.Context, jobID string, body js
 }
 
 func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
-	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
-		return nil, errcode.ErrNotFound
-	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
@@ -236,9 +233,6 @@ func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string
 }
 
 func (s *TaskrunnerService) RetryTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
-	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
-		return nil, errcode.ErrNotFound
-	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}

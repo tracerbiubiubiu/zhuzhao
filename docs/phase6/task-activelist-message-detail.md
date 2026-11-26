@@ -75,6 +75,8 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 锁序只在各自本库成立：核心业务提交遵共同合同的授权守卫→组织/所钉定义→group/family稳定键→风险（ID升序）→工单（ID升序）→关联/node顺序，只取得本次实际需要的锁，最后条件写operation/执行fence、结果/intent。worker/poller的claim属于**先行独立短事务**，提交后才进入业务事务，不带claim行锁去拿跨域锁或等网络；效果事务仍须锁内复验当前generation/权限并条件写执行行，旧fence不符整笔回滚，不能把一次claim当永久执行资格。认领方与效果事务最终竞争同执行行，发现持久终态receipt不得另做效果。AL按本库既有receipt reservation→metadata/stream head→document锁序。网络调用一律在业务锁外，返回后以generation CAS记账。并发撤权与本地效果提交竞争相同授权守卫；跨AL网络仅承诺发送前重验＋短时准入的有界延迟，不能宣称分布式瞬时撤权。
 
+普通任务详情、取消和重试以 Taskrunner 保存的任务号和动作为准。三种 B3 动作经受控入口访问，使用相同编号前缀的普通任务仍可经原入口访问。
+
 存量兼容：旧job_submissions/status/message_log列继续可读；无法证明的历史成功只标legacy_observed。切换按consumer停旧Hook/旧直接spawn路径后启新意图，影子阶段只产不投，避免双发。回退先停新副作用，兼容reader/对账worker保留到在途收敛；不down删除unknown/receipt或正式历史，不让不理解新状态的旧worker接手自动执行。
 
 ## 4. 工单节点→TR→结果与AL写
