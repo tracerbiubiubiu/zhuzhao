@@ -1909,6 +1909,39 @@ definitions:
       version:
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure:
+    properties:
+      reason:
+        type: string
+      retry_after_ms:
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.QueryPage:
+    properties:
+      complete:
+        type: boolean
+      fetched_at:
+        type: string
+      items:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      mapping_version:
+        type: string
+      next_cursor:
+        type: string
+      observed_at:
+        type: string
+      source_id:
+        type: string
+      source_revision:
+        type: string
+      warnings:
+        items:
+          type: string
+        type: array
+    type: object
   internal_handler.DeleteAttachmentInput:
     properties:
       object_key:
@@ -2653,6 +2686,71 @@ paths:
       summary: 更新字典类型，可省略备注
       tags:
       - dictionary
+  /api/v1/extensions/reference-assets:
+    get:
+      operationId: referenceAssetListV1
+      parameters:
+      - collectionFormat: multi
+        description: Organization filter
+        in: query
+        items:
+          type: string
+        name: owner_org_refs
+        type: array
+      - collectionFormat: multi
+        description: Device status filter
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - collectionFormat: multi
+        description: Fields to return
+        in: query
+        items:
+          type: string
+        name: requested_fields
+        type: array
+      - description: Page size (1 to 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor for the same query and session
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.QueryPage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure'
+      security:
+      - BearerAuth: []
+      summary: Query the reference asset directory
+      tags:
+      - reference-assets
   /api/v1/files/{key}:
     get:
       description: '定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即
@@ -5787,4 +5885,9 @@ paths:
       summary: 预置动作回调（taskrunner → zhuzhao，AK/SK 验签内网端点）
       tags:
       - internal-jobs
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

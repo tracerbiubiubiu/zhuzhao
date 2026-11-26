@@ -24,6 +24,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/tracerbiubiubiu/zhuzhao/pkg/referencequery"
 )
 
 // CatalogGap 单条对账缺口。
@@ -161,6 +162,14 @@ func AuditRouteCatalog(routes gin.RoutesInfo, bound map[string]bool, gatewayPref
 			continue // 探针/internal 等，非用户面
 		}
 		if exemptPath(rt.Method, rt.Path) {
+			continue
+		}
+		if rt.Method == "GET" && rt.Path == referencequery.QueryPath {
+			// A reviewed profile owns this route and checks live role grants.
+			// A database binding here would have another policy owner.
+			if bound[key] {
+				gaps = append(gaps, CatalogGap{Kind: "conflicting_binding", Method: rt.Method, Path: rt.Path})
+			}
 			continue
 		}
 		if underGatewayPrefix(rt.Path, gatewayPrefixes) {

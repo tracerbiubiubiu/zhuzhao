@@ -1,8 +1,10 @@
 # Phase6 私有适配、设备与 AI 薄入口详细设计
 
-日期：2026-11-14。状态：**详细设计候选，未实现**。对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只建设实际需要的稳定接口；设备和 AI 尚未就绪，不阻塞首版风险、工单、TR、AL和消息交付。完整 X01-H、持续委托、MCP 产品化及领域 Agent 按各自窗口交付。B4 稳定后优先仅 SSO，完整纳管按条件另立项。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
+日期：2026-11-14。状态：**第 11 项合成只读参考已形成实现候选，其余为详细设计。**对应 X01-C/B、X02-Q/F、X03、A01/A02；本地核心只建设实际需要的稳定接口；设备和 AI 尚未就绪，不阻塞首版风险、工单、TR、AL和消息交付。完整 X01-H、持续委托、MCP 产品化及领域 Agent 按各自窗口交付。B4 稳定后优先仅 SSO，完整纳管按条件另立项。本页细化[扩展兼容](../design/extension-compatibility.md)、[内网适配](../design/intranet-adapter-migration.md)、[设备](../design/device-module-contract.md)、[AI 调用](../design/ai-invocation-contract.md)，不另立范围/报价总账。
 
 ## 1. 真实基础与边界
+
+第 11 项候选提供合成参考资产查询 `reference.asset.list@1`。它使用受审的固定入口和配置管理读取角色，业务权限同时要求真实用户的当前有效角色和直接组织。参考页按固定同源地址部署。仍适用本页有关用途、范围和时效的限制。候选装配、运行与已验范围见[第 11 项实施与验收](../planning/phase6-step11-reference-app-plan.md)。
 
 `internal/pkg/datafetcher/datafetcher.go` 的 Registry/ApplyFetches 是进程内注册/单触发取数，不能由私有仓导入核心 internal 来当稳定 SDK。`internal/pkg/threatintel/` 已有 Provider/HTTP 桩形态，但不是通用目录/feed/扩展宿主。当前没有 X03 或模型执行产品代码；既有 Go service 方法和 HTTP 目录是可复用效果入口，须逐条接统一应用用例及三层授权。
 

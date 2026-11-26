@@ -501,6 +501,105 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/extensions/reference-assets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reference-assets"
+                ],
+                "summary": "Query the reference asset directory",
+                "operationId": "referenceAssetListV1",
+                "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Organization filter",
+                        "name": "owner_org_refs",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Device status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Fields to return",
+                        "name": "requested_fields",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (1 to 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor for the same query and session",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.QueryPage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/files/{key}": {
             "get": {
                 "description": "定位元数据→状态/purpose 面校验→If-None-Match 命中快照 304→条件读流（etag 作 If-Match，被重放替换即 404）。avatar 免审计+Cache-Control private（A.4 #5 收窄）；ticket 态 L2 与审计行随 B5-3",
@@ -8281,6 +8380,56 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.Failure": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "retry_after_ms": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_pkg_referencequery.QueryPage": {
+            "type": "object",
+            "properties": {
+                "complete": {
+                    "type": "boolean"
+                },
+                "fetched_at": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                    }
+                },
+                "mapping_version": {
+                    "type": "string"
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "source_revision": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "internal_handler.DeleteAttachmentInput": {
             "type": "object",
             "required": [
@@ -8875,6 +9024,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

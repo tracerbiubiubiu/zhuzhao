@@ -88,6 +88,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **第 10 项目录收口** | 合成直属主管、部门负责人、显式停用与会话撤销、批准映射及在办事实的撤部预览 | 第 10 项隔离交付候选 | `internal/service/directorymock`；[实施与验收](../planning/phase6-step10-delivery-plan.md) |
 | **改权事务审计** | `SetRoles`、`AssignMenus` 的操作回执、业务与成功事实同事务、按原事实补送 | 第 10 项隔离交付候选 | `internal/service/iam_receipt.go`、`iam_audit_delivery.go`；迁移 `000099` |
+| **合成参考资产查询（B1）** | 固定只读参考页、独立应用与 HTTP 查询来源、短期请求引用、当前角色/组织复核和有界分页 | 第 11 项隔离候选，专项运行结果见[验收记录](reports/phase6-step11-b1-validation-2026-11-26.md) | `internal/service/referenceassets/service.go` 的 `Read` 和 `Admit`，`pkg/referencequery`，`cmd/reference-assets-app`，`cmd/reference-assets-source` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |

@@ -26,6 +26,14 @@ var repoKnownSecrets = map[string]struct{}{
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
 // 原仅校验 secret，TTL 漏配为 0 时 token 签发即过期且无启动期报错，排障成本高）
 func (c *Config) Validate() error {
+	if err := c.ReferenceAssets.Validate(); err != nil {
+		return err
+	}
+	for _, upstream := range c.Gateway.Upstreams {
+		if c.ReferenceAssets.Enabled && upstream.Prefix != "" && referenceRouteConflict(upstream.Prefix) {
+			return fmt.Errorf("reference_assets: gateway prefix conflicts with a reserved reference route")
+		}
+	}
 	if err := c.RiskIngest.validate(); err != nil {
 		return err
 	}

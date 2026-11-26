@@ -22,18 +22,20 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
+	"github.com/tracerbiubiubiu/zhuzhao/pkg/referencequery"
 )
 
 // Deps 路由依赖
 type Deps struct {
-	AuthHandler         *handler.AuthHandler
-	UserHandler         *handler.UserHandler
-	RoleHandler         *handler.RoleHandler
-	OrgHandler          *handler.OrgHandler
-	MenuHandler         *handler.MenuHandler
-	AuditHandler        *handler.AuditHandler
-	TicketHandler       *handler.TicketHandler
-	TicketPeopleHandler *handler.TicketPeopleHandler
+	ReferenceAssetsHandler *handler.ReferenceAssetsHandler
+	AuthHandler            *handler.AuthHandler
+	UserHandler            *handler.UserHandler
+	RoleHandler            *handler.RoleHandler
+	OrgHandler             *handler.OrgHandler
+	MenuHandler            *handler.MenuHandler
+	AuditHandler           *handler.AuditHandler
+	TicketHandler          *handler.TicketHandler
+	TicketPeopleHandler    *handler.TicketPeopleHandler
 
 	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
 	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
@@ -194,6 +196,12 @@ func New(deps Deps) *gin.Engine {
 	//（可测——开关/验签/归因的装配层断言见 compat_mount_test.go）。
 	mountCompatGroup(r, deps.CompatAKSK)
 	mountRiskFeed(r, deps.RiskIngest, deps.RiskHandler.ReportFromSource)
+	if deps.ReferenceAssetsHandler != nil {
+		r.POST(referencequery.AdmissionPath, deps.ReferenceAssetsHandler.Admit)
+		r.GET(config.ReferenceAssetsPage, handler.ReferenceAssetsPage)
+		r.GET(config.ReferenceAssetsPage+"/app.js", handler.ReferenceAssetsPageScript)
+		r.GET(config.ReferenceAssetsPage+"/app.css", handler.ReferenceAssetsPageStyles)
+	}
 	accountSnapshots := deps.AccountSnapshots
 	if accountSnapshots == nil {
 		accountSnapshots = accountSnapshotSource{lookup: repository.NewAccountSecurityLookup(deps.DBPool)}
@@ -221,6 +229,11 @@ func New(deps Deps) *gin.Engine {
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
 		)
+		if deps.ReferenceAssetsHandler != nil {
+			// This exact route uses the separately registered profile's current
+			// role grant. It is never registered as a self-service route.
+			authed.GET("/extensions/reference-assets", deps.ReferenceAssetsHandler.Query)
+		}
 		{
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
 			// 注意：SelfService 必须先于 CasbinAuth 注册（router_test.go 行为测试守护此顺序）

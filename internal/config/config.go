@@ -15,13 +15,14 @@ import (
 
 // Config 全局配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Casbin   CasbinConfig   `mapstructure:"casbin"`
-	Log      LogConfig      `mapstructure:"log"`
-	Audit    AuditConfig    `mapstructure:"audit"`
+	ReferenceAssets ReferenceAssetsConfig `mapstructure:"-"`
+	Server          ServerConfig          `mapstructure:"server"`
+	Database        DatabaseConfig        `mapstructure:"database"`
+	Redis           RedisConfig           `mapstructure:"redis"`
+	JWT             JWTConfig             `mapstructure:"jwt"`
+	Casbin          CasbinConfig          `mapstructure:"casbin"`
+	Log             LogConfig             `mapstructure:"log"`
+	Audit           AuditConfig           `mapstructure:"audit"`
 
 	InternalJobs           InternalJobsConfig       `mapstructure:"internal_jobs"`
 	RiskIngest             RiskIngestConfig         `mapstructure:"risk_ingest"`
@@ -399,6 +400,9 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	if err := loadReferenceAssets(path, &cfg.ReferenceAssets); err != nil {
+		return nil, err
 	}
 	// slice env 后处理：BindEnv 命中时 Unmarshal 拿到整串，按逗号拆为网段列表
 	if raw := viper.GetString("server.trusted_proxies"); raw != "" {

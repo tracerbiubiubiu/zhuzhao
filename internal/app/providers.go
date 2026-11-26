@@ -33,6 +33,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/threatintel"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/webhook"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/router"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/service/referenceassets"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/risk"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/riskdispatch"
 	storageservice "github.com/tracerbiubiubiu/zhuzhao/internal/service/storage"
@@ -222,6 +223,10 @@ func provideRateLimitConfig(cfg *config.Config) *config.RateLimitConfig {
 // 闭包注册/条件初始化——wire 表达不了）已整体搬至此处；wire.go 的 wire.Build
 // 只引用本 provider，再生永远可重现（"wire 转正"的真终态）。
 func provideApp(cfg *config.Config) (*App, func(), error) {
+	referencePeer, referenceCallbackKey, err := cfg.ReferenceAssets.Open()
+	if err != nil {
+		return nil, nil, err
+	}
 	logConfig := cfg.Log
 	logger := provideLogger(logConfig)
 	databaseConfig := cfg.Database
@@ -464,6 +469,12 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		RiskDispatchHandler: handler.NewRiskDispatchHandler(riskDispatch, riskDispatchDeptRead{pool: pool, service: riskdispatch.NewDeptStats(dispatchTickets)}, riskWorkflow.canWrite),
 		RiskIngest:          cfg.RiskIngest,
 		RiskWorkflowHandler: riskWorkflowHandler,
+	}
+	if referencePeer != nil {
+		deps.ReferenceAssetsHandler = handler.NewReferenceAssetsHandler(
+			referenceassets.New(cfg.ReferenceAssets, referencePeer, pool, client),
+			cfg.ReferenceAssets.CallbackAK, referenceCallbackKey,
+		)
 	}
 	// P4-8：panic 聚合+运行时对账。engineRef 前置声明——闭包运行时取（engine 由
 	// router.New(deps) 在下方构造后回填）

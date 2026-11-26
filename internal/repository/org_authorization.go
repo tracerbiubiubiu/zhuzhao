@@ -1,5 +1,24 @@
 package repository
 
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+)
+
+// ActiveReferenceMemberships returns the direct organizations available to the
+// synthetic reference profile. Ancestors affect validity; they do not add scope.
+func (r *OrgRepo) ActiveReferenceMemberships(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `SELECT o.id FROM user_orgs uo
+		JOIN organizations o ON o.id = uo.org_id
+		WHERE uo.user_id = $1 AND (uo.expires_at IS NULL OR uo.expires_at > NOW())
+		AND (`+OrgSourceActiveSQL("o")+`) ORDER BY o.id LIMIT 257`, userID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[int64])
+}
+
 // OrgSourceActiveSQL is the live authorization predicate for a trusted SQL
 // organization alias. An inactive ancestor suspends the whole source before
 // anchors or scope are derived. Callers pass only source-code alias literals.
