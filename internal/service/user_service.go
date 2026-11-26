@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -495,6 +496,7 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 	if err != nil {
 		return err
 	}
+	op := newIAMOperation(ctx, repository.IAMUserRoles, actorUserID, req.UserID, req.RoleIDs, nil)
 	return s.userRepo.RunInTx(ctx, func(tx pgx.Tx) error {
 		// Keep the existing global guard before the target row lock, matching
 		// Delete/UpdateStatus ordering. All reads after Begin use this tx, so
@@ -504,6 +506,10 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 		}
 		oldRoles, err := s.userRepo.LockRoleBindingsTx(ctx, tx, req.UserID)
 		if err != nil {
+			return err
+		}
+		replay, err := op.Replayed(ctx, tx)
+		if err != nil || replay {
 			return err
 		}
 		old := make(map[int64]*model.Role, len(oldRoles))
@@ -551,14 +557,16 @@ func (s *UserService) SetRoles(ctx context.Context, req *model.SetUserRolesReque
 				return errcode.ErrCannotRemoveLastSuperadmin
 			}
 		}
-		if err := s.userRepo.SetRolesTx(ctx, tx, req.UserID, []int64(req.RoleIDs)); err != nil {
-			return err
-		}
 		previous := make([]int64, 0, len(oldRoles))
 		for _, role := range oldRoles {
 			previous = append(previous, role.ID)
 		}
-		return repository.RecordIAMFactTx(ctx, tx, "iam.user.roles.set", actorUserID, req.UserID, previous, req.RoleIDs, s.auditCollector)
+		if !slices.Equal(canonicalIAMIDs(previous), canonicalIAMIDs(req.RoleIDs)) {
+			if err := s.userRepo.SetRolesTx(ctx, tx, req.UserID, req.RoleIDs); err != nil {
+				return err
+			}
+		}
+		return op.Record(ctx, tx, previous, req.RoleIDs, false, s.auditCollector)
 	})
 }
 

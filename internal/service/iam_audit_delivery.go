@@ -53,7 +53,7 @@ func (w *IAMAuditDelivery) Handle(ctx context.Context, _ json.RawMessage) error 
             'record_id', f.record_id, 'event_name', f.event_name,
             'occurred_at', to_char(f.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
             'actor_id', f.actor_id::text, 'target_id', f.target_id::text,
-            'added_ids', f.added_ids::text[], 'removed_ids', f.removed_ids::text[], 'outcome', 'success'
+            'added_ids', f.added_ids::text[], 'removed_ids', f.removed_ids::text[], 'outcome', 'success','policy_changed',f.policy_changed
         ) FROM claim c JOIN iam_audit_facts f USING (record_id)`, w.key).Scan(&id, &fence, &payload)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil

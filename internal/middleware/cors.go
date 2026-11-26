@@ -10,7 +10,7 @@ import (
 func CORS() gin.HandlerFunc {
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
-	config.AllowHeaders = append(config.AllowHeaders, "Authorization", "X-Request-Id", "Idempotency-Key")
-	config.ExposeHeaders = append(config.ExposeHeaders, "X-Ticket-Definition-Reason")
+	config.AllowHeaders = append(config.AllowHeaders, "Authorization", "X-Request-Id", "Idempotency-Key", "X-Operation-ID")
+	config.ExposeHeaders = append(config.ExposeHeaders, "X-Ticket-Definition-Reason", "X-Operation-ID")
 	return cors.New(config)
 }

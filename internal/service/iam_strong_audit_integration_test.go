@@ -49,7 +49,7 @@ func TestIAMStrongAuditAtomic(t *testing.T) {
 	require.Equal(t, initial+2, count("SELECT count(*) FROM iam_audit_facts"))
 	require.Equal(t, initialDeliveries, count("SELECT count(*) FROM iam_audit_deliveries"))
 	service.ConfigureIAMAuditDelivery(users, roles, "http://127.0.0.1")
-	for _, table := range []string{"iam_audit_facts", "iam_audit_deliveries"} {
+	for _, table := range []string{"iam_audit_facts", "iam_audit_deliveries", "iam_command_receipts"} {
 		t.Run(table, func(t *testing.T) {
 			_, err := testPool.Exec(ctx, `CREATE FUNCTION reject_iam_fact() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected failure'; END $$; CREATE TRIGGER reject_insert BEFORE INSERT ON `+table+` FOR EACH ROW EXECUTE FUNCTION reject_iam_fact()`)
 			require.NoError(t, err)
@@ -59,6 +59,7 @@ func TestIAMStrongAuditAtomic(t *testing.T) {
 			})
 			require.ErrorContains(t, set(nil), "injected failure")
 			require.ErrorContains(t, assign(nil), "injected failure")
+			require.Equal(t, initialDeliveries, count("SELECT count(*) FROM iam_audit_deliveries"))
 			require.Equal(t, initial+2, count("SELECT count(*) FROM iam_audit_facts"))
 			require.Equal(t, 1, count("SELECT count(*) FROM user_roles WHERE user_id=$1 AND role_id=$2", target, admin.ID))
 			require.Equal(t, 1, count("SELECT count(*) FROM role_menus WHERE role_id=$1 AND menu_id=$2", admin.ID, menu.ID))
@@ -148,7 +149,7 @@ func TestIAMStrongAuditCollector(t *testing.T) {
 	}
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(first.body, &payload))
-	require.Equal(t, map[string]any{"record_id": first.id, "event_name": "iam.user.roles.set", "occurred_at": payload["occurred_at"], "actor_id": fmt.Sprint(actor), "target_id": fmt.Sprint(target), "added_ids": []any{fmt.Sprint(viewer.ID)}, "removed_ids": []any{}, "outcome": "success"}, payload)
+	require.Equal(t, map[string]any{"record_id": first.id, "event_name": "iam.user.roles.set", "occurred_at": payload["occurred_at"], "actor_id": fmt.Sprint(actor), "target_id": fmt.Sprint(target), "added_ids": []any{fmt.Sprint(viewer.ID)}, "removed_ids": []any{}, "outcome": "success", "policy_changed": false}, payload)
 	var bound bool
 	require.NoError(t, testPool.QueryRow(ctx, "SELECT EXISTS(SELECT FROM user_roles WHERE user_id=$1)", target).Scan(&bound))
 	require.False(t, bound)

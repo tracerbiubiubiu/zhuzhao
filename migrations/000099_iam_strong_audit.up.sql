@@ -5,7 +5,8 @@ CREATE TABLE iam_audit_facts (
     actor_id bigint NOT NULL,
     target_id bigint NOT NULL,
     added_ids bigint[] NOT NULL,
-    removed_ids bigint[] NOT NULL
+    removed_ids bigint[] NOT NULL,
+    policy_changed boolean NOT NULL
 );
 CREATE FUNCTION iam_audit_fact_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -23,3 +24,15 @@ CREATE TABLE iam_audit_deliveries (
 );
 CREATE INDEX iam_audit_delivery_due ON iam_audit_deliveries (collector_key, available_at, record_id)
     WHERE delivered_at IS NULL;
+
+CREATE TABLE iam_command_receipts (
+    actor_id bigint NOT NULL,
+    operation_id varchar(128) NOT NULL,
+    command text NOT NULL CHECK (command IN ('iam.user.roles.set','iam.role.menus.set')),
+    target_id bigint NOT NULL,
+    input_hash bytea NOT NULL,
+    record_id uuid UNIQUE REFERENCES iam_audit_facts(record_id),
+    PRIMARY KEY (actor_id, operation_id)
+);
+CREATE TRIGGER iam_command_receipt_immutable BEFORE UPDATE OR DELETE OR TRUNCATE ON iam_command_receipts
+    FOR EACH STATEMENT EXECUTE FUNCTION iam_audit_fact_immutable();

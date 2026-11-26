@@ -234,6 +234,7 @@ func New(deps Deps) *gin.Engine {
 				selfService.POST("/auth/password/update", deps.AuthHandler.UpdatePassword)
 				// C05：按原操作号受权核查账号安全操作结果（丢响应后按 K 查——
 				// 绑定原操作者或目标管理权；catalogExempt 登记）
+				selfService.GET("/operations/receipt", deps.UserHandler.IAMReceipt)
 				selfService.GET("/users/status/result", deps.UserHandler.OperationResult)
 				// B5-4 richtext 渲染 SSOT（05 号 §6）：登录态自服务——无票据访问面、
 				// 纯消毒渲染（A.7 存储自服务面同款形态）

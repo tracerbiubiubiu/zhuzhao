@@ -211,6 +211,9 @@ func (h *UserHandler) UpdateStatus(c *gin.Context) {
 //	@Produce	json
 //	@Param		request	body	model.SetUserRolesRequest	true	"设置用户角色请求"
 //	@Success	200		{object}	response.Response
+//	@Param Idempotency-Key header string false "改权原键，重试必须保持原输入"
+//	@Param X-Operation-ID header string false "原操作号，可替代 Idempotency-Key"
+//	@Header 200 {string} X-Operation-ID "原操作号"
 //	@Security	BearerAuth
 //	@Router		/api/v1/users/roles [post]
 func (h *UserHandler) SetRoles(c *gin.Context) {
@@ -219,7 +222,11 @@ func (h *UserHandler) SetRoles(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.userService.SetRoles(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+	ctx, ok := iamOperationContext(c)
+	if !ok {
+		return
+	}
+	if err := h.userService.SetRoles(ctx, &req, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}
@@ -435,4 +442,34 @@ func queryInt(c *gin.Context, key string, def int) int {
 func errcodeInvalidParams(c *gin.Context) string {
 	_ = c
 	return "参数错误"
+}
+
+// IAMReceipt returns the original, currently authorized IAM command outcome.
+//
+// @Summary 按原操作号或幂等键核查两条 IAM 改权命令的本地提交结果
+// @Tags users
+// @Produce json
+// @Param operation_id query string false "原操作号，与 idempotency_key 二选一"
+// @Param idempotency_key query string false "原幂等键"
+// @Success 200 {object} response.Response{data=model.IAMReceipt}
+// @Security BearerAuth
+// @Router /api/v1/operations/receipt [get]
+func (h *UserHandler) IAMReceipt(c *gin.Context) {
+	q := c.Request.URL.Query()
+	ids, keys := q["operation_id"], q["idempotency_key"]
+	if len(ids)+len(keys) != 1 {
+		response.BadRequest(c, errcodeInvalidParams(c))
+		return
+	}
+	id := q.Get("operation_id")
+	if len(keys) == 1 {
+		id = keys[0]
+	}
+	receipt, err := h.userService.IAMReceipt(c.Request.Context(), c.GetInt64("userID"), id)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	c.Header("X-Operation-ID", receipt.OperationID)
+	response.OK(c, receipt)
 }

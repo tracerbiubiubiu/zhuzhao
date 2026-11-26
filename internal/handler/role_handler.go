@@ -138,6 +138,9 @@ func (h *RoleHandler) Delete(c *gin.Context) {
 //	@Produce	json
 //	@Param		request	body	model.AssignMenusRequest	true	"分配菜单请求"
 //	@Success	200		{object}	response.Response
+//	@Param Idempotency-Key header string false "改权原键，重试必须保持原输入"
+//	@Param X-Operation-ID header string false "原操作号，可替代 Idempotency-Key"
+//	@Header 200 {string} X-Operation-ID "原操作号"
 //	@Security	BearerAuth
 //	@Router		/api/v1/roles/menus [post]
 func (h *RoleHandler) AssignMenus(c *gin.Context) {
@@ -147,7 +150,11 @@ func (h *RoleHandler) AssignMenus(c *gin.Context) {
 		response.BadRequest(c, errcodeInvalidParams(c))
 		return
 	}
-	if err := h.rbacService.AssignMenus(c.Request.Context(), &req, c.GetInt64("userID")); err != nil {
+	ctx, ok := iamOperationContext(c)
+	if !ok {
+		return
+	}
+	if err := h.rbacService.AssignMenus(ctx, &req, c.GetInt64("userID")); err != nil {
 		writeServiceError(c, err)
 		return
 	}
