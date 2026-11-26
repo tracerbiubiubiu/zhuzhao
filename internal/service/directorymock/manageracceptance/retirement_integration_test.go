@@ -59,22 +59,35 @@ func TestMockDirectoryRetirementPreviewCLI(t *testing.T) {
 	execSQL(t, db, `INSERT INTO ticket_events(ticket_id, user_id, action, to_value)
 		SELECT id, assigned_to, 'status_changed', 'closed' FROM tickets WHERE title='retire-archived'`)
 
-	ticketSnapshot := func() string {
+	const mapping = "synthetic-approved-map"
+	execSQL(t, db, `INSERT INTO directory_mock_transfer_runs(scope_ref, operation_id, run_id, input_hash, receipt)
+		SELECT $1, 'retirement-mapping/' || m.ref, gen_random_uuid(), repeat('0',64), jsonb_build_object(
+			'approved', m.ref <> 'revoked-mapping', 'source_department_external_id', m.source, 'target_department_external_id', m.target)
+		FROM (VALUES ($2::text,'retire-source','retire-target'), ('other-mapping','retire-source','retire-target'),
+			('wrong-source-map','different-source','retire-target'), ('wrong-target-map','retire-source','different-target'),
+			('cross-scope-map','retire-source','retire-cross-scope'), ('self-map','retire-source','retire-source'),
+			('revoked-mapping','retire-source','retire-target')) m(ref,source,target)`, scope, mapping)
+	execSQL(t, db, `INSERT INTO directory_mock_transfer_runs(scope_ref, operation_id, run_id, input_hash, receipt)
+		VALUES ('synthetic-retirement-other', 'retirement-mapping/wrong-scope-map', gen_random_uuid(), repeat('0',64),
+			'{"approved":true,"source_department_external_id":"retire-source","target_department_external_id":"retire-target"}')`)
+
+	ticketSnapshot := func(t *testing.T) string {
 		t.Helper()
 		var state string
 		if err := db.QueryRow(t.Context(), `SELECT jsonb_build_object(
 			'tickets', (SELECT jsonb_agg(t ORDER BY t.id) FROM tickets t),
-			'events', (SELECT jsonb_agg(e ORDER BY e.id) FROM ticket_events e)
+			'events', (SELECT jsonb_agg(e ORDER BY e.id) FROM ticket_events e),
+			'risks', (SELECT jsonb_agg(r ORDER BY r.id) FROM risk_items r)
 		)::text`).Scan(&state); err != nil {
 			t.Fatal(err)
 		}
 		return state
 	}
-	sourceSnapshot, sourceTicketSnapshot := businessSnapshot(t, db), ticketSnapshot()
-	assertUnchanged := func(iam, tickets string) {
+	sourceSnapshot, sourceTicketSnapshot := businessSnapshot(t, db), ticketSnapshot(t)
+	assertUnchanged := func(t *testing.T, iam, tickets string) {
 		t.Helper()
 		assertBusinessUnchanged(t, db, iam)
-		if ticketSnapshot() != tickets {
+		if ticketSnapshot(t) != tickets {
 			t.Fatal("preview changed tickets or ticket history")
 		}
 	}
@@ -83,7 +96,7 @@ func TestMockDirectoryRetirementPreviewCLI(t *testing.T) {
 			`","source_department_external_id":"retire-source","target_department_external_id":"` + target +
 			`","approved_mapping_ref":"` + mapping + `"}`
 	}
-	submit := func(input string, exit int) ([]byte, retirementReceipt) {
+	submit := func(t *testing.T, input string, exit int) ([]byte, retirementReceipt) {
 		t.Helper()
 		out, stderr := cli.run(t, input, exit, "preview-department-retirement")
 		var receipt retirementReceipt
@@ -94,9 +107,8 @@ func TestMockDirectoryRetirementPreviewCLI(t *testing.T) {
 		return out, receipt
 	}
 
-	const mapping = "synthetic-approved-map"
 	input := makeInput("retire-plan", "retire-target", mapping)
-	original, receipt := submit(input, 0)
+	original, receipt := submit(t, input, 0)
 	if receipt.Status != "previewed" || receipt.ApprovedMappingRef != mapping ||
 		receipt.SourceExternalID != "retire-source" || receipt.TargetExternalID != "retire-target" ||
 		receipt.Snapshot.Source.SourceRevision != 2 || receipt.Snapshot.Target.SourceRevision != 3 ||
@@ -117,37 +129,46 @@ func TestMockDirectoryRetirementPreviewCLI(t *testing.T) {
 		receipt.Snapshot.OrgRoles[0].OrgID != receipt.Snapshot.Source.ID {
 		t.Fatalf("unexpected item details %+v", receipt.Snapshot)
 	}
-	assertUnchanged(sourceSnapshot, sourceTicketSnapshot)
+	assertUnchanged(t, sourceSnapshot, sourceTicketSnapshot)
 
 	for _, check := range []struct{ operation, target, mapping, problem string }{
 		{"retire-no-mapping", "retire-target", "", "mapping_unavailable"},
 		{"retire-no-target", "", mapping, "target_department_unresolved"},
-		{"retire-cross-scope-target", "retire-cross-scope", mapping, "target_department_unresolved"},
-		{"retire-self-target", "retire-source", mapping, "target_department_unresolved"},
+		{"retire-cross-scope-target", "retire-cross-scope", "cross-scope-map", "target_department_unresolved"},
+		{"retire-self-target", "retire-source", "self-map", "target_department_unresolved"},
 	} {
-		_, pending := submit(makeInput(check.operation, check.target, check.mapping), 3)
+		_, pending := submit(t, makeInput(check.operation, check.target, check.mapping), 3)
 		if pending.Status != "pending" || pending.Problem != check.problem || pending.Snapshot.Target.ID != 0 {
 			t.Fatalf("wanted pending %q, got %+v", check.problem, pending)
 		}
 	}
-	assertUnchanged(sourceSnapshot, sourceTicketSnapshot)
+	assertUnchanged(t, sourceSnapshot, sourceTicketSnapshot)
 
-	_, sameObservation := submit(makeInput("retire-same-facts", "retire-target", mapping), 0)
+	t.Run("rejects_arbitrary_or_mismatched_approval", func(t *testing.T) {
+		for _, ref := range []string{"unknown-mapping", "wrong-source-map", "wrong-target-map", "wrong-scope-map", "revoked-mapping"} {
+			_, pending := submit(t, makeInput("retire-"+ref, "retire-target", ref), 3)
+			if pending.Status != "pending" || pending.Problem != "mapping_unavailable" || pending.Snapshot.Target.ID != 0 {
+				t.Fatalf("unregistered approval %s gained a target: %+v", ref, pending)
+			}
+		}
+		assertUnchanged(t, sourceSnapshot, sourceTicketSnapshot)
+	})
+	_, sameObservation := submit(t, makeInput("retire-same-facts", "retire-target", mapping), 0)
 	if sameObservation.PreviewHash != receipt.PreviewHash {
 		t.Fatal("same mapping and facts changed preview hash")
 	}
-	_, remapped := submit(makeInput("retire-new-mapping", "retire-target", "other-mapping"), 0)
+	_, remapped := submit(t, makeInput("retire-new-mapping", "retire-target", "other-mapping"), 0)
 	if remapped.PreviewHash == receipt.PreviewHash {
 		t.Fatal("different mapping reused original preview hash")
 	}
 	execSQL(t, db, `UPDATE tickets SET status='pending_verify' WHERE id=$1`, ticket.ID)
-	changedIAM, changedTickets := businessSnapshot(t, db), ticketSnapshot()
-	_, changed := submit(makeInput("retire-new-plan", "retire-target", mapping), 0)
+	changedIAM, changedTickets := businessSnapshot(t, db), ticketSnapshot(t)
+	_, changed := submit(t, makeInput("retire-new-plan", "retire-target", mapping), 0)
 	if changed.PreviewHash == receipt.PreviewHash || changed.Snapshot.InFlightTickets[0].Revision != 2 {
 		t.Fatalf("changed ticket was not reflected in new preview %+v", changed)
 	}
 	lookedUp, stderr := cli.run(t, "", 0, "department-retirement-receipt", scope, "retire-plan")
-	replay, _ := submit(input, 0)
+	replay, _ := submit(t, input, 0)
 	if stderr != "" || !bytes.Equal(lookedUp, original) || !bytes.Equal(replay, original) {
 		t.Fatal("new observation changed prior retirement receipt")
 	}
@@ -155,15 +176,44 @@ func TestMockDirectoryRetirementPreviewCLI(t *testing.T) {
 	if len(out) != 0 || stderr != "mock_department_retirement_content_conflict" {
 		t.Fatalf("changed mapping reused original operation: stdout=%q stderr=%q", out, stderr)
 	}
-	assertUnchanged(changedIAM, changedTickets)
+	assertUnchanged(t, changedIAM, changedTickets)
+
+	t.Run("tracks_new_unassigned_work_and_current_risks", func(t *testing.T) {
+		execSQL(t, db, `INSERT INTO tickets(type_code, title, status, created_by, org_id, org_path)
+			SELECT 'incident', 'retire-unassigned', 'open', u.id, o.id, o.path
+			FROM organizations o CROSS JOIN users u
+			WHERE o.code='retire-virtual' AND u.external_id='retire-assignee'`)
+		unassignedFacts := ticketSnapshot(t)
+		_, unassigned := submit(t, makeInput("retire-with-unassigned", "retire-target", mapping), 0)
+		if unassigned.PreviewHash == changed.PreviewHash || len(unassigned.Snapshot.InFlightTickets) != 2 {
+			t.Errorf("unassigned work was omitted from preview: %+v", unassigned.Snapshot)
+		}
+		assertUnchanged(t, changedIAM, unassignedFacts)
+		execSQL(t, db, `WITH family AS (
+			INSERT INTO risk_families(fingerprint_scope, canonical_key_hash)
+			VALUES ('synthetic-retirement', repeat('9',64)) RETURNING id
+		)
+		INSERT INTO risk_items(human_key, family_id, status, org_id, affected_org_id, title, created_by)
+		SELECT v.key, f.id, v.status, target.id, affected.id, v.key, u.id
+		FROM family f CROSS JOIN (VALUES ('retire-risk-current','assessed'),('retire-risk-closed','closed')) v(key,status)
+		CROSS JOIN organizations target CROSS JOIN organizations affected CROSS JOIN users u
+		WHERE target.code='retire-target' AND affected.code='retire-virtual' AND u.external_id='retire-assignee'`)
+		riskFacts := ticketSnapshot(t)
+		_, risk := submit(t, makeInput("retire-with-risk", "retire-target", mapping), 0)
+		if risk.PreviewHash == unassigned.PreviewHash || len(risk.Snapshot.InFlightRisks) != 1 ||
+			risk.Snapshot.InFlightRisks[0].AffectedOrgID != group.ID || risk.Snapshot.InFlightRisks[0].Revision != 1 {
+			t.Fatalf("current affected risk missing from preview: %+v", risk.Snapshot)
+		}
+		assertUnchanged(t, changedIAM, riskFacts)
+	})
 
 	execSQL(t, db, `UPDATE organizations SET status=0 WHERE code='retire-target'`)
-	inactiveIAM := businessSnapshot(t, db)
-	_, inactive := submit(makeInput("retire-inactive-target", "retire-target", mapping), 3)
+	inactiveIAM, inactiveFacts := businessSnapshot(t, db), ticketSnapshot(t)
+	_, inactive := submit(t, makeInput("retire-inactive-target", "retire-target", mapping), 3)
 	if inactive.Status != "pending" || inactive.Problem != "target_department_unresolved" || inactive.Snapshot.Target.ID != 0 {
 		t.Fatalf("inactive target was not held: %+v", inactive)
 	}
-	assertUnchanged(inactiveIAM, changedTickets)
+	assertUnchanged(t, inactiveIAM, inactiveFacts)
 }
 
 type retirementReceipt struct {
@@ -192,6 +242,10 @@ type retirementReceipt struct {
 			Revision int64  `json:"revision"`
 			Status   string `json:"status"`
 		} `json:"in_flight_tickets"`
+		InFlightRisks []struct {
+			AffectedOrgID int64 `json:"affected_org_id"`
+			Revision      int64 `json:"revision"`
+		} `json:"in_flight_risks"`
 		LocalMemberships []struct {
 			OrgID int64  `json:"org_id"`
 			Role  string `json:"org_member_role"`

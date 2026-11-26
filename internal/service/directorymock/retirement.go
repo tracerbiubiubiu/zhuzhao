@@ -102,10 +102,10 @@ func retirementOutcome(ctx context.Context, db repository.IAMDBTX, event Retirem
 		RunID:                  runID,
 		Status:                 statusRetirementPending,
 	}
-	var sourceAvailable, targetAvailable bool
+	var sourceAvailable, mappingApproved, targetAvailable bool
 	err := db.QueryRow(ctx, retirementSnapshotSQL(), event.ScopeRef, event.SourceDepartmentExternalID,
 		event.TargetDepartmentExternalID, event.ApprovedMappingRef, repository.MockDirectorySource).
-		Scan(&sourceAvailable, &targetAvailable, &receipt.Snapshot)
+		Scan(&sourceAvailable, &mappingApproved, &targetAvailable, &receipt.Snapshot)
 	if err != nil {
 		return RetirementPreviewReceipt{}, fmt.Errorf("read mock retirement facts: %w", err)
 	}
@@ -113,6 +113,10 @@ func retirementOutcome(ctx context.Context, db repository.IAMDBTX, event Retirem
 	case !sourceAvailable:
 		receipt.Problem = "source_department_unresolved"
 	case event.ApprovedMappingRef == "":
+		receipt.Problem = "mapping_unavailable"
+	case event.TargetDepartmentExternalID == "":
+		receipt.Problem = "target_department_unresolved"
+	case !mappingApproved:
 		receipt.Problem = "mapping_unavailable"
 	case !targetAvailable:
 		receipt.Problem = "target_department_unresolved"
@@ -137,7 +141,14 @@ func retirementOutcome(ctx context.Context, db repository.IAMDBTX, event Retirem
 // Each observation comes from one PostgreSQL snapshot. The scope of this mock
 // preview is an entity and its directly attached live virtual groups.
 func retirementSnapshotSQL() string {
-	return `WITH bound_departments AS (
+	// The reserved mapping namespace is pre-seeded in the synthetic database.
+	// A preview command cannot create or update approvals.
+	return `WITH approved_mapping AS (
+		SELECT run_id FROM directory_mock_transfer_runs
+		WHERE scope_ref=$1 AND operation_id='retirement-mapping/' || $4 AND $4 <> ''
+		  AND receipt @> jsonb_build_object('approved', true, 'source_department_external_id', $2::text,
+				'target_department_external_id', $3::text)
+	), bound_departments AS (
 		SELECT b.external_id, d.source_revision, o.id, o.tenant_id, o.version, o.parent_id, o.path::text AS path,
 		       o.source, o.ticket_visibility, o.owner_user_ids
 		FROM directory_mock_department_bindings b
@@ -150,7 +161,8 @@ func retirementSnapshotSQL() string {
 	), target_dept AS (
 		SELECT candidate.* FROM bound_departments candidate CROSS JOIN source_dept source
 		JOIN organizations target_org ON target_org.id=candidate.id
-		WHERE candidate.external_id=$3 AND $4 <> '' AND candidate.tenant_id=source.tenant_id
+		WHERE candidate.external_id=$3 AND candidate.tenant_id=source.tenant_id
+		  AND EXISTS (SELECT 1 FROM approved_mapping)
 		  AND source.id NOT IN (` + repository.OrgAncestorIDsSQL("target_org") + `)
 	), virtual_groups AS (
 		SELECT v.id, v.version, v.parent_id, v.path::text AS path, v.source, v.ticket_visibility, v.owner_user_ids
@@ -163,7 +175,13 @@ func retirementSnapshotSQL() string {
 	), in_flight_tickets AS (
 		SELECT t.id, t.org_id, t.org_path::text AS org_path, t.assigned_to, t.status, t.revision
 		FROM tickets t JOIN source_orgs o ON t.org_id=o.id
-		WHERE t.assigned_to IS NOT NULL AND t.status NOT IN ('closed','rejected')
+		WHERE t.status NOT IN ('closed','rejected')
+	), in_flight_risks AS (
+		SELECT r.id, r.org_id, r.affected_org_id, r.owner_user_id, r.status, r.revision
+		FROM risk_items r
+		WHERE r.status <> 'closed' AND (
+			r.org_id IN (SELECT id FROM source_orgs) OR r.affected_org_id IN (SELECT id FROM source_orgs)
+		)
 	), local_memberships AS (
 		SELECT m.org_id, m.user_id, m.is_primary, m.org_member_role, m.ticket_scope,
 		       extract(epoch FROM m.expires_at) AS expires_at_epoch
@@ -173,11 +191,14 @@ func retirementSnapshotSQL() string {
 		SELECT gr.org_id, gr.role_id, r.parent_id, r.status, r.deleted_at IS NOT NULL AS deleted
 		FROM org_roles gr JOIN scope_orgs o ON gr.org_id=o.id JOIN roles r ON r.id=gr.role_id
 	)
-	SELECT EXISTS (SELECT 1 FROM source_dept), EXISTS (SELECT 1 FROM target_dept), jsonb_build_object(
+	SELECT EXISTS (SELECT 1 FROM source_dept), EXISTS (SELECT 1 FROM approved_mapping),
+		EXISTS (SELECT 1 FROM target_dept), jsonb_build_object(
+		'approval_run_id', (SELECT run_id FROM approved_mapping),
 		'source', (SELECT to_jsonb(s) FROM source_dept s),
 		'target', (SELECT to_jsonb(t) FROM target_dept t),
 		'virtual_groups', COALESCE((SELECT jsonb_agg(v ORDER BY v.id) FROM virtual_groups v), '[]'::jsonb),
 		'in_flight_tickets', COALESCE((SELECT jsonb_agg(t ORDER BY t.id) FROM in_flight_tickets t), '[]'::jsonb),
+		'in_flight_risks', COALESCE((SELECT jsonb_agg(r ORDER BY r.id) FROM in_flight_risks r), '[]'::jsonb),
 		'local_memberships', COALESCE((SELECT jsonb_agg(m ORDER BY m.org_id,m.user_id) FROM local_memberships m), '[]'::jsonb),
 		'org_roles', COALESCE((SELECT jsonb_agg(r ORDER BY r.org_id,r.role_id) FROM org_role_sources r), '[]'::jsonb)
 	)`
