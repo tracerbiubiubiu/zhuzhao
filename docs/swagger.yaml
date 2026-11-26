@@ -422,6 +422,52 @@ definitions:
       status:
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.FindingObservationV1:
+    properties:
+      asset_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef'
+      attributes:
+        type: object
+      conclusion_ref:
+        type: string
+      event_id:
+        maxLength: 200
+        type: string
+      evidence_refs:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef'
+        type: array
+      finding_class:
+        type: string
+      finding_key:
+        type: string
+      mapping_ref:
+        type: string
+      observation_kind:
+        description: observed|withdrawn|deleted，缺省 observed
+        type: string
+      observed_at:
+        type: string
+      port:
+        type: integer
+      source_item_key:
+        maxLength: 300
+        type: string
+      source_ref:
+        type: string
+      source_sequence:
+        type: string
+      source_severity:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSourceSeverity'
+      valid_until:
+        type: string
+    required:
+    - event_id
+    - mapping_ref
+    - observed_at
+    - source_item_key
+    - source_ref
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest:
     properties:
       captcha:
@@ -725,6 +771,287 @@ definitions:
     required:
     - key
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssessRequest:
+    properties:
+      assessment_note:
+        type: string
+      deadline:
+        type: string
+      dispatch_basis_valid_until:
+        type: string
+      expected_revision:
+        type: string
+      id:
+        example: "0"
+        type: string
+      level:
+        type: string
+      operation_id:
+        maxLength: 128
+        type: string
+      treatment:
+        type: string
+    required:
+    - expected_revision
+    - id
+    - level
+    - operation_id
+    - treatment
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef:
+    properties:
+      external_id:
+        type: string
+      provider:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssignRequest:
+    properties:
+      expected_revision:
+        type: string
+      id:
+        example: "0"
+        type: string
+      operation_id:
+        maxLength: 128
+        type: string
+      owner_user_id:
+        example: "0"
+        type: string
+      reason:
+        type: string
+    required:
+    - expected_revision
+    - id
+    - operation_id
+    - owner_user_id
+    - reason
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskCreateRequest:
+    properties:
+      affected_org_id:
+        example: "0"
+        type: string
+      asset_ref:
+        allOf:
+        - $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef'
+        description: 资产键身份；与 FindingKey 成对
+      attributes:
+        type: object
+      description:
+        type: string
+      evidence_refs:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef'
+        type: array
+      expected_revision:
+        description: 新建恒 "0"
+        type: string
+      finding_key:
+        description: 稳定漏洞键；与 AssetRef 成对
+        maxLength: 200
+        type: string
+      operation_id:
+        maxLength: 128
+        type: string
+      org_id:
+        example: "0"
+        type: string
+      owner_user_id:
+        example: "0"
+        type: string
+      system_ref:
+        type: string
+      title:
+        maxLength: 200
+        type: string
+    required:
+    - operation_id
+    - org_id
+    - title
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef:
+    properties:
+      external_id:
+        type: string
+      provider:
+        type: string
+      version:
+        type: string
+    required:
+    - external_id
+    - provider
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt:
+    properties:
+      command:
+        type: string
+      created_at:
+        type: string
+      operation_id:
+        type: string
+      replayed:
+        description: true=同号同参返回原收据，未产生新业务效果
+        type: boolean
+      revision:
+        example: "0"
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef:
+    properties:
+      human_key:
+        type: string
+      id:
+        example: "0"
+        type: string
+      revision:
+        example: "0"
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportItem:
+    properties:
+      event_id:
+        type: string
+      ingest_id:
+        type: string
+      processing:
+        description: pending|applied|held
+        type: string
+      result:
+        description: accepted|duplicate|stale|quarantined|held
+        type: string
+      risk_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef'
+      safe_reason:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportRequest:
+    properties:
+      batch_id:
+        type: string
+      observations:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FindingObservationV1'
+        type: array
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportResult:
+    properties:
+      batch_receipt:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportItem'
+        type: array
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSourceSeverity:
+    properties:
+      scheme:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowContext:
+    properties:
+      allowed_actions:
+        items:
+          type: string
+        type: array
+      definition_version:
+        example: "0"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowItem'
+        type: array
+      status:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+      ticket_revision:
+        example: "0"
+        type: string
+      writes_enabled:
+        type: boolean
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowEvidence:
+    properties:
+      kind:
+        type: string
+      ref:
+        type: string
+      version:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowItem:
+    properties:
+      can_manage_risk:
+        type: boolean
+      expired_acceptance_id:
+        example: "0"
+        type: string
+      expired_acceptance_revision:
+        example: "0"
+        type: string
+      is_risk_owner:
+        type: boolean
+      link_id:
+        example: "0"
+        type: string
+      link_revision:
+        example: "0"
+        type: string
+      pending_acceptance_id:
+        example: "0"
+        type: string
+      pending_acceptance_recoverable:
+        type: boolean
+      pending_acceptance_revision:
+        example: "0"
+        type: string
+      proposal_version:
+        example: "0"
+        type: string
+      remediation_state:
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      risk_revision:
+        example: "0"
+        type: string
+      submissions:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowSubmission'
+        type: array
+      title:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowSubmission:
+    properties:
+      decision:
+        type: string
+      evidence:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowEvidence'
+        type: array
+      measures:
+        type: string
+      proposal_version:
+        example: "0"
+        type: string
+      review_note:
+        type: string
+      reviewed_at:
+        type: string
+      submitted_at:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RoleIDRequest:
     properties:
       role_id:
@@ -843,6 +1170,8 @@ definitions:
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView:
     properties:
       created_at:
+        type: string
+      evidence_version:
         type: string
       file_name:
         type: string
@@ -1371,6 +1700,199 @@ definitions:
       updated_at:
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.GroupOutcome'
+        type: array
+      operation_id:
+        type: string
+      plan_id:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DepartmentStatsResult:
+    properties:
+      current:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptTodoRow'
+        type: array
+      history:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptHistoryRow'
+        type: array
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptHistoryRow:
+    properties:
+      dept_id:
+        description: owner_org_at_dispatch（0 = 派单时未归属）
+        example: "0"
+        type: string
+      dept_name:
+        type: string
+      dispatches:
+        description: 派单成功组数
+        type: integer
+      owner_name:
+        description: 软删主体为空串（冻结行不消失）
+        type: string
+      owner_user_id:
+        example: "0"
+        type: string
+      risks:
+        description: 涉及风险关联数（重提重链不双计）
+        type: integer
+      tickets:
+        description: 涉及工单数（组票 1:1，同票单口径计一次）
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptTodoRow:
+    properties:
+      dept_id:
+        description: 责任人现主部门（0 = 未归属：无主部门/主体已软删）
+        example: "0"
+        type: string
+      dept_name:
+        type: string
+      open_risks:
+        description: 活跃关联风险数（资产/项口径）
+        type: integer
+      open_tickets:
+        description: 在办工单数（同票计一次）
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.GroupOutcome:
+    properties:
+      group_key:
+        type: string
+      group_operation_id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemOutcome'
+        type: array
+      owner_org_at_dispatch:
+        example: "0"
+        type: string
+      owner_user_id:
+        example: "0"
+        type: string
+      status:
+        description: completed | failed
+        type: string
+      ticket:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference'
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemOutcome:
+    properties:
+      reason:
+        description: denied/invalid/conflict 时非空
+        type: string
+      result:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemResult'
+      risk_id:
+        example: "0"
+        type: string
+      ticket:
+        allOf:
+        - $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference'
+        description: already_linked 指向他票时给出（仍获权才投影）
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemResult:
+    enum:
+    - created
+    - linked
+    - already_linked
+    - denied
+    - invalid
+    - conflict
+    type: string
+    x-enum-varnames:
+    - ItemCreated
+    - ItemLinked
+    - ItemAlreadyLinked
+    - ItemDenied
+    - ItemInvalid
+    - ItemConflict
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanBlockView:
+    properties:
+      reason:
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanGroupView:
+    properties:
+      business_due_at:
+        type: string
+      group_key:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanItemView'
+        type: array
+      owner_user_id:
+        example: "0"
+        type: string
+      priority:
+        type: integer
+      ticket:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference'
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanItemView:
+    properties:
+      asset_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef'
+      deadline:
+        type: string
+      human_key:
+        type: string
+      revision:
+        example: "0"
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanResult:
+    properties:
+      blocked:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanBlockView'
+        type: array
+      expires_at:
+        type: string
+      groups:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanGroupView'
+        type: array
+      plan_hash:
+        type: string
+      plan_id:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference:
+    properties:
+      id:
+        example: "0"
+        type: string
+      ref:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_service_riskremediation.EvidenceRef:
+    properties:
+      kind:
+        type: string
+      ref:
+        type: string
+      version:
+        type: string
+    type: object
   internal_handler.DeleteAttachmentInput:
     properties:
       object_key:
@@ -1389,6 +1911,407 @@ definitions:
         type: string
     required:
     - id
+    type: object
+  internal_handler.riskDispatchApplyRequest:
+    properties:
+      operation_id:
+        type: string
+      plan_hash:
+        type: string
+      plan_id:
+        type: string
+    required:
+    - operation_id
+    - plan_hash
+    - plan_id
+    type: object
+  internal_handler.riskDispatchPlanItemRequest:
+    properties:
+      expected_revision:
+        type: string
+      risk_id:
+        type: string
+    required:
+    - risk_id
+    type: object
+  internal_handler.riskDispatchPlanRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.riskDispatchPlanItemRequest'
+        type: array
+      target_org_id:
+        type: string
+      target_type_code:
+        type: string
+    required:
+    - items
+    - target_org_id
+    - target_type_code
+    type: object
+  internal_handler.riskWorkflowAcceptanceDecision:
+    properties:
+      acceptance_id:
+        example: "0"
+        type: string
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      decision:
+        enum:
+        - approve
+        - reject
+        type: string
+      definition_version:
+        example: "0"
+        type: string
+      expected_acceptance_revision:
+        example: "0"
+        type: string
+      expected_risk_revision:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+      reason:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - acceptance_id
+    - decision
+    - definition_version
+    - expected_acceptance_revision
+    - expected_risk_revision
+    - expected_ticket_revision
+    - operation_id
+    - reason
+    - ticket_id
+    type: object
+  internal_handler.riskWorkflowAcceptanceRequest:
+    properties:
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      definition_version:
+        example: "0"
+        type: string
+      expected_link_revision:
+        example: "0"
+        type: string
+      expected_risk_revision:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      link_id:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+      reason:
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+      valid_until:
+        type: string
+    required:
+    - definition_version
+    - expected_link_revision
+    - expected_risk_revision
+    - expected_ticket_revision
+    - link_id
+    - operation_id
+    - reason
+    - risk_id
+    - ticket_id
+    - valid_until
+    type: object
+  internal_handler.riskWorkflowAcceptanceRework:
+    properties:
+      acceptance_id:
+        example: "0"
+        type: string
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      definition_version:
+        example: "0"
+        type: string
+      expected_acceptance_revision:
+        example: "0"
+        type: string
+      expected_link_revision:
+        example: "0"
+        type: string
+      expected_risk_revision:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      link_id:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+      reason:
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - acceptance_id
+    - definition_version
+    - expected_acceptance_revision
+    - expected_link_revision
+    - expected_risk_revision
+    - expected_ticket_revision
+    - link_id
+    - operation_id
+    - reason
+    - risk_id
+    - ticket_id
+    type: object
+  internal_handler.riskWorkflowAssigneeRequest:
+    properties:
+      assigned_to_user_id:
+        example: "0"
+        type: string
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      definition_version:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - assigned_to_user_id
+    - definition_version
+    - expected_ticket_revision
+    - operation_id
+    - ticket_id
+    type: object
+  internal_handler.riskWorkflowHandoffItemWire:
+    properties:
+      expected_link_revision:
+        example: "0"
+        type: string
+      expected_proposal_version:
+        example: "0"
+        type: string
+      expected_risk_revision:
+        example: "0"
+        type: string
+      link_id:
+        example: "0"
+        type: string
+    required:
+    - expected_link_revision
+    - expected_proposal_version
+    - expected_risk_revision
+    - link_id
+    type: object
+  internal_handler.riskWorkflowHandoffRequest:
+    properties:
+      definition_version:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.riskWorkflowHandoffItemWire'
+        type: array
+      operation_id:
+        type: string
+      reason:
+        type: string
+      successor_user_id:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - definition_version
+    - expected_ticket_revision
+    - items
+    - operation_id
+    - reason
+    - successor_user_id
+    - ticket_id
+    type: object
+  internal_handler.riskWorkflowItemRequest:
+    properties:
+      decision:
+        type: string
+      evidence:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskremediation.EvidenceRef'
+        type: array
+      expected_link_revision:
+        example: "0"
+        type: string
+      expected_proposal_version:
+        example: "0"
+        type: string
+      expected_risk_revision:
+        example: "0"
+        type: string
+      link_id:
+        example: "0"
+        type: string
+      measures:
+        type: string
+      note:
+        type: string
+      resolution:
+        type: string
+    required:
+    - expected_link_revision
+    - expected_risk_revision
+    - link_id
+    type: object
+  internal_handler.riskWorkflowItemResult:
+    properties:
+      link_id:
+        example: "0"
+        type: string
+      link_revision:
+        example: "0"
+        type: string
+      proposal_version:
+        example: "0"
+        type: string
+      resolution_version:
+        example: "0"
+        type: string
+      result:
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      risk_revision:
+        example: "0"
+        type: string
+    type: object
+  internal_handler.riskWorkflowOutcome:
+    properties:
+      acceptance_id:
+        example: "0"
+        type: string
+      acceptance_revision:
+        example: "0"
+        type: string
+      acceptance_status:
+        type: string
+      assigned_to_user_id:
+        example: "0"
+        type: string
+      assignment_generation:
+        example: "0"
+        type: string
+      definition_version:
+        example: "0"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.riskWorkflowItemResult'
+        type: array
+      operation_id:
+        type: string
+      status:
+        type: string
+      successor_user_id:
+        example: "0"
+        type: string
+      terminal_allowed:
+        type: boolean
+      ticket_id:
+        example: "0"
+        type: string
+      ticket_revision:
+        example: "0"
+        type: string
+    type: object
+  internal_handler.riskWorkflowPatch:
+    additionalProperties: {}
+    type: object
+  internal_handler.riskWorkflowRequest:
+    properties:
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      definition_version:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      operation_id:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - definition_version
+    - expected_ticket_revision
+    - operation_id
+    - ticket_id
+    type: object
+  internal_handler.riskWorkflowSubmitRequest:
+    properties:
+      comment:
+        type: string
+      custom_data_patch:
+        $ref: '#/definitions/internal_handler.riskWorkflowPatch'
+      definition_version:
+        example: "0"
+        type: string
+      expected_ticket_revision:
+        example: "0"
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.riskWorkflowItemRequest'
+        type: array
+      operation_id:
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
+    required:
+    - definition_version
+    - expected_ticket_revision
+    - items
+    - operation_id
+    - ticket_id
     type: object
   response.Response:
     properties:
@@ -2265,6 +3188,667 @@ paths:
       summary: 组织已绑定角色列表
       tags:
       - org
+  /api/v1/risk-items:
+    get:
+      parameters:
+      - description: 页码（>=1）
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数（1..100）
+        in: query
+        name: page_size
+        type: integer
+      - description: 状态过滤
+        in: query
+        name: status
+        type: string
+      - description: 级别过滤
+        in: query
+        name: level
+        type: string
+      - description: 责任人 ID（十进制字符串）
+        in: query
+        name: owner_user_id
+        type: string
+      - description: 受影响组织 ID（十进制字符串）
+        in: query
+        name: affected_org_id
+        type: string
+      - description: 来源过滤
+        in: query
+        name: source_ref
+        type: string
+      - description: 标题模糊匹配
+        in: query
+        name: q
+        type: string
+      - description: created_at|deadline|level
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 授权风险列表（L2 过滤）
+      tags:
+      - risk
+  /api/v1/risk-items/{id}:
+    get:
+      parameters:
+      - description: 风险 ID（十进制字符串）
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 授权风险详情（不可见与不存在同 404）
+      tags:
+      - risk
+  /api/v1/risk-items/{id}/asset:
+    get:
+      parameters:
+      - description: 风险 ID（十进制字符串）
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 按风险已绑定资产读取目录证据
+      tags:
+      - risk
+  /api/v1/risk-items/{id}/history:
+    get:
+      parameters:
+      - description: 风险 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 风险核实/处置历史（有界分页）
+      tags:
+      - risk
+  /api/v1/risk-items/assess:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 评估请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 核实/评估（定级、处置策略与整改期限）
+      tags:
+      - risk
+  /api/v1/risk-items/assign:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 指派请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 责任确认（主锚管理者）
+      tags:
+      - risk
+  /api/v1/risk-items/batch-dispatch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 原操作号、预览号及摘要
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskDispatchApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 应用派单预览：逐组原子建票/追加并按原号恢复（D10 apply）
+      tags:
+      - risk
+  /api/v1/risk-items/create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 登记请求
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 人工登记风险（主锚管理范围）
+      tags:
+      - risk
+  /api/v1/risk-items/dispatch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 原操作号、预览号及摘要
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskDispatchApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 应用派单预览：逐组原子建票/追加并按原号恢复（D10 apply）
+      tags:
+      - risk
+  /api/v1/risk-items/dispatch-operations/{id}:
+    get:
+      parameters:
+      - description: 原操作号
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 按原操作号读取已提交的派单回执
+      tags:
+      - risk
+  /api/v1/risk-items/dispatch-plan:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 具名风险版本和目标
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskDispatchPlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 风险派单预览：按漏洞与已核实责任人分组（D10 plan）
+      tags:
+      - risk
+  /api/v1/risk-items/dispatch-statistics:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DepartmentStatsResult'
+              type: object
+      summary: 按当前及派单时主部门读取已授权的派单统计
+      tags:
+      - risk
+  /api/v1/risk-items/ingest-receipts/{id}:
+    get:
+      parameters:
+      - description: 收件身份（ingest_id）
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 按原 ingest_id 受权核查来源收件回执
+      tags:
+      - risk
+  /api/v1/risk-items/operations/{id}:
+    get:
+      parameters:
+      - description: 原操作号
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt'
+              type: object
+      summary: 按原操作号查询风险登记、核实或责任确认的结果
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-accept-assignment:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 工单修订、定义版本与原操作号
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 工单当前办理人接单
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-accept-decision:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 接受申请、审批理由与原操作号
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowAcceptanceDecision'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 独立获权人员审批工单关联风险接受
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-accept-request:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 风险、关联、期限与原操作号
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowAcceptanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 责任人发起工单关联风险接受
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-accept-rework:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 原批准、关联和当前修订
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowAcceptanceRework'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 接续在办工单的到期风险接受
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-assign-handler:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 目标办理人、工单修订与原操作号
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowAssigneeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 管理者向具名办理人分派风险整改工单
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-context/{id}:
+    get:
+      parameters:
+      - description: 工单 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowContext'
+              type: object
+      summary: 读取逐资产办理需要的当前修订
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-finish:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 列明原操作号和逐资产修订
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowSubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 办理人提交逐资产整改证据
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-handoff:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 复测交接请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowHandoffRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 交接整组未决风险复测
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-operations/{id}:
+    get:
+      parameters:
+      - description: 原操作号
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 按原号只读查询逐资产整改回执
+      tags:
+      - risk
+  /api/v1/risk-items/remediation-review:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 列明原操作号和逐资产提案版本
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.riskWorkflowSubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.riskWorkflowOutcome'
+              type: object
+      summary: 现势责任人逐项通过或打回
+      tags:
+      - risk
+  /api/v1/risk-items/report:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 批量信封，也接受单条 FindingObservationV1 对象
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportResult'
+              type: object
+      summary: 合成来源上报（单条 FindingObservationV1 或 batch≤100）
+      tags:
+      - risk
   /api/v1/roles:
     get:
       produces:
@@ -3165,7 +4749,7 @@ paths:
       - ticket
   /api/v1/tickets/{id}/attachments:
     get:
-      description: L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size
+      description: L2 read 面（工单可见性——不可见单 404 同形）；当前风险不可见的整改证据省略；条目含 object_key/file_name/mime/size
       parameters:
       - description: 工单 ID
         in: path

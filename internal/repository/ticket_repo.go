@@ -14,13 +14,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	commentref "github.com/tracerbiubiubiu/zhuzhao/internal/model/comment"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 )
 
+// A dispatch group identifies the ticket even after the group and its links
+// end. Project at the query boundary so keyword matches and write responses
+// also use the same ordinary-ticket summary.
+const riskRemediationTicketSQL = `EXISTS (SELECT 1 FROM risk_dispatch_groups g WHERE g.ticket_id = tickets.id)`
+
+const riskRemediationTitleLiteral = `'` + model.RiskRemediationTicketTitle + `'`
+const riskRemediationDescriptionLiteral = `'` + model.RiskRemediationTicketDescription + `'`
+
+// TicketSummaryTitleSQL is the ordinary title expression for queries on tickets.
+const TicketSummaryTitleSQL = `(CASE WHEN ` + riskRemediationTicketSQL +
+	` THEN ` + riskRemediationTitleLiteral + ` ELSE tickets.title END)`
+
 const ticketSelectColumns = `
-	id, type_code, title, COALESCE(description, '') AS description, priority, status,
+	id, type_code, ` + TicketSummaryTitleSQL + ` AS title,
+	CASE WHEN ` + riskRemediationTicketSQL + ` THEN ` + riskRemediationDescriptionLiteral + `
+	ELSE COALESCE(description, '') END AS description, priority, status,
 	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
 	status_changed_at, escalation_supervisor_id, created_at, updated_at,
 	COALESCE(human_key, '') AS human_key, definition_version, revision`
@@ -224,10 +239,11 @@ func ticketListConds(q model.TicketListQuery, argOffset int) ([]string, []any) {
 	//「粘工单号」是运维高频动作，纯标题子串永远漏命中
 	if q.Keyword != "" {
 		kw := next("%" + escapeLike(q.Keyword) + "%")
+		titleMatch := TicketSummaryTitleSQL + " ILIKE " + kw + ` ESCAPE '\'`
 		if id, err := strconv.ParseInt(q.Keyword, 10, 64); err == nil {
-			conds = append(conds, fmt.Sprintf("(title ILIKE %s ESCAPE '\\' OR id = %s)", kw, next(id)))
+			conds = append(conds, "("+titleMatch+" OR id = "+next(id)+")")
 		} else {
-			conds = append(conds, fmt.Sprintf("title ILIKE %s ESCAPE '\\'", kw))
+			conds = append(conds, titleMatch)
 		}
 	}
 	// 标签筛选（S10 B10-2）：可见性由外层 GetFilter 管线约束——标签不旁路 L2
@@ -392,8 +408,10 @@ func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketI
 func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title, description *string, priority *int, customData []byte) (*model.Ticket, error) {
 	const q = `
 		UPDATE tickets SET
-			title = COALESCE($2, title),
-			description = COALESCE($3, description),
+			title = CASE WHEN $2::text IS NOT NULL AND ` + riskRemediationTicketSQL + `
+			             THEN ` + riskRemediationTitleLiteral + ` ELSE COALESCE($2, title) END,
+			description = CASE WHEN $3::text IS NOT NULL AND ` + riskRemediationTicketSQL + `
+			                   THEN ` + riskRemediationDescriptionLiteral + ` ELSE COALESCE($3, description) END,
 			priority = COALESCE($4, priority),
 			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
@@ -488,6 +506,23 @@ func (r *TicketRepo) Delete(ctx context.Context, id int64, actorUserID int64) er
 }
 
 func (r *TicketRepo) DeleteTx(ctx context.Context, tx pgx.Tx, id, actorUserID int64) error {
+	// HTTP callers already hold this lock in their IAM transaction. Acquire
+	// it here as well for the direct repository entry point.
+	var lockedID int64
+	err := tx.QueryRow(ctx, `SELECT id FROM tickets WHERE id=$1 FOR UPDATE`, id).Scan(&lockedID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errcode.ErrTicketNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("lock ticket for deletion: %w", err)
+	}
+	referenced, err := hasRiskTicketEvidence(ctx, tx, id, nil)
+	if err != nil {
+		return fmt.Errorf("check risk evidence for ticket deletion: %w", err)
+	}
+	if referenced {
+		return errcode.ErrConflict
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO ticket_events (ticket_id, user_id, action, request_id) VALUES ($1, $2, $4, NULLIF($3, ''))`,
 		id, actorUserID, reqid.From(ctx), eventActionDeleted); err != nil {
@@ -565,6 +600,11 @@ func (r *TicketRepo) ListComments(ctx context.Context, ticketID int64, includeIn
 		if ref, ok := refs[c.UserID]; ok {
 			c.CreatedByName = ref.Name
 			c.CreatedByNo = ref.No
+		}
+		// 可核证据版本仅公开评论回填（内部备注非可核对象，恒空——合同见
+		// internal/model/comment；复测人用 GET 评论返回值原样引用）
+		if !c.IsInternal {
+			c.EvidenceVersion = commentref.EvidenceVersionToken(c.CreatedAt, c.Content)
 		}
 	}
 	return comments, nil

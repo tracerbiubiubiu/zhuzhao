@@ -8,6 +8,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/singleton"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
@@ -116,6 +117,16 @@ func (s *AuditService) List(ctx context.Context, q repository.AuditListQuery, em
 	list, total, err := s.auditRepo.List(ctx, q)
 	if err != nil {
 		return nil, err
+	}
+	for _, log := range list {
+		// Legacy rows may still contain a risk payload recorded before capture was disabled.
+		if audit.IsRiskRoute(log.Path) {
+			log.RequestBody = ""
+			log.ResponseSummary = ""
+		}
+		if route := audit.RiskEvidenceRoutePath(log.Path); route != "" {
+			log.Path = route
+		}
 	}
 	return &model.AuditLogListResponse{
 		List:     list,

@@ -26,6 +26,22 @@ var repoKnownSecrets = map[string]struct{}{
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
 // 原仅校验 secret，TTL 漏配为 0 时 token 签发即过期且无启动期报错，排障成本高）
 func (c *Config) Validate() error {
+	if err := c.RiskIngest.validate(); err != nil {
+		return err
+	}
+	if _, err := c.RiskAssetDirectory.Client(); err != nil {
+		return err
+	}
+	if c.RiskAssetDirectory.Enabled && c.RiskIngest.Enabled &&
+		(c.RiskAssetDirectory.AK == c.RiskIngest.AK || c.RiskAssetDirectory.SK == c.RiskIngest.SK) {
+		return fmt.Errorf("risk asset directory and risk ingest require distinct credentials")
+	}
+	if c.RiskReminder.ScanInterval < 0 || (c.RiskReminder.ScanInterval > 0 && !c.RiskRemediationEnabled) {
+		return fmt.Errorf("risk_reminder.scan_interval must be nonnegative and requires risk_remediation_enabled when positive")
+	}
+	if c.RiskRemediationEnabled && !c.Storage.Enabled {
+		return fmt.Errorf("risk remediation requires configured attachment storage")
+	}
 	if err := c.Taskrunner.Maintenance.validateStartup(); err != nil {
 		return err
 	}

@@ -98,6 +98,12 @@ type Deps struct {
 	OpsHandler *handler.OpsHandler
 	PanicSink  middleware.PanicSink
 
+	// Phase 6 B2 第 6 项（D08/D09）风险登记与核实（risk_list 页面 GET + 四写按钮——000089）
+	RiskHandler         *handler.RiskHandler
+	RiskDispatchHandler *handler.RiskDispatchHandler
+	RiskWorkflowHandler *handler.RiskWorkflowHandler
+	RiskIngest          config.RiskIngestConfig
+
 	// 批次 B/E13：网关反代注册表（前缀→上游 + AK/SK 出站签名）。
 	// nil（未配置 gateway.upstreams）= 不挂载，网关化默认关闭。
 	Gateway *gateway.Registry
@@ -187,6 +193,7 @@ func New(deps Deps) *gin.Engine {
 	// 翻案追记）：Enabled=false（默认）不挂载；装配逻辑独立为 mountCompatGroup
 	//（可测——开关/验签/归因的装配层断言见 compat_mount_test.go）。
 	mountCompatGroup(r, deps.CompatAKSK)
+	mountRiskFeed(r, deps.RiskIngest, deps.RiskHandler.ReportFromSource)
 	accountSnapshots := deps.AccountSnapshots
 	if accountSnapshots == nil {
 		accountSnapshots = accountSnapshotSource{lookup: repository.NewAccountSecurityLookup(deps.DBPool)}
@@ -536,6 +543,37 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.GET("/message-rules", deps.MessageAdminHandler.ListRules)
 					ticketMeta.POST("/message-rules", deps.MessageAdminHandler.UpsertRule)
 					ticketMeta.POST("/message-rules/delete", deps.MessageAdminHandler.DeleteRule)
+				}
+
+				// Phase 6 B2 第 6 项（D08/D09）风险登记与核实：
+				// L1 = CasbinAuth（000089——页面行仅 GET，写端点挂 risk_*_btn 按钮行）；
+				// L2/L3 与 C04 写事务重验在 service/risk。
+				riskItems := biz.Group("/risk-items")
+				{
+					riskItems.GET("", deps.RiskHandler.List)
+					riskItems.GET("/:id", deps.RiskHandler.Get)
+					riskItems.GET("/:id/history", deps.RiskHandler.History)
+					riskItems.GET("/:id/asset", deps.RiskHandler.AssetEvidence)
+					riskItems.GET("/ingest-receipts/:id", deps.RiskHandler.IngestReceipt)
+					riskItems.GET("/operations/:id", deps.RiskHandler.OperationResult)
+					riskItems.GET("/dispatch-operations/:id", deps.RiskDispatchHandler.OperationResult)
+					riskItems.GET("/dispatch-statistics", deps.RiskDispatchHandler.DepartmentStats)
+					riskItems.POST("/create", deps.RiskHandler.Create)
+					riskItems.POST("/assess", deps.RiskHandler.Assess)
+					riskItems.POST("/assign", deps.RiskHandler.Assign)
+					riskItems.POST("/dispatch-plan", deps.RiskDispatchHandler.DispatchPlan)
+					riskItems.POST("/dispatch", deps.RiskDispatchHandler.Dispatch)
+					riskItems.POST("/batch-dispatch", deps.RiskDispatchHandler.Dispatch)
+					riskItems.GET("/remediation-context/:id", deps.RiskWorkflowHandler.Current)
+					riskItems.GET("/remediation-operations/:id", deps.RiskWorkflowHandler.Receipt)
+					riskItems.POST("/remediation-finish", deps.RiskWorkflowHandler.Finish)
+					riskItems.POST("/remediation-review", deps.RiskWorkflowHandler.Review)
+					riskItems.POST("/remediation-handoff", deps.RiskWorkflowHandler.Handoff)
+					riskItems.POST("/remediation-accept-request", deps.RiskWorkflowHandler.RequestAcceptance)
+					riskItems.POST("/remediation-accept-decision", deps.RiskWorkflowHandler.DecideAcceptance)
+					riskItems.POST("/remediation-accept-rework", deps.RiskWorkflowHandler.ReworkAcceptance)
+					riskItems.POST("/remediation-assign-handler", deps.RiskWorkflowHandler.AssignHandler)
+					riskItems.POST("/remediation-accept-assignment", deps.RiskWorkflowHandler.AcceptAssignment)
 				}
 			}
 

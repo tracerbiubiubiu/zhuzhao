@@ -11,7 +11,7 @@
     "docs/planning/uaa-real-integration-conditions.json": "8391462c9c7654c806b9a5149478df694578d80e138f4cab038f01da3d922800",
     "docs/planning/local-core-release-estimate.json": "7609ccaebf095cbd03aaacd6d5807699f0fa8004f790ac631a67bdaa645ef02c",
     "docs/planning/first-usable-release-target.json": "7ede04496a915b1ccedf63742fb4f82e47669f7f58aab6a007e2e3133b8d01d9",
-    "docs/planning/owner-decision-agenda.json": "63bb642612f24a4e05258e5af069d030f7bb8254aceffce8c708133c7c98e304",
+    "docs/planning/owner-decision-agenda.json": "9c277fc0ecc0c839b021c2300f17cd6ff50236f82b0a2bae5db8d277680f96aa",
     "scripts/calculate-planning-schedule.py": "40238df4bba20b23ff9fec4119a7b0b994c34e8d40536ca071034da7ab8f16a6"
   },
   "resource_assumptions": {

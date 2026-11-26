@@ -98,7 +98,7 @@ func TestAttachmentAPI_Scenarios(t *testing.T) {
 	t.Run("附件列表——JOIN 视图", func(t *testing.T) {
 		svc, _ := newSvc(t)
 		key, tkID := bound(t, svc)
-		list, err := svc.ListTicketAttachments(context.Background(), tkID)
+		list, err := svc.ListTicketAttachments(context.Background(), tkID, uid)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
 		assert.Equal(t, key, list[0].ObjectKey)

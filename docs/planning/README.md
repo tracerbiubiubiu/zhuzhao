@@ -5,7 +5,8 @@
 ## 当前交付排期
 
 - [首批人工漏洞整改（发布验收点 B2）](phase6-b2-kickoff-plan.md)演示同一漏洞影响同一责任人名下的多台资产时，怎样开一张单并逐台提交和复测。责任人不同则分单。[验收卡](phase6-b2-acceptance-cards.md)还写了两种容易遗漏的情况：停用账号后缓存没更新，其中一项整改被打回。
-- [已完成功能、后续计划与内网首发](intranet-uaa-release-schedule.md#内网首发要到哪一阶段)列出当前验证范围。B3 验工单、任务与活动列表联动，B4 交齐约定基础功能并通过目标环境门禁后，以本地账号在内网正式运行。外部继续研发，内网随已验发布版本升级，UAA 在 B5 后继接管。
+- [Phase 6 剩余开发顺序与验收](intranet-uaa-release-schedule.md#剩余开发顺序与验收)从人工整改第 6 项列到第 22 项的外部离线演练。[原工单需求 26 件](../phase6/06-ticket-completeness.md#26件当前对账2026-11-14)和[全站前端验收](../phase6/frontend-page-family-detail.md)逐项给出场景和判据。
+- [入网、首发和待拍板](intranet-uaa-release-schedule.md#进内网后按什么顺序做)说明外部用 mock 验收所有公司内网依赖、离线演练后最后入网、以本地账号密码启用的顺序。[所有者议程](owner-decision-agenda.md#场景怎么选谁先准备)列出对应的选项和准备责任。原[机器排程](execution-schedule.md)供工日和依赖复算，首次进入和启用看当前排期。
 - [开工计划](phase6-b2-kickoff-plan.md#本批实施与验收安排)列出获准在独立测试环境实施的九项工作，以及第 3、5、9 项的验收。实际开工时间随实施登记。真实试用单独报批，由所有者确认环境、人员、数据和停止办法。各模块还缺什么见[设计审查](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 
 ## 按工作包找合同与交接

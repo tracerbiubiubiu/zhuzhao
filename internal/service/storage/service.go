@@ -68,7 +68,8 @@ type Service struct {
 	// ticketCmd C04 撤权提交顺序边界：票态附件写入的 IAM 共同共享守卫+
 	// 锁票重认证由 ticket 域实现（域间零 import——装配层结构化注入，A.7
 	// handler 编排先例）。nil = 既有直连契约（非 HTTP 调用方/既有测试）。
-	ticketCmd TicketAttachmentCommand
+	ticketCmd          TicketAttachmentCommand
+	riskEvidenceRoutes func(context.Context, int64, []int64) (map[int64]bool, error)
 }
 
 // TicketAttachmentCommand ticket 域守卫边界（实现方=ticket.Service）。fn 在
@@ -76,6 +77,25 @@ type Service struct {
 // 第二个池连接。
 type TicketAttachmentCommand interface {
 	AttachmentCommand(ctx context.Context, action string, actorUserID, ticketID int64, fn func(context.Context) error) error
+}
+
+// TicketAttachmentUploadCommand is an optional, purpose-specific evidence port.
+// Richtext and deletion always retain TicketAttachmentCommand's update contract.
+type TicketAttachmentUploadCommand interface {
+	AttachmentUploadCommand(context.Context, string, int64, int64, *model.FileObject, func(context.Context) error) error
+}
+
+// HasTicketAttachmentCommand lets the handler defer upload authorization to the
+// service, where the stored purpose is known and preflight can precede object I/O.
+func (s *Service) HasTicketAttachmentCommand() bool { return s.ticketCmd != nil }
+
+func (s *Service) runUploadCommand(ctx context.Context, action string, actor, ticketID int64, f *model.FileObject, write func(context.Context) error) error {
+	if f.Purpose == "ticket_attachment" {
+		if cmd, ok := s.ticketCmd.(TicketAttachmentUploadCommand); ok {
+			return cmd.AttachmentUploadCommand(ctx, action, actor, ticketID, f, write)
+		}
+	}
+	return s.runAttachmentCommand(ctx, action, actor, ticketID, write)
 }
 
 // UseTicketAttachmentCommand 装配层注入守卫实现（handler 构造时机——一次性，
@@ -135,7 +155,7 @@ func (s *Service) PresignUpload(ctx context.Context, in *model.PresignUploadInpu
 	}
 	insert := func(ctx context.Context) error { return s.repo.InsertPending(ctx, f) }
 	if ticketPurposes[purpose] {
-		err = s.runAttachmentCommand(ctx, "presign", userID, *in.TicketID, insert)
+		err = s.runUploadCommand(ctx, "presign", userID, *in.TicketID, f, insert)
 	} else {
 		err = insert(ctx)
 	}
@@ -188,6 +208,22 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 	if prefix, ok := purposePrefixes[f.Purpose]; !ok || !strings.HasPrefix(f.ObjectKey, prefix) {
 		return nil, errcode.ErrFileAlreadyBound
 	}
+	if ticketPurposes[f.Purpose] {
+		if in.TicketID == nil {
+			return nil, errcode.New(errcode.ErrInvalidParams.Code, "ticket 态 confirm 必带 ticket_id")
+		}
+		// A current preflight precedes external HEAD; the persistent command below
+		// rechecks the same purpose and facts after HEAD, in its own IAM ordering.
+		if err := s.runUploadCommand(ctx, "confirm", userID, *in.TicketID, f, func(context.Context) error { return nil }); err != nil {
+			return nil, err
+		}
+	} else if in.TicketID != nil {
+		// Preserve the handler's original update check even for a create/avatar
+		// object presented with ticket_id. Its stored purpose grants no evidence port.
+		if err := s.runAttachmentCommand(ctx, "confirm", userID, *in.TicketID, func(context.Context) error { return nil }); err != nil {
+			return nil, err
+		}
+	}
 
 	st, err := s.client.StatObject(ctx, f.ObjectKey)
 	if err != nil {
@@ -213,7 +249,7 @@ func (s *Service) Confirm(ctx context.Context, in *model.ConfirmFileInput, userI
 		}
 		// C04 撤权提交顺序：HEAD 实测已在 IAM 锁外完成（外部动作不进锁），
 		// 落绑在守卫内锁票重认证后同连接提交。
-		if err := s.runAttachmentCommand(ctx, "confirm", userID, *in.TicketID, func(ctx context.Context) error {
+		if err := s.runUploadCommand(ctx, "confirm", userID, *in.TicketID, f, func(ctx context.Context) error {
 			return s.repo.ConfirmAndBind(ctx, f.ID, *in.TicketID, userID, st.Size, st.ETag, cfg.MaxAttachmentsPerTicket)
 		}); err != nil {
 			if errors.Is(err, repository.ErrStorageAlreadyBound) {
@@ -312,6 +348,22 @@ func (s *Service) Download(ctx context.Context, key, ifNoneMatch string, callerU
 				return nil, err
 			}
 		}
+		hidden, err := s.repo.IsHiddenRiskEvidence(ctx, key, callerUserID)
+		if err != nil {
+			s.logger.Error("storage evidence authorization", "err", err)
+			return nil, errcode.ErrInternal
+		}
+		if hidden {
+			return nil, errcode.ErrFileNotFound
+		}
+		hiddenRoutes, err := s.hiddenEvidenceRoutes(ctx, callerUserID, []string{key})
+		if err != nil {
+			s.logger.Error("storage evidence route authorization", "err", err)
+			return nil, errcode.ErrInternal
+		}
+		if hiddenRoutes[key] {
+			return nil, errcode.ErrFileNotFound
+		}
 	}
 	if ifNoneMatch != "" && f.ETag != nil && ifNoneMatch == *f.ETag {
 		return nil, ErrNotModified
@@ -378,16 +430,31 @@ func (s *Service) BindAvatar(ctx context.Context, objectKey string, userID int64
 }
 
 // ListTicketAttachments 附件列表视图（B5-3 批3；L2 read 面由 handler 编排）。
-func (s *Service) ListTicketAttachments(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
+func (s *Service) ListTicketAttachments(ctx context.Context, ticketID, actorID int64) ([]*model.TicketAttachmentView, error) {
 	if s.repo == nil {
 		return nil, errcode.New(errcode.ErrInternal.Code, "对象存储未启用（storage.enabled=false）")
 	}
-	list, err := s.repo.ListAttachmentsByTicket(ctx, ticketID)
+	list, err := s.repo.ListAttachmentsByTicket(ctx, ticketID, actorID)
 	if err != nil {
 		s.logger.Error("storage list attachments", "err", err)
 		return nil, errcode.ErrInternal
 	}
-	return list, nil
+	keys := make([]string, 0, len(list))
+	for _, attachment := range list {
+		keys = append(keys, attachment.ObjectKey)
+	}
+	hidden, err := s.hiddenEvidenceRoutes(ctx, actorID, keys)
+	if err != nil {
+		s.logger.Error("storage evidence route authorization", "err", err)
+		return nil, errcode.ErrInternal
+	}
+	visible := list[:0]
+	for _, attachment := range list {
+		if !hidden[attachment.ObjectKey] {
+			visible = append(visible, attachment)
+		}
+	}
+	return visible, nil
 }
 
 // DeleteTicketAttachment checks current references and atomically unlinks and

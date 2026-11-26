@@ -14,6 +14,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
+	commentref "github.com/tracerbiubiubiu/zhuzhao/internal/model/comment"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
@@ -64,7 +65,7 @@ func (s *Service) SetEventRegistry(reg *domainevent.HookRegistry) *Service {
 }
 
 // emitTicketEvent 在提交后派发，并从本次业务读取的工单快照携带创建者。
-// 消费者不回查数据库：排队期间删单仍能找到创建者，且不把操作者误当创建者。
+// 创建者取自快照，排队期间删单也能区分原创建者与操作者。
 func (s *Service) emitTicketEvent(ticket *model.Ticket, ev domainevent.DomainEvent) {
 	if s.eventReg != nil {
 		s.eventReg.Dispatch(context.Background(), withTicketIdentity(withTicketSnapshot(ticket, ev), ticket.CreatedBy))
@@ -206,6 +207,9 @@ const defaultTicketPriority = 3
 
 // Create 创建工单
 func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, actorUserID int64) (*model.Ticket, error) {
+	if req == nil {
+		return nil, errcode.ErrInvalidParams
+	}
 	// W0b（二十四批 P0-5）：assigned_to 在创建请求中拒收——分派须走 Assign 端点
 	// 过状态机（open→assigned 事件+指派人校验）；此处直传会落库 open 态带处理人。
 	if req.AssignedTo != nil {
@@ -216,178 +220,18 @@ func (s *Service) Create(ctx context.Context, req *model.CreateTicketRequest, ac
 	if err := s.authorizeCreateOrg(ctx, actorUserID, req.OrgID); err != nil {
 		return nil, err
 	}
-	// 1. 校验 type_code（停用类型对客户端视同不存在，统一 90003）
-	ttype, fields, err := s.ticketRepo.PublishedCreateDefinition(ctx, req.TypeCode)
+	p, err := s.prepareTicketCreate(ctx, req, actorUserID)
 	if err != nil {
 		return nil, err
 	}
-	if !ttype.IsActive {
-		return nil, errcode.ErrTicketTypeNotFound
-	}
-	if req.DefinitionVersion != "" || req.DefinitionHash != "" {
-		version, err := strconv.ParseInt(req.DefinitionVersion, 10, 64)
-		if err != nil || version <= 0 || strconv.FormatInt(version, 10) != req.DefinitionVersion || len(req.DefinitionHash) != 64 {
-			return nil, errcode.New(errcode.ErrInvalidParams.Code, "建单预览须同时传入规范版本与定义摘要")
-		}
-		if ttype.CurrentPublishedVersion == nil || *ttype.CurrentPublishedVersion != version {
-			return nil, errcode.ErrConcurrentModification
-		}
-		def, err := s.ticketRepo.GetTicketDefinitionTx(ctx, repository.IAMDB(ctx, s.db), req.TypeCode, version)
-		if err != nil {
-			return nil, err
-		}
-		if def.DefinitionHash != req.DefinitionHash {
-			return nil, errcode.ErrConcurrentModification
-		}
-	}
-	// Historical definitions remain readable and repairable, but must not
-	// create a new ticket in a built-in state absent from their own graph.
-	if err := validateTypeGraph(ttype.States, ttype.Transitions); err != nil {
-		return nil, err
-	}
-
-	// 2. 模板预填（可选，09-ticket §2：default_fields 预填空缺字段、default_priority 作缺省）。
-	// 取舍：请求显式值 > 模板默认 > 类型缺省 3；模板只填请求未提供的字段，不覆盖显式输入。
-	// title 不预填——请求 binding:"required" 保证非空，模板 title 永远不会被用到。
-	priority := req.Priority
-	if priority == 0 {
-		priority = defaultTicketPriority
-	}
-	// IW1 后随 BK-18 收敛：刻度 1–4（1紧急 2高 3中 4低），越界拒绝（业界枚举口径）
-	if priority < 1 || priority > 4 {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
-	}
-	description := req.Description
-	customData := req.CustomData
-	var template *model.TicketTemplate
-	if req.TemplateCode != "" {
-		tmpl, err := s.ticketRepo.GetTicketTemplate(ctx, req.TemplateCode)
-		switch {
-		case errors.Is(err, errcode.ErrNotFound):
-			// 模板不存在：可选参数，静默跳过（「命中则预填」语义）
-		case err != nil:
-			return nil, fmt.Errorf("get ticket template: %w", err) // DB 错误不得吞掉
-		default:
-			template = tmpl
-			if tmpl.TypeCode != req.TypeCode {
-				return nil, errcode.ErrInvalidParams // 模板属于其它工单类型
-			}
-			var defaults struct {
-				Description *string          `json:"description,omitempty"`
-				CustomData  *json.RawMessage `json:"custom_data,omitempty"`
-			}
-			if len(tmpl.DefaultFields) > 0 {
-				if err := json.Unmarshal(tmpl.DefaultFields, &defaults); err != nil {
-					return nil, fmt.Errorf("parse template default_fields: %w", err)
-				}
-			}
-			if description == "" && defaults.Description != nil {
-				description = *defaults.Description
-			}
-			if len(customData) == 0 && defaults.CustomData != nil {
-				customData = *defaults.CustomData
-			}
-			if req.Priority == 0 && tmpl.DefaultPriority > 0 {
-				priority = tmpl.DefaultPriority
-			}
-		}
-	}
-	// 模板默认优先级路径统一收敛（显式路径已在上方校验）
-	if priority < 1 || priority > 4 {
-		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
-	}
-
-	// IW3/BK-18 G2：按类型字段 schema 校验 custom_data（required/类型/选项/regex）
-	// B1-4 取数联动在事务准备阶段、formula 重算之前——取数结果可被
-	// formula 引用；失败不阻塞提交、目标字段留空+missed 日志（A.4 拍板）
-	// F-B-3（审计 2026-10-22）：fetch 先于校验——fetch 写入的值须过 G2
-	// 类型/regex 校验（原顺序 validate→fetch 导致 fetch 结果绕校验）
-	// Fetch decisions and the later validation use one exact schema snapshot.
-	customData = s.applyFetches(req.TypeCode, customData, actorUserID, fields)
-	// S6 §5.3 人读编号事务外预取：nextval 本就非事务性（回滚烧号可接受），
-	// 事务内仅保留写行（原子性不变）——keyGen 持池连接，同上禁入事务窗口
-	var humanKey string
-	if s.keyGen != nil {
-		humanKey, err = s.keyGen.Next(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("human_key: %w", err)
-		}
-	}
-
-	// 3. 事务内：FOR SHARE 锁 org 行 → 快照最新 path → 创建工单 + 写事件。
-	// org_path 是 2b scope=group 可见性过滤的依赖列（P2-D1 move 级联维护镜像），
-	// 快照必须在事务内与 Move 的 FOR UPDATE 写锁串行化后读取（BK-11 ①）：
-	// 事务外裸读会命中「读旧 path → move 级联提交 → 写入过期 org_path」竞态。
-	ticket := &model.Ticket{
-		TypeCode:             req.TypeCode,
-		DefinitionVersion:    ttype.CurrentPublishedVersion,
-		Title:                req.Title,
-		Description:          description,
-		Priority:             priority,
-		Status:               StatusOpen,
-		CreatedBy:            actorUserID,
-		EscalationSupervisor: req.EscalationSupervisor,
-		OrgID:                req.OrgID,
-		CustomData:           customData,
-	}
-
+	var ticket *model.Ticket
 	err = s.withHTTPCommand(ctx, "create", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
-		if err := s.ticketRepo.LockPublishedCreateTx(ctx, tx, ttype, req.TemplateCode, template); err != nil {
-			return err
-		}
-		_, _, ref, err := s.resolveTicketDefinition(ctx, ticket)
+		var err error
+		ticket, err = s.lockPreparedCreateTx(ctx, tx, p, true)
 		if err != nil {
 			return err
 		}
-		ticket.DefinitionRef = ref
-		ticket.DefinitionResolution = "exact"
-		org, err := s.orgRepo.FindByIDForShareTx(ctx, tx, req.OrgID)
-		if err != nil {
-			return err
-		}
-		ticket.OrgPath = org.Path
-
-		if err := s.authorizeCreateOrg(ctx, actorUserID, req.OrgID); err != nil {
-			return err
-		}
-
-		// G2 and reference extraction share the transaction's schema and connection.
-		customData, err = s.validateCustomData(ctx, tx, req.TypeCode, customData, nil, fields)
-		if err != nil {
-			return err
-		}
-		refs, err := fieldReferences(fields, customData)
-		if err != nil {
-			return err
-		}
-		ticket.CustomData = customData
-
-		if err := s.ticketRepo.CreateTx(ctx, tx, ticket); err != nil {
-			return err
-		}
-		if err := s.applyStateSLARuleTx(ctx, tx, ttype, ticket, StatusOpen); err != nil {
-			return err
-		}
-		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
-			TicketID: ticket.ID,
-			UserID:   actorUserID,
-			Action:   EventCreated,
-		}); err != nil {
-			return err
-		}
-		// Create and Update preserve field purpose and deduplicate shared sources.
-		if err := s.bindUpdateReferencesTx(ctx, tx, ticket.ID, actorUserID, req.Attachments, refs); err != nil {
-			return err
-		}
-		// S6 §5.3：人读编号 TK-yyyymmdd-NNNN——编号已在 Begin 前预取，此处仅
-		// 同事务写行（原子性不变）
-		if ticket.HumanKey == "" && humanKey != "" {
-			ticket.HumanKey = humanKey
-			if _, err := tx.Exec(ctx, `UPDATE tickets SET human_key = $1 WHERE id = $2`, humanKey, ticket.ID); err != nil {
-				return fmt.Errorf("write human_key: %w", err)
-			}
-		}
-		return nil
+		return s.writePreparedCreateTx(ctx, tx, p, ticket, nil)
 	})
 	if err != nil {
 		return nil, err
@@ -576,7 +420,7 @@ func (s *Service) Update(ctx context.Context, req *model.UpdateTicketRequest, ac
 	updatedPayload := domainevent.Payload{
 		"title": ticket.Title, "type_code": ticket.TypeCode,
 		"human_key": ticket.HumanKey, "status": ticket.Status,
-		"changes": buildChanges(req), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
+		"changes": buildChanges(req, ticket), // 旧值/键级diff继续归B-1，不在通知接线批改语义。
 	}
 	if ticket.AssignedTo != nil {
 		updatedPayload["to_assignee"] = strconv.FormatInt(*ticket.AssignedTo, 10)
@@ -610,6 +454,15 @@ func (s *Service) updateCommand(ctx context.Context, tx pgx.Tx, req *model.Updat
 	// nil 字段不覆盖；此处读出的 ticket 仅作授权/状态预检及类型识别）
 	if req.Priority != nil && (*req.Priority < 1 || *req.Priority > 4) {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, "priority 须为 1–4（1紧急 2高 3中 4低）")
+	}
+	if req.Priority != nil && *req.Priority != ticket.Priority {
+		binding, err := s.ticketRepo.ReadActiveRiskTicketBindingTx(ctx, tx, req.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(binding) > 0 {
+			return nil, errcode.ErrNoPermission
+		}
 	}
 	// B5-4 custom_data 增量 patch（05 号 §6/A.3 拍板项）：传入键覆盖、null 删键；合并后
 	// 整体 G2 重校验（含未改动字段——防基线外字段绕进、required 被 null 清空）。
@@ -729,6 +582,9 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, nil); err != nil {
 			return err
 		}
+		if err := s.rejectRiskLifecycleCommandTx(ctx, tx, "close", ticket.ID); err != nil {
+			return err
+		}
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, StatusClosed); err != nil {
 			return err
 		}
@@ -754,7 +610,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 			}
 		}
 		return nil
-	})
+	}, req.ID)
 	if err != nil {
 		return err
 	}
@@ -830,6 +686,14 @@ func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRe
 	run := func(ctx context.Context, owner pgx.Tx) error {
 		if manual {
 			if err := s.authorizeCheck(ctx, actorUserID, "assign", strconv.FormatInt(req.ID, 10)); err != nil {
+				return err
+			}
+		}
+		if !manual {
+			if err := s.lockCommandTickets(ctx, owner, req.ID); err != nil {
+				return err
+			}
+			if err := s.rejectRiskLifecycleCommandTx(ctx, owner, "assign", req.ID); err != nil {
 				return err
 			}
 		}
@@ -910,6 +774,9 @@ func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRe
 		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, nil); err != nil {
 			return err
 		}
+		if err := s.rejectRiskLifecycleCommandTx(ctx, tx, "assign", ticket.ID); err != nil {
+			return err
+		}
 		if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, req.ID, req.AssignedTo); err != nil {
 			return err
 		}
@@ -945,7 +812,7 @@ func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRe
 	}
 	var err error
 	if manual {
-		err = s.withHTTPCommand(ctx, "assign", actorUserID, run)
+		err = s.withHTTPCommand(ctx, "assign", actorUserID, run, req.ID)
 	} else {
 		// System dispatch has its own reviewed identity; it does not consume
 		// the HTTP route or actor that triggered a post action.
@@ -986,6 +853,12 @@ func (s *Service) Delete(ctx context.Context, id int64, actorUserID int64) error
 			return err
 		}
 		if err := s.requireTicketDefinition(ctx, id); err != nil {
+			return err
+		}
+		if err := s.lockCommandTickets(ctx, tx, id); err != nil {
+			return err
+		}
+		if err := s.rejectRiskLifecycleCommandTx(ctx, tx, "delete", id); err != nil {
 			return err
 		}
 		return s.ticketRepo.DeleteTx(ctx, tx, id, actorUserID)
@@ -1031,6 +904,8 @@ func (s *Service) CreateComment(ctx context.Context, req *model.CreateCommentReq
 		if err := s.ticketRepo.CreateCommentTx(ctx, tx, comment); err != nil {
 			return err
 		}
+		// 公开回复随建随给可核证据版本（与 GET 评论同一规范形——internal/model/comment）
+		comment.EvidenceVersion = commentref.EvidenceVersionToken(comment.CreatedAt, comment.Content)
 		if err := s.ticketRepo.CreateEventTx(ctx, tx, &model.TicketEvent{
 			TicketID: req.TicketID, UserID: actorUserID, Action: EventComment,
 		}); err != nil {
@@ -1239,17 +1114,18 @@ func (s *Service) AuthorizeTicketFileRead(ctx context.Context, userID, ticketID 
 	return s.authorizeCheck(ctx, userID, "read", strconv.FormatInt(ticketID, 10))
 }
 
-// buildChanges 工单 Update 事件载荷变更集：字段级新值 diff（无旧值比对、custom_data 不展开键级——D20 真值 diff 待台账 B-1）。
-func buildChanges(req *model.UpdateTicketRequest) []domainevent.Change {
+// buildChanges records requested fields with their values from the committed
+// projection. Custom data changes carry only the field name.
+func buildChanges(req *model.UpdateTicketRequest, ticket *model.Ticket) []domainevent.Change {
 	var changes []domainevent.Change
 	if req.Title != nil {
-		changes = append(changes, domainevent.Change{Key: "title", NewVal: *req.Title})
+		changes = append(changes, domainevent.Change{Key: "title", NewVal: ticket.Title})
 	}
 	if req.Priority != nil {
-		changes = append(changes, domainevent.Change{Key: "priority", NewVal: *req.Priority})
+		changes = append(changes, domainevent.Change{Key: "priority", NewVal: ticket.Priority})
 	}
 	if req.Description != nil {
-		changes = append(changes, domainevent.Change{Key: "description", NewVal: *req.Description})
+		changes = append(changes, domainevent.Change{Key: "description", NewVal: ticket.Description})
 	}
 	if req.CustomData != nil {
 		changes = append(changes, domainevent.Change{Key: "custom_data"})

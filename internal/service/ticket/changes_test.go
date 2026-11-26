@@ -16,9 +16,10 @@ func TestBuildChanges(t *testing.T) {
 	title := "新标题"
 	priority := 3
 	desc := "新描述"
+	committed := &model.Ticket{Title: title, Priority: priority, Description: desc}
 
 	t.Run("title+priority 变更→两条含新值", func(t *testing.T) {
-		changes := buildChanges(&model.UpdateTicketRequest{Title: &title, Priority: &priority})
+		changes := buildChanges(&model.UpdateTicketRequest{Title: &title, Priority: &priority}, committed)
 		require.Len(t, changes, 2)
 
 		byKey := map[string]any{}
@@ -30,20 +31,20 @@ func TestBuildChanges(t *testing.T) {
 	})
 
 	t.Run("description 变更→键+新值", func(t *testing.T) {
-		changes := buildChanges(&model.UpdateTicketRequest{Description: &desc})
+		changes := buildChanges(&model.UpdateTicketRequest{Description: &desc}, committed)
 		require.Len(t, changes, 1)
 		assert.Equal(t, "description", changes[0].Key)
 		assert.Equal(t, desc, changes[0].NewVal)
 	})
 
 	t.Run("custom_data 变更→仅键（载荷体积不进 changes）", func(t *testing.T) {
-		changes := buildChanges(&model.UpdateTicketRequest{CustomData: []byte(`{"a":1}`)})
+		changes := buildChanges(&model.UpdateTicketRequest{CustomData: []byte(`{"a":1}`)}, committed)
 		require.Len(t, changes, 1)
 		assert.Equal(t, "custom_data", changes[0].Key)
 		assert.Nil(t, changes[0].NewVal, "custom_data 只记键不记值")
 	})
 
 	t.Run("空请求→空集", func(t *testing.T) {
-		assert.Empty(t, buildChanges(&model.UpdateTicketRequest{}))
+		assert.Empty(t, buildChanges(&model.UpdateTicketRequest{}, committed))
 	})
 }

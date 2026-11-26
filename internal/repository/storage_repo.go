@@ -139,8 +139,9 @@ func (r *StorageRepo) InsertDeletedTombstone(ctx context.Context, f *model.FileO
 // 扫描覆盖 = 对象永久无主泄漏）。重试语义无时间窗，ORDER BY id 单批有界收敛。
 func (r *StorageRepo) ListDeleted(ctx context.Context, bucket string, limit int) ([]*model.FileObject, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT `+fileObjectColumns+` FROM file_objects
+		SELECT `+fileObjectColumns+` FROM file_objects f
 		WHERE bucket = $1 AND status = 'deleted'
+		`+noRiskRemediationFileReference+`
 		ORDER BY id LIMIT $2`, bucket, limit)
 	if err != nil {
 		return nil, err
@@ -307,12 +308,14 @@ func (r *StorageRepo) BindCreateAttachments(ctx context.Context, exec rowExec, b
 }
 
 // ListAttachmentsByTicket 附件列表视图（JOIN file_objects——B5-3 批3）。
-func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int64) ([]*model.TicketAttachmentView, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT ta.id, ta.ticket_id, fo.object_key, fo.file_name, fo.mime_type, fo.size_bytes, ta.uploaded_by, ta.created_at
+func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID, actorID int64) ([]*model.TicketAttachmentView, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `
+		SELECT ta.id, ta.ticket_id, fo.object_key, fo.file_name, fo.mime_type, fo.size_bytes, ta.uploaded_by, ta.created_at,
+		       CASE WHEN fo.status = 'confirmed' AND fo.confirmed_at IS NOT NULL THEN NULLIF(fo.etag, '') END
 		FROM ticket_attachments ta
 		JOIN file_objects fo ON fo.id = ta.file_object_id
-		WHERE ta.ticket_id = $1 ORDER BY ta.id`, ticketID)
+		WHERE ta.ticket_id = $1 AND NOT `+hiddenRiskEvidenceSQL("fo.object_key", "$2")+`
+		ORDER BY ta.id`, ticketID, actorID)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +323,7 @@ func (r *StorageRepo) ListAttachmentsByTicket(ctx context.Context, ticketID int6
 	out := []*model.TicketAttachmentView{}
 	for rows.Next() {
 		v := &model.TicketAttachmentView{}
-		if err := rows.Scan(&v.ID, &v.TicketID, &v.ObjectKey, &v.FileName, &v.MIMEType, &v.SizeBytes, &v.UploadedBy, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.TicketID, &v.ObjectKey, &v.FileName, &v.MIMEType, &v.SizeBytes, &v.UploadedBy, &v.CreatedAt, &v.EvidenceVersion); err != nil {
 			return nil, err
 		}
 		out = append(out, v)
@@ -383,6 +386,7 @@ func (r *StorageRepo) ListConfirmedOrphans(ctx context.Context, bucket string, b
 			AND f.confirmed_at < $2
 			AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
 			`+noHistoricalTicketReference+`
+			`+noRiskRemediationFileReference+`
 		ORDER BY f.id
 		LIMIT $3`, bucket, before, limit)
 	if err != nil {
@@ -456,7 +460,8 @@ func (r *StorageRepo) MarkDeleted(ctx context.Context, id int64) (bool, error) {
 		WHERE id=$1 AND status='confirmed'
 		  AND purpose IN ('ticket_attachment','ticket_richtext','attachment_create','richtext_create')
 		  AND NOT EXISTS (SELECT 1 FROM ticket_attachments ta WHERE ta.file_object_id = f.id)
-		  `+noHistoricalTicketReference, id)
+		  `+noHistoricalTicketReference+`
+		  `+noRiskRemediationFileReference, id)
 	if err != nil {
 		return false, err
 	}

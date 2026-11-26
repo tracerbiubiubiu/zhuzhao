@@ -1385,6 +1385,1107 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/risk-items": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "授权风险列表（L2 过滤）",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码（\u003e=1）",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数（1..100）",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态过滤",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "级别过滤",
+                        "name": "level",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "责任人 ID（十进制字符串）",
+                        "name": "owner_user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "受影响组织 ID（十进制字符串）",
+                        "name": "affected_org_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "来源过滤",
+                        "name": "source_ref",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "标题模糊匹配",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "created_at|deadline|level",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/assess": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "核实/评估（定级、处置策略与整改期限）",
+                "parameters": [
+                    {
+                        "description": "评估请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssessRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/assign": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "责任确认（主锚管理者）",
+                "parameters": [
+                    {
+                        "description": "指派请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssignRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/batch-dispatch": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "应用派单预览：逐组原子建票/追加并按原号恢复（D10 apply）",
+                "parameters": [
+                    {
+                        "description": "原操作号、预览号及摘要",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskDispatchApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/create": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "人工登记风险（主锚管理范围）",
+                "parameters": [
+                    {
+                        "description": "登记请求",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/dispatch": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "应用派单预览：逐组原子建票/追加并按原号恢复（D10 apply）",
+                "parameters": [
+                    {
+                        "description": "原操作号、预览号及摘要",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskDispatchApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/dispatch-operations/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按原操作号读取已提交的派单回执",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原操作号",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/dispatch-plan": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "风险派单预览：按漏洞与已核实责任人分组（D10 plan）",
+                "parameters": [
+                    {
+                        "description": "具名风险版本和目标",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskDispatchPlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/dispatch-statistics": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按当前及派单时主部门读取已授权的派单统计",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DepartmentStatsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/ingest-receipts/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按原 ingest_id 受权核查来源收件回执",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "收件身份（ingest_id）",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/operations/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按原操作号查询风险登记、核实或责任确认的结果",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原操作号",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-accept-assignment": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "工单当前办理人接单",
+                "parameters": [
+                    {
+                        "description": "工单修订、定义版本与原操作号",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-accept-decision": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "独立获权人员审批工单关联风险接受",
+                "parameters": [
+                    {
+                        "description": "接受申请、审批理由与原操作号",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowAcceptanceDecision"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-accept-request": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "责任人发起工单关联风险接受",
+                "parameters": [
+                    {
+                        "description": "风险、关联、期限与原操作号",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowAcceptanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-accept-rework": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "接续在办工单的到期风险接受",
+                "parameters": [
+                    {
+                        "description": "原批准、关联和当前修订",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowAcceptanceRework"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-assign-handler": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "管理者向具名办理人分派风险整改工单",
+                "parameters": [
+                    {
+                        "description": "目标办理人、工单修订与原操作号",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowAssigneeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-context/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "读取逐资产办理需要的当前修订",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowContext"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-finish": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "办理人提交逐资产整改证据",
+                "parameters": [
+                    {
+                        "description": "列明原操作号和逐资产修订",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowSubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-handoff": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "交接整组未决风险复测",
+                "parameters": [
+                    {
+                        "description": "复测交接请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowHandoffRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-operations/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按原号只读查询逐资产整改回执",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原操作号",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/remediation-review": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "现势责任人逐项通过或打回",
+                "parameters": [
+                    {
+                        "description": "列明原操作号和逐资产提案版本",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.riskWorkflowSubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.riskWorkflowOutcome"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/report": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "合成来源上报（单条 FindingObservationV1 或 batch≤100）",
+                "parameters": [
+                    {
+                        "description": "批量信封，也接受单条 FindingObservationV1 对象",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "授权风险详情（不可见与不存在同 404）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "风险 ID（十进制字符串）",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/{id}/asset": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按风险已绑定资产读取目录证据",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "风险 ID（十进制字符串）",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-items/{id}/history": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "风险核实/处置历史（有界分页）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "风险 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/roles": {
             "get": {
                 "security": [
@@ -3531,7 +4632,7 @@ const docTemplate = `{
         },
         "/api/v1/tickets/{id}/attachments": {
             "get": {
-                "description": "L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size",
+                "description": "L2 read 面（工单可见性——不可见单 404 同形）；当前风险不可见的整改证据省略；条目含 object_key/file_name/mime/size",
                 "produces": [
                     "application/json"
                 ],
@@ -4974,6 +6075,72 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.FindingObservationV1": {
+            "type": "object",
+            "required": [
+                "event_id",
+                "mapping_ref",
+                "observed_at",
+                "source_item_key",
+                "source_ref"
+            ],
+            "properties": {
+                "asset_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef"
+                },
+                "attributes": {
+                    "type": "object"
+                },
+                "conclusion_ref": {
+                    "type": "string"
+                },
+                "event_id": {
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef"
+                    }
+                },
+                "finding_class": {
+                    "type": "string"
+                },
+                "finding_key": {
+                    "type": "string"
+                },
+                "mapping_ref": {
+                    "type": "string"
+                },
+                "observation_kind": {
+                    "description": "observed|withdrawn|deleted，缺省 observed",
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "source_item_key": {
+                    "type": "string",
+                    "maxLength": 300
+                },
+                "source_ref": {
+                    "type": "string"
+                },
+                "source_sequence": {
+                    "type": "string"
+                },
+                "source_severity": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSourceSeverity"
+                },
+                "valid_until": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.LoginRequest": {
             "type": "object",
             "required": [
@@ -5404,6 +6571,415 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssessRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id",
+                "level",
+                "operation_id",
+                "treatment"
+            ],
+            "properties": {
+                "assessment_note": {
+                    "type": "string"
+                },
+                "deadline": {
+                    "type": "string"
+                },
+                "dispatch_basis_valid_until": {
+                    "type": "string"
+                },
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "treatment": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef": {
+            "type": "object",
+            "properties": {
+                "external_id": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssignRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id",
+                "operation_id",
+                "owner_user_id",
+                "reason"
+            ],
+            "properties": {
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "owner_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskCreateRequest": {
+            "type": "object",
+            "required": [
+                "operation_id",
+                "org_id",
+                "title"
+            ],
+            "properties": {
+                "affected_org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "asset_ref": {
+                    "description": "资产键身份；与 FindingKey 成对",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef"
+                        }
+                    ]
+                },
+                "attributes": {
+                    "type": "object"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef"
+                    }
+                },
+                "expected_revision": {
+                    "description": "新建恒 \"0\"",
+                    "type": "string"
+                },
+                "finding_key": {
+                    "description": "稳定漏洞键；与 AssetRef 成对",
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "operation_id": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "org_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "owner_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "system_ref": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef": {
+            "type": "object",
+            "required": [
+                "external_id",
+                "provider"
+            ],
+            "properties": {
+                "external_id": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "replayed": {
+                    "description": "true=同号同参返回原收据，未产生新业务效果",
+                    "type": "boolean"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef": {
+            "type": "object",
+            "properties": {
+                "human_key": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportItem": {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string"
+                },
+                "ingest_id": {
+                    "type": "string"
+                },
+                "processing": {
+                    "description": "pending|applied|held",
+                    "type": "string"
+                },
+                "result": {
+                    "description": "accepted|duplicate|stale|quarantined|held",
+                    "type": "string"
+                },
+                "risk_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef"
+                },
+                "safe_reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportRequest": {
+            "type": "object",
+            "properties": {
+                "batch_id": {
+                    "type": "string"
+                },
+                "observations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.FindingObservationV1"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportResult": {
+            "type": "object",
+            "properties": {
+                "batch_receipt": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportItem"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSourceSeverity": {
+            "type": "object",
+            "properties": {
+                "scheme": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowContext": {
+            "type": "object",
+            "properties": {
+                "allowed_actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowItem"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "writes_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowEvidence": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowItem": {
+            "type": "object",
+            "properties": {
+                "can_manage_risk": {
+                    "type": "boolean"
+                },
+                "expired_acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expired_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "is_risk_owner": {
+                    "type": "boolean"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "pending_acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "pending_acceptance_recoverable": {
+                    "type": "boolean"
+                },
+                "pending_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "remediation_state": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "submissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowSubmission"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowSubmission": {
+            "type": "object",
+            "properties": {
+                "decision": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowEvidence"
+                    }
+                },
+                "measures": {
+                    "type": "string"
+                },
+                "proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "review_note": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "submitted_at": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.RoleIDRequest": {
             "type": "object",
             "required": [
@@ -5576,6 +7152,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
+                    "type": "string"
+                },
+                "evidence_version": {
                     "type": "string"
                 },
                 "file_name": {
@@ -6310,6 +7889,288 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ApplyResult": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.GroupOutcome"
+                    }
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DepartmentStatsResult": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptTodoRow"
+                    }
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptHistoryRow"
+                    }
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptHistoryRow": {
+            "type": "object",
+            "properties": {
+                "dept_id": {
+                    "description": "owner_org_at_dispatch（0 = 派单时未归属）",
+                    "type": "string",
+                    "example": "0"
+                },
+                "dept_name": {
+                    "type": "string"
+                },
+                "dispatches": {
+                    "description": "派单成功组数",
+                    "type": "integer"
+                },
+                "owner_name": {
+                    "description": "软删主体为空串（冻结行不消失）",
+                    "type": "string"
+                },
+                "owner_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risks": {
+                    "description": "涉及风险关联数（重提重链不双计）",
+                    "type": "integer"
+                },
+                "tickets": {
+                    "description": "涉及工单数（组票 1:1，同票单口径计一次）",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.DeptTodoRow": {
+            "type": "object",
+            "properties": {
+                "dept_id": {
+                    "description": "责任人现主部门（0 = 未归属：无主部门/主体已软删）",
+                    "type": "string",
+                    "example": "0"
+                },
+                "dept_name": {
+                    "type": "string"
+                },
+                "open_risks": {
+                    "description": "活跃关联风险数（资产/项口径）",
+                    "type": "integer"
+                },
+                "open_tickets": {
+                    "description": "在办工单数（同票计一次）",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.GroupOutcome": {
+            "type": "object",
+            "properties": {
+                "group_key": {
+                    "type": "string"
+                },
+                "group_operation_id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemOutcome"
+                    }
+                },
+                "owner_org_at_dispatch": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "owner_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "status": {
+                    "description": "completed | failed",
+                    "type": "string"
+                },
+                "ticket": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemOutcome": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "description": "denied/invalid/conflict 时非空",
+                    "type": "string"
+                },
+                "result": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemResult"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket": {
+                    "description": "already_linked 指向他票时给出（仍获权才投影）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference"
+                        }
+                    ]
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.ItemResult": {
+            "type": "string",
+            "enum": [
+                "created",
+                "linked",
+                "already_linked",
+                "denied",
+                "invalid",
+                "conflict"
+            ],
+            "x-enum-varnames": [
+                "ItemCreated",
+                "ItemLinked",
+                "ItemAlreadyLinked",
+                "ItemDenied",
+                "ItemInvalid",
+                "ItemConflict"
+            ]
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanBlockView": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanGroupView": {
+            "type": "object",
+            "properties": {
+                "business_due_at": {
+                    "type": "string"
+                },
+                "group_key": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanItemView"
+                    }
+                },
+                "owner_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "ticket": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanItemView": {
+            "type": "object",
+            "properties": {
+                "asset_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef"
+                },
+                "deadline": {
+                    "type": "string"
+                },
+                "human_key": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanResult": {
+            "type": "object",
+            "properties": {
+                "blocked": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanBlockView"
+                    }
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.PlanGroupView"
+                    }
+                },
+                "plan_hash": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskdispatch.TicketReference": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ref": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_service_riskremediation.EvidenceRef": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.DeleteAttachmentInput": {
             "type": "object",
             "required": [
@@ -6333,6 +8194,558 @@ const docTemplate = `{
             ],
             "properties": {
                 "id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskDispatchApplyRequest": {
+            "type": "object",
+            "required": [
+                "operation_id",
+                "plan_hash",
+                "plan_id"
+            ],
+            "properties": {
+                "operation_id": {
+                    "type": "string"
+                },
+                "plan_hash": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.riskDispatchPlanItemRequest": {
+            "type": "object",
+            "required": [
+                "risk_id"
+            ],
+            "properties": {
+                "expected_revision": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.riskDispatchPlanRequest": {
+            "type": "object",
+            "required": [
+                "items",
+                "target_org_id",
+                "target_type_code"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.riskDispatchPlanItemRequest"
+                    }
+                },
+                "target_org_id": {
+                    "type": "string"
+                },
+                "target_type_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowAcceptanceDecision": {
+            "type": "object",
+            "required": [
+                "acceptance_id",
+                "decision",
+                "definition_version",
+                "expected_acceptance_revision",
+                "expected_risk_revision",
+                "expected_ticket_revision",
+                "operation_id",
+                "reason",
+                "ticket_id"
+            ],
+            "properties": {
+                "acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "decision": {
+                    "type": "string",
+                    "enum": [
+                        "approve",
+                        "reject"
+                    ]
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowAcceptanceRequest": {
+            "type": "object",
+            "required": [
+                "definition_version",
+                "expected_link_revision",
+                "expected_risk_revision",
+                "expected_ticket_revision",
+                "link_id",
+                "operation_id",
+                "reason",
+                "risk_id",
+                "ticket_id",
+                "valid_until"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "valid_until": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowAcceptanceRework": {
+            "type": "object",
+            "required": [
+                "acceptance_id",
+                "definition_version",
+                "expected_acceptance_revision",
+                "expected_link_revision",
+                "expected_risk_revision",
+                "expected_ticket_revision",
+                "link_id",
+                "operation_id",
+                "reason",
+                "risk_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowAssigneeRequest": {
+            "type": "object",
+            "required": [
+                "assigned_to_user_id",
+                "definition_version",
+                "expected_ticket_revision",
+                "operation_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "assigned_to_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowHandoffItemWire": {
+            "type": "object",
+            "required": [
+                "expected_link_revision",
+                "expected_proposal_version",
+                "expected_risk_revision",
+                "link_id"
+            ],
+            "properties": {
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowHandoffRequest": {
+            "type": "object",
+            "required": [
+                "definition_version",
+                "expected_ticket_revision",
+                "items",
+                "operation_id",
+                "reason",
+                "successor_user_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.riskWorkflowHandoffItemWire"
+                    }
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "successor_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowItemRequest": {
+            "type": "object",
+            "required": [
+                "expected_link_revision",
+                "expected_risk_revision",
+                "link_id"
+            ],
+            "properties": {
+                "decision": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_service_riskremediation.EvidenceRef"
+                    }
+                },
+                "expected_link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "measures": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowItemResult": {
+            "type": "object",
+            "properties": {
+                "link_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "link_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "proposal_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "resolution_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "result": {
+                    "type": "string"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risk_revision": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowOutcome": {
+            "type": "object",
+            "properties": {
+                "acceptance_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "acceptance_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "acceptance_status": {
+                    "type": "string"
+                },
+                "assigned_to_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "assignment_generation": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.riskWorkflowItemResult"
+                    }
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "successor_user_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "terminal_allowed": {
+                    "type": "boolean"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowPatch": {
+            "type": "object",
+            "additionalProperties": {}
+        },
+        "internal_handler.riskWorkflowRequest": {
+            "type": "object",
+            "required": [
+                "definition_version",
+                "expected_ticket_revision",
+                "operation_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
+                }
+            }
+        },
+        "internal_handler.riskWorkflowSubmitRequest": {
+            "type": "object",
+            "required": [
+                "definition_version",
+                "expected_ticket_revision",
+                "items",
+                "operation_id",
+                "ticket_id"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "custom_data_patch": {
+                    "$ref": "#/definitions/internal_handler.riskWorkflowPatch"
+                },
+                "definition_version": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "expected_ticket_revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.riskWorkflowItemRequest"
+                    }
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "ticket_id": {
                     "type": "string",
                     "example": "0"
                 }

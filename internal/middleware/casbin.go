@@ -77,7 +77,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			logger.Error("casbin fetch roles failed",
 				slog.Any("error", err), slog.Int64("userID", userID),
 				slog.String("request_id", c.GetString("request_id")),
-				slog.String("path", c.Request.URL.Path))
+				slog.String("path", operationLogPath(c)))
 			response.InternalError(c, "获取用户角色失败")
 			c.Abort()
 			return
@@ -122,7 +122,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 				logger.Error("casbin enforce error",
 					slog.Any("error", err), slog.String("subject", subject),
 					slog.String("request_id", c.GetString("request_id")),
-					slog.String("path", path), slog.String("method", method))
+					slog.String("path", operationLogPath(c)), slog.String("method", method))
 				continue
 			}
 			if ok {
@@ -151,7 +151,7 @@ func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger
 			logger.Warn("casbin denied",
 				slog.Int64("userID", userID),
 				slog.String("username", c.GetString("username")),
-				slog.String("path", path), slog.String("method", method),
+				slog.String("path", operationLogPath(c)), slog.String("method", method),
 				slog.String("request_id", c.GetString("request_id")),
 				slog.Any("roles", roles))
 			response.ForbiddenError(c, errcode.ErrNoPermission)

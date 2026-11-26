@@ -34,6 +34,8 @@
 
 B2 隔离实施的本机执行材料登记为 `g04-it1-20261122/stage3` 和 `g04-it1-20261122/d01`。前者对应第 1–3 项的候选指纹、独立复验和门禁收据，后者对应第 4 项首批定向验证。共享结论见[第 1–3 项隔离联合验收](review/reports/phase6-b2-stage3-acceptance-2026-11-22.md)。逐请求和数据库读回保留在本机执行批次。
 
+第 6–9 项的合成执行材料使用 `evidence/phase6-b2-stage9-20261123/`，记录候选与运行指纹、门禁、实际丢响应、重启前后读回和独立复核。受控结论见[第 6–9 项隔离验证](review/reports/phase6-b2-stage9-validation-2026-11-23.md)。
+
 完整性复核记录使用材料ID `maintenance/document-organization-recheck-20261116/`；后续入口同步与地址核对记录使用 `maintenance/document-addresses-20261116/`。它们只保存整理/验证过程，不作为新的产品事实台账。
 
 此前工作树清理的压缩包与逐文件SHA256继续保存在独立批次`src-cleanup-20261116`，由本地档案索引定位；不重复复制大包。首次目录清理未纳入的受限参考资料，后续已按所有者要求集中到仓库外的本地私有区；其真实位置与迁移清单只记录在本地索引。
@@ -49,6 +51,8 @@ B2 隔离实施的本机执行材料登记为 `g04-it1-20261122/stage3` 和 `g04
 复核还将三份运维工具说明集中到[工具文档](ops/tools/README.md)，构建上下文、Dockerfile和依赖锁保持原位置；旧的本地过程记录已归档，具体迁移清单只留本地维护批次。
 
 ## 后续新增材料
+
+B2 固定候选签收的本地材料 ID 为 `evidence/phase6-b2-signoff-20261125/`，登记复用收据的 SHA256、运行镜像身份、补跑结果、合成提醒读回和所有者签收记录。正式结论见[固定候选签收证据](review/reports/phase6-b2-candidate-signoff-2026-11-25.md)。
 
 2026-11-20 两轮 Web 易用性复验使用材料 ID `evidence/phase6-web-ux-20261120/`，选定的合成渲染截图与测试收据按轮保存，并核对 SHA-256。受控结论与复现条件见[正式报告](review/reports/phase6-web-ux-audit-2026-11-20.md)。
 
@@ -69,5 +73,13 @@ pass8复审后所有者明确要求按建议补修，材料ID`maintenance/audit-
 所有者随后要求全面复核五仓工作区与分支，材料ID`maintenance/audit-workspace-final-check-20261117/`保存fresh远端快照、其余19个本地/6个远端分支的准确引用、五仓Git bundle及实际恢复/fsck、旧草稿与完整旧封存重验、精确分支清理和后继文档门禁收据。待清分支均为本地及远端main祖先，分支独有提交为零；受控结论见[合入记录§6](review/reports/audit-baseline-main-merge-2026-11-17.md#6-五仓工作区与全部剩余分支复核)。本批不改旧封存，也不将原始执行材料和被替代草稿上传Git。
 
 同日后继产品实现与组合验收使用独立材料ID`maintenance/audit-baseline-repair-20261117/`：保存主批`repair-implementation-20261117`及相关工作树原始专项、首次失败与修正、冻结源码/运行产物manifest、门禁命令/退出码、浏览器、恢复、精确清理及本地提交收据。正式结论归[前置修复与组合验收](review/reports/audit-baseline-repair-2026-11-17.md)。归档逐文件核SHA，下载缓存/依赖安装目录不作为证据复制，具体排除及副本清单由本地索引记载；目录/文件收紧权限，不随Git上传，ignored工作区可保留执行副本。该归档为同机保留，不等于异机备份。
+
+2026-11-25 Claude 两轮只读审计使用材料 ID `evidence/project-audit-claude-20261125/`。该目录包含：
+- 第 1 轮 5 份分项原文（Phase 6 规划专项）；
+- 第 2 轮 9 份分项原文（五仓全面审计）；
+- 基线与来源会话说明；
+- SHA256。
+
+受控结论与主会话的复核修正见[审计报告](review/reports/phase6-plan-and-five-repo-audit-2026-11-25.md)。原文只在本机保存，不是异机备份。
 
 先判断它是否是必须共同维护的事实/输入。是则进入归属仓`docs/`并挂到已有入口；否则使用本地档案相应分类和明确批次ID。短期执行产物可先留ignored `.codex/`，正式交付提炼结论并登记材料ID，避免在`src`下持续新增散落报告目录。

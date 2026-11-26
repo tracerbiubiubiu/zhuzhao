@@ -56,6 +56,9 @@ func (h *StorageHandler) authorizeTicketPurpose(c *gin.Context, purpose string, 
 		response.BadRequest(c, "参数错误")
 		return false
 	}
+	if h.svc.HasTicketAttachmentCommand() {
+		return true // service checks the exact purpose inside the IAM command
+	}
 	if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *ticketID); err != nil {
 		writeServiceError(c, err)
 		return false
@@ -112,7 +115,7 @@ func (h *StorageHandler) Confirm(c *gin.Context) {
 		return
 	}
 	// confirm 分流按 TicketID：带 ticket_id 即 ticket 态落绑（建单前态不带）
-	if in.TicketID != nil {
+	if in.TicketID != nil && !h.svc.HasTicketAttachmentCommand() {
 		if err := h.ticketAuth.AuthorizeTicketAttachment(c.Request.Context(), c.GetInt64("userID"), *in.TicketID); err != nil {
 			writeServiceError(c, err)
 			return
@@ -189,11 +192,11 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 	if (f.Purpose == "ticket_attachment" || f.Purpose == "ticket_richtext") && h.auditLog != nil {
 		if err := h.auditLog.Insert(c.Request.Context(), middleware.AuditLogEntry{
 			UserID: c.GetInt64("userID"), Method: http.MethodGet,
-			Path: c.Request.URL.Path, StatusCode: http.StatusOK,
+			Path: "/api/v1/files/*key", StatusCode: http.StatusOK,
 			RequestID: c.GetString("request_id"), CreatedAt: time.Now(),
 		}); err != nil {
 			slog.Warn("storage proxy download audit insert failed",
-				"key", key, "request_id", c.GetString("request_id"), "err", err)
+				"request_id", c.GetString("request_id"), "err", err)
 		}
 	}
 }
@@ -201,7 +204,7 @@ func (h *StorageHandler) ProxyDownload(c *gin.Context) {
 // ListAttachments godoc
 //
 //	@Summary		工单附件列表（JOIN 视图）
-//	@Description	L2 read 面（工单可见性——不可见单 404 同形）；条目含 object_key/file_name/mime/size
+//	@Description	L2 read 面（工单可见性——不可见单 404 同形）；当前风险不可见的整改证据省略；条目含 object_key/file_name/mime/size
 //	@Tags			storage
 //	@Produce		json
 //	@Param			id	path int true "工单 ID"
@@ -218,7 +221,7 @@ func (h *StorageHandler) ListAttachments(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
-	list, err := h.svc.ListTicketAttachments(c.Request.Context(), ticketID)
+	list, err := h.svc.ListTicketAttachments(c.Request.Context(), ticketID, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return

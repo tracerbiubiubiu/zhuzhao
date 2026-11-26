@@ -131,18 +131,18 @@ func (s *TimeoutScanner) scanState(ctx context.Context, definition repository.Bo
 	// 在 interval 内）在 SQL 层排除——修前两类单仍占名额、循环里 shouldRemind=false 跳过，前 500 个催满后
 	// 第 501+ 个永不催办（静默饿死）。shouldRemind 仍复核一次作并发/边界兜底。
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, COALESCE(t.human_key, ''), t.title, t.type_code, t.priority, t.created_by, t.assigned_to, t.escalation_supervisor_id,
-		       EXTRACT(EPOCH FROM (NOW() - t.status_changed_at)) / 60.0
-		FROM tickets t
-		WHERE t.type_code = $1 AND t.definition_version = $8 AND t.status = $2
-		  AND (($6 AND t.assigned_to IS NOT NULL) OR ($7 AND t.escalation_supervisor_id IS NOT NULL))
-		  AND t.status_changed_at < NOW() - make_interval(mins => $3)
+		SELECT id, COALESCE(human_key, ''), `+repository.TicketSummaryTitleSQL+`, type_code, priority, created_by, assigned_to, escalation_supervisor_id,
+		       EXTRACT(EPOCH FROM (NOW() - status_changed_at)) / 60.0
+		FROM tickets
+		WHERE type_code = $1 AND definition_version = $8 AND status = $2
+		  AND (($6 AND assigned_to IS NOT NULL) OR ($7 AND escalation_supervisor_id IS NOT NULL))
+		  AND status_changed_at < NOW() - make_interval(mins => $3)
 		  AND NOT EXISTS (
 		        SELECT 1 FROM ticket_reminders tr
-		        WHERE tr.ticket_id = t.id AND tr.state = $2
+		        WHERE tr.ticket_id = tickets.id AND tr.state = $2
 		          AND (tr.reminder_count >= $4
 		               OR tr.last_reminder_at > NOW() - make_interval(mins => $5)))
-		ORDER BY t.id LIMIT 500`, definition.TypeCode, state, timeoutMinutes, maxReminders, interval, wantAssignee, wantSupervisor, definition.DefinitionVersion)
+		ORDER BY id LIMIT 500`, definition.TypeCode, state, timeoutMinutes, maxReminders, interval, wantAssignee, wantSupervisor, definition.DefinitionVersion)
 	if err != nil {
 		return 0, err
 	}
@@ -324,7 +324,7 @@ func joinIDs(ids []string) string {
 // message_log 查重防重发）。due 写入点在 Transition commit 后按 to 态 sla_due_hours 计算。
 func (s *TimeoutScanner) scanDeadline(ctx context.Context, definition repository.BoundTicketReminderRules, state string) (int, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, COALESCE(human_key, ''), title, type_code, priority, created_by, assigned_to, escalation_supervisor_id
+		SELECT id, COALESCE(human_key, ''), `+repository.TicketSummaryTitleSQL+`, type_code, priority, created_by, assigned_to, escalation_supervisor_id
 		FROM tickets
 		WHERE type_code = $1 AND definition_version = $3 AND status = $2
 		  AND sla_due_at IS NOT NULL AND sla_due_at < NOW()`, definition.TypeCode, state, definition.DefinitionVersion)

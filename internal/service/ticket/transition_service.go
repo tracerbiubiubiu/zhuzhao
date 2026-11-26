@@ -31,10 +31,7 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 	var ticket, committed *model.Ticket
 	var tm *TransitionMeta
 	var replayed bool
-	var lockedTickets []int64
-	if cmd.versioned() {
-		lockedTickets = []int64{req.ID}
-	}
+	lockedTickets := []int64{req.ID}
 	err = s.withHTTPCommand(ctx, "transition", actorUserID, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
 		// ① 资源级鉴权（L2 可见 + L3 transition 动作——新增 action）
@@ -51,26 +48,41 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			return err
 		}
 		if cmd.versioned() {
-			replay, err := s.findEvidenceTransitionReplayTx(ctx, tx, cmd, actorUserID)
-			if err != nil {
-				return err
-			}
-			if replay != nil {
+			tryReplay := func() (bool, error) {
+				replay, err := s.findEvidenceTransitionReplayTx(ctx, tx, cmd, actorUserID)
+				if err != nil || replay == nil {
+					return false, err
+				}
 				_, _, originalRef, err := s.resolveTicketDefinition(ctx, &model.Ticket{
 					TypeCode: ticket.TypeCode, DefinitionVersion: &replay.DefinitionVersion,
 				})
 				if err != nil {
-					return err
+					return false, err
 				}
 				replayed = true
 				committed = ticketFromEvidenceReceipt(ticket.ID, originalRef, *replay)
-				return nil
+				return true, nil
+			}
+			if found, err := tryReplay(); found || err != nil {
+				return err
 			}
 			tm, err = s.checkTransitionCondition(ctx, ticket, req.To, actorUserID, ttype)
 			if err != nil {
 				return err
 			}
 			snapshot := model.TicketDefinitionSnapshot{Type: *ttype, Fields: fields}
+			if err := s.lockCommandTickets(ctx, tx, ticket.ID); err != nil {
+				return err
+			}
+			if err := s.rejectRiskLifecycleCommandTx(ctx, tx, "transition", ticket.ID); err != nil {
+				return err
+			}
+			// Two admitted commands can both miss the receipt before waiting for
+			// this lock. Reuse the winner's committed result before checking CAS
+			// or binding evidence, while retaining the original condition read.
+			if found, err := tryReplay(); found || err != nil {
+				return err
+			}
 			receipt, err := s.applyEvidenceTransitionTx(ctx, tx, cmd, ticket, &snapshot, actorUserID)
 			if err != nil {
 				return err
@@ -100,6 +112,9 @@ func (s *Service) Transition(ctx context.Context, req *model.TransitionTicketReq
 			defer tx.Rollback(ctx)
 		}
 		if err := s.ticketRepo.LockTransitionSnapshotTx(ctx, tx, ticket, nil); err != nil {
+			return err
+		}
+		if err := s.rejectRiskLifecycleCommandTx(ctx, tx, "transition", ticket.ID); err != nil {
 			return err
 		}
 		if err := s.ticketRepo.UpdateStatusTx(ctx, tx, req.ID, ticket.Status, req.To); err != nil {

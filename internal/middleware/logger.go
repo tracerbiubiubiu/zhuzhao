@@ -10,6 +10,7 @@ import (
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 )
 
@@ -100,14 +101,19 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 
+		query := ""
+		if !isRiskLogRoute(c) {
+			query = truncStr(c.Request.URL.RawQuery, 4096)
+		}
+
 		// 行名/字段名对齐 standards §6 访问日志标准字段（duration_ms 统一口径，
 		// 对齐 activelist/taskrunner；auth/caller 见 operatorOf/authOf 注释）。
 		// caller 恒出（无验签场景为空串）——三仓行结构稳定，ES 索引友好
 		// （2026-09-16 与 taskrunner/activelist 对齐后的统一惯例）
 		attrs := []slog.Attr{
 			slog.String("method", c.Request.Method),
-			slog.String("path", c.Request.URL.Path),
-			slog.String("query", truncStr(c.Request.URL.RawQuery, 4096)),
+			slog.String("path", operationLogPath(c)),
+			slog.String("query", query),
 			slog.String("operator", operatorOf(c)),
 			slog.String("auth", authOf(c)),
 			slog.Int("status", c.Writer.Status()),
@@ -119,4 +125,19 @@ func AccessLogger(logger *slog.Logger) gin.HandlerFunc {
 		}
 		logger.LogAttrs(c.Request.Context(), slog.LevelInfo, "access", attrs...)
 	}
+}
+
+func isRiskLogRoute(c *gin.Context) bool {
+	return audit.IsRiskRoute(c.FullPath()) || audit.IsRiskRoute(c.Request.URL.Path)
+}
+
+// operationLogPath omits user-controlled path arguments on risk routes.
+func operationLogPath(c *gin.Context) string {
+	if !isRiskLogRoute(c) {
+		return c.Request.URL.Path
+	}
+	if route := c.FullPath(); route != "" {
+		return route
+	}
+	return audit.RiskRoutePrefix
 }

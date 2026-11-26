@@ -29,7 +29,13 @@ func (s *Service) withHTTPCommand(ctx context.Context, action string, actor int6
 	purpose, http := middleware.IAMRequestFromContext(ctx)
 	exclusive := action == "assign" || action == "delete" || action == "cc" || action == "cc/remove"
 	run := func(ctx context.Context, tx pgx.Tx) error {
-		if err := s.lockCommandTickets(ctx, tx, ids...); err != nil {
+		if riskLifecycleAction(action) {
+			// Keep the ordinary condition/validator snapshot. The actual lifecycle
+			// writer checks active risk links again once it holds the ticket lock.
+			if err := s.admitOrdinaryRiskLifecycleTx(ctx, tx, action, actor, ids...); err != nil {
+				return err
+			}
+		} else if err := s.lockCommandTickets(ctx, tx, ids...); err != nil {
 			return err
 		}
 		return fn(ctx, tx)
@@ -135,6 +141,19 @@ func (s *Service) freshCommandRoles(ctx context.Context, actor int64, modelText 
 	if len(routes) == 0 {
 		return roles, nil
 	}
+	grants, err := commandRouteGrants(modelText, roles, policies, routes)
+	if err != nil {
+		return nil, err
+	}
+	for _, allowed := range grants {
+		if !allowed {
+			return nil, errcode.ErrNoPermission
+		}
+	}
+	return roles, nil
+}
+
+func commandRouteGrants(modelText string, roles []string, policies [][]string, routes []ticketPolicyRoute) ([]bool, error) {
 	m, err := casbinmodel.NewModelFromString(modelText)
 	if err != nil {
 		return nil, errcode.ErrNoPermission
@@ -146,23 +165,20 @@ func (s *Service) freshCommandRoles(ctx context.Context, actor int64, modelText 
 	if _, err := enforcer.AddPolicies(policies); err != nil {
 		return nil, errcode.ErrNoPermission
 	}
-	for _, route := range routes {
-		allowed := false
+	grants := make([]bool, len(routes))
+	for i, route := range routes {
 		for _, role := range roles {
 			granted, err := enforcer.Enforce("role::"+role, route.path, route.method)
 			if err != nil {
 				return nil, errcode.ErrNoPermission
 			}
 			if granted {
-				allowed = true
+				grants[i] = true
 				break
 			}
 		}
-		if !allowed {
-			return nil, errcode.ErrNoPermission
-		}
 	}
-	return roles, nil
+	return grants, nil
 }
 
 // freshCommandCredential runs inside the same IAM ordering and transaction as

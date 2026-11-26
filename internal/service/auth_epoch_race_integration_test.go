@@ -134,16 +134,17 @@ func (e *epochRegressionEnv) router(t *testing.T, pool *pgxpool.Pool, auth *serv
 	h := handler.NewUserHandler(users, nil)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(middleware.JWT(e.mgr, e.rdb, nil, middleware.WithAccountSecurity(c05SnapshotSource{pool: pool})))
+	r.Use(middleware.JWT(e.mgr, e.rdb, repository.NewPatRepo(pool), middleware.WithAccountSecurity(c05SnapshotSource{pool: pool})))
 	r.POST("/api/v1/users/password/reset", middleware.CasbinAuth(enforcer, rbac, nil), h.ResetPassword)
 	r.POST("/api/v1/users/status", middleware.CasbinAuth(enforcer, rbac, nil), h.UpdateStatus)
 	r.POST("/api/v1/users/delete", middleware.CasbinAuth(enforcer, rbac, nil), h.Delete)
+	r.GET("/api/v1/users/status/result", middleware.SelfService(), middleware.CasbinAuth(enforcer, rbac, nil), h.OperationResult)
 	r.POST("/api/v1/auth/password/update", middleware.SelfService(), middleware.CasbinAuth(enforcer, rbac, nil), handler.NewAuthHandler(auth, false).UpdatePassword)
 	r.GET("/api/v1/user/profile", middleware.SelfService(), middleware.CasbinAuth(enforcer, rbac, nil), h.GetProfile)
 	return r
 }
 
-// Only real Login results enter these requests; JWT and Casbin mint all security facts.
+// Authentication and Casbin mint the security facts for these requests.
 func epochRequest(ctx context.Context, engine *gin.Engine, method, path, at, operationID string, body []byte) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, bytes.NewReader(body)).WithContext(ctx)
 	req.Header.Set("Authorization", "Bearer "+at)
