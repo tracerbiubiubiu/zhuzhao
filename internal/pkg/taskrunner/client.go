@@ -38,16 +38,21 @@ type Client struct {
 	http *http.Client
 }
 
-func New(cfg Config) *Client {
-	if cfg.AK == "" {
-		cfg.AK = "zhuzhao"
+// EffectiveAK resolves the caller identity used for outbound signatures.
+func EffectiveAK(ak string) string {
+	if ak == "" {
+		return "zhuzhao"
 	}
+	return ak
+}
+
+func New(cfg Config) *Client {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 10 * time.Second
 	}
 	return &Client{
 		base: cfg.BaseURL,
-		ak:   cfg.AK,
+		ak:   EffectiveAK(cfg.AK),
 		sk:   cfg.SK,
 		http: &http.Client{Timeout: cfg.Timeout},
 	}

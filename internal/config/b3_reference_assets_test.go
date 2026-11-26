@@ -47,14 +47,20 @@ func TestCombinedB1B3RejectsReservedGatewayPrefixes(t *testing.T) {
 		{"/al/..", "b3: gateway prefix", false, true, false},
 		{"/al/../internal/activelist", "b3: gateway prefix", true, true, false},
 		{"/internal//activelist", "b3: gateway prefix", true, true, false},
+		{"/al/../internal//activelist/:category", "b3: gateway prefix", false, true, false},
+		{"/internal/activelist/ch:category/push", "b3: gateway prefix", true, true, false},
+		{"/internal/activelist/:category/pull", "", true, true, false},
+		{"/internal/activelist/:category", "", true, false, false},
 		{"/internal/activelist/changes/push", "b3: gateway prefix", false, true, false},
 		{"/internal/jobs/status", "b3: gateway prefix", true, true, true},
 		{"/internal/jobs/status/child", "b3: gateway prefix", false, true, false},
 		{"/internal/activelist", "", true, false, false},
 		{"/extensions/reference-assets", "reference_assets: gateway prefix", true, true, false},
 		{"/al/../extensions/reference-assets", "reference_assets: gateway prefix", true, true, false},
+		{"/extensions/:app", "reference_assets: gateway prefix", true, false, false},
 		{"/extensions/reference-assets", "", false, true, false},
 		{"/al", "", true, true, false},
+		{"/al/:category", "", true, true, false},
 	} {
 		t.Run(tc.prefix+"/"+tc.rejected, func(t *testing.T) {
 			cfg := combinedB1B3Config(t)
@@ -86,6 +92,27 @@ func TestCombinedB1B3RejectsReusedCallerIDs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCombinedB1B3RejectsDefaultTaskrunnerCallerID(t *testing.T) {
+	cfg := combinedB1B3Config(t)
+	cfg.Taskrunner.AK = ""
+	require.NoError(t, cfg.Validate())
+	cfg.ReferenceAssets.CallbackAK = "zhuzhao"
+	require.ErrorContains(t, cfg.Validate(), "reference_assets and b3 require distinct service credentials")
+	cfg.ReferenceAssets.Enabled = false
+	cfg.B3.SourceAK = "zhuzhao"
+	require.ErrorContains(t, cfg.Validate(), "b3 source callback credentials must be distinct")
+	cfg.B3.Enabled = false
+	require.NoError(t, cfg.Validate())
+}
+
+func TestB3RequiresTaskrunnerOutboundSigningKey(t *testing.T) {
+	cfg := combinedB1B3Config(t)
+	cfg.Taskrunner.SK = ""
+	require.ErrorContains(t, cfg.Validate(), "b3 requires a Taskrunner outbound signing key")
+	cfg.B3.Enabled = false
+	require.NoError(t, cfg.Validate())
 }
 
 func TestCombinedB1B3RejectsReusedSigningKeys(t *testing.T) {

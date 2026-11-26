@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
 )
 
 const (
@@ -42,9 +43,12 @@ func (c *Config) validateB3() error {
 		b.SourceAK == "" || b.SourceSK == "" || b.ALCommandAK == "" || b.ALCommandSK == "" {
 		return fmt.Errorf("b3 requires Taskrunner with callbacks and dedicated ActiveList credentials")
 	}
+	if c.Taskrunner.SK == "" {
+		return fmt.Errorf("b3 requires a Taskrunner outbound signing key")
+	}
 	for _, pair := range [][2]string{
 		{c.InternalJobs.AK, c.InternalJobs.SK}, {c.Gateway.AK, c.Gateway.SK},
-		{c.Taskrunner.AK, c.Taskrunner.SK}, {c.RiskIngest.AK, c.RiskIngest.SK},
+		{taskrunner.EffectiveAK(c.Taskrunner.AK), c.Taskrunner.SK}, {c.RiskIngest.AK, c.RiskIngest.SK},
 		{b.ALCommandAK, b.ALCommandSK},
 	} {
 		if b.SourceAK == pair[0] || b.SourceSK == pair[1] {
@@ -74,7 +78,7 @@ func (c *Config) validateB3ReferenceCredentials(outboundKey, callbackKey string)
 		{b3.SourceAK, b3.SourceSK},
 		{b3.ALCommandAK, b3.ALCommandSK},
 		{c.InternalJobs.AK, c.InternalJobs.SK},
-		{c.Taskrunner.AK, c.Taskrunner.SK},
+		{taskrunner.EffectiveAK(c.Taskrunner.AK), c.Taskrunner.SK},
 	} {
 		ak, sk := credential[0], credential[1]
 		if ak == ref.OutboundAK || ak == ref.CallbackAK ||

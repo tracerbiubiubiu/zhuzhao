@@ -27,12 +27,32 @@ var repoKnownSecrets = map[string]struct{}{
 func gatewayRouteConflict(prefix string, routes ...string) bool {
 	// Gin joins the configured prefix with the catch-all route using path.Join.
 	prefix = path.Clean(prefix)
+	if prefix == "/" {
+		return len(routes) > 0
+	}
+	segments := strings.Split(strings.TrimPrefix(prefix, "/"), "/")
 	for _, route := range routes {
-		if prefix == "/" || prefix == route || strings.HasPrefix(route, prefix+"/") || strings.HasPrefix(prefix, route+"/") {
+		if gatewaySegmentsOverlap(segments, strings.Split(strings.TrimPrefix(route, "/"), "/")) {
 			return true
 		}
 	}
 	return false
+}
+
+// Reserved paths are literal. A Gin named parameter consumes a nonempty
+// remainder of its segment, and both ancestor and descendant mounts overlap.
+func gatewaySegmentsOverlap(pattern, reserved []string) bool {
+	for i := range min(len(pattern), len(reserved)) {
+		segment := reserved[i]
+		if pattern[i] == segment {
+			continue
+		}
+		head, name, parameter := strings.Cut(pattern[i], ":")
+		if !parameter || name == "" || len(segment) <= len(head) || !strings.HasPrefix(segment, head) {
+			return false
+		}
+	}
+	return true
 }
 
 // Validate 校验配置（B4-6 扩展：除 jwt.secret 外覆盖 TTL/端口/必填项——
