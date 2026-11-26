@@ -45,7 +45,7 @@
 | 命令执行、调度与结果 | [跨仓执行](cross-repo-execution-contract.md)、[调度恢复](schedule-recovery-policy.md) | 凭证/租约/unknown、具体发生次/恢复配置及真实故障链 |
 | 工单、风险、人员生命周期 | [业务生命周期](business-lifecycle-contracts.md) | 定义/实例/权限、事务和候选接口；准确DTO/迁移按批冻结 |
 | 私有模块和内网数据接入 | [扩展兼容](extension-compatibility.md)、[adapter迁移](intranet-adapter-migration.md) | manifest/支持组合、写主/来源和所选真实provider |
-| 企业统一认证 | [UAA治理/双模式](uaa-governance-integration.md) | 独立与企业分别验、来源/撤权、最小UI/运维和真实激活条件 |
+| 企业统一认证 | [UAA 接入合同](uaa-governance-integration.md) | 本地登录、仅 SSO、完整纳管分别验；核身份绑定、权限写主、撤权及真实激活条件 |
 | 统一日志与业务审计 | [日志审计合同](unified-observability-audit.md)、[standards §6](../standards.md#6-可观测性) | 可信上下文、敏感值/日志权限、本地持久与跨仓交接、查询/归档、实际多实例反例；不把trace当业务成功 |
 | AI/MCP与计划确认 | [AI调用](ai-invocation-contract.md)、[MCP首批](mcp-first-contract.md)/[Schema样本](mcp-first-contract.schema.json)、[定时AI确认](scheduled-ai-confirmation.md) | 精确批准/grant、数据ACL、协议/SDK互操作及适用预算 |
 | 设备薄模块 | [设备合同](device-module-contract.md) | 目录/状态/人工入口；不承诺异构设备SSO |

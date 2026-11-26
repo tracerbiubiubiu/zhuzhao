@@ -1402,6 +1402,22 @@
           }
         }
       }
+    },
+    {
+      "id": "F024-uaa-sso-local-authorization",
+      "date": "2026-11-26",
+      "source": "所有者补充：公司 UAA 可仅负责单点登录，应用自行管理权限和菜单；要求核实现有设计、补齐场景、拆分任务并由不同具名助手复核。",
+      "scope": "公司统一认证和既有本地账号绑定；本地继续管理账号准入、角色、菜单、数据范围及三层鉴权。",
+      "design_refs": [
+        "docs/design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单",
+        "docs/planning/uaa-sso-local-authorization-plan.md",
+        "docs/planning/intranet-uaa-release-schedule.md#进内网后按什么顺序做"
+      ],
+      "authorization": "设计与计划已按要求承接，后续 B4 稳定后按公司允许的范围独立试点。真实接入与启用留待相应批准。",
+      "owner_pending": "公司是否允许仅接认证、真实稳定身份标识与停用机制、试点清单及批准、会话时效和回退政策、正式启用范围与窗口批准。",
+      "estimate_policy": "未单独计价；按可复用认证和本地能力净估，完整 P/R 历史基线仍按原范围。",
+      "implementation_state": "场景和任务已落档；产品与真实联调未实施。",
+      "historical_34_formal_decisions_unchanged": true
     }
   ]
 }

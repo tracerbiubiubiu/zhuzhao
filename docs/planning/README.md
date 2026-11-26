@@ -37,6 +37,7 @@
 - 看余项归属、前置和验收：[全文审计剩余待修项续修计划](audit-remainder-2026-11-20.md)与[逐项交接](../review/reports/audit-remainder-2026-11-20.md)。
 - 看本轮存量问题的修复顺序和验收：[五仓审计整改实施计划](audit-repair-plan-2026-11-19.md)。
 - 想在开工前弄懂系统怎样工作，读[系统理解与交付试行计划](system-understanding-and-delivery-plan.md)。先记录实际软件版本和功能，再选一件用户操作，从页面、权限检查到保存结果，分别讲清成功和被拒的情况。前三个交付小批再补使用故事和时间线，当前这些样例尚未整理。
+- 看[公司仅 SSO、本地授权分工与验收](uaa-sso-local-authorization-plan.md)，以及[认证与授权合同](../design/uaa-governance-integration.md#52-公司仅负责-sso应用管理权限与菜单)。
 - 看首版范围与变化：[首版计划](../phase6/first-usable-release-plan.md)、[前后对照](core-release-change-comparison.md)、[基础与逐期演进](../design/foundation-release-boundaries.md)。本地正式先行、完整UAA后继；准确状态和开工条件归各权威文档。
 - 看工作包、依赖和时间：[总账摘要](planning-backlog.md)、[机器复算与历史底账](execution-schedule.md)、[首版净估](local-core-release-estimate.json)、[首版计价对账](core-release-accounting-reconciliation-2026-11-16.md)。相对排程不是实际开工或承诺日历。
 - 看待决与输入承接：[决策议程](owner-decision-agenda.md)、[原话对账](user-requirements-reconciliation.md)、[后继输入](planning-followups.json)。简短确认只绑定明确前文，方向确认、合同冻结、实现和真实激活分别判断。
