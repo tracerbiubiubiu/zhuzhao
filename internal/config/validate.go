@@ -34,6 +34,9 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("reference_assets: gateway prefix conflicts with a reserved reference route")
 		}
 	}
+	if err := c.validateB3(); err != nil {
+		return err
+	}
 	if err := c.RiskIngest.validate(); err != nil {
 		return err
 	}

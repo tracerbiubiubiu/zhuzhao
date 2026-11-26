@@ -26,21 +26,23 @@ import (
 
 // Service 工单服务（Phase 2a MVP）
 type Service struct {
-	db          *pgxpool.Pool
-	ticketRepo  *repository.TicketRepo
-	orgRepo     *repository.OrgRepo
-	registry    resource.Registry
-	roleFetcher middleware.RoleFetcher
-	delegation  OrgDelegationChecker
-	storageRepo *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
-	storageCfg  *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
-	fetcherReg  *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
-	eventReg    *domainevent.HookRegistry
-	keyGen      *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
-	ccRepo      *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
-	tagRepo     *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
-	dispatcher  *DispatchService         // S3a B3-2：自动分派（OnAfterCreate——app 装配注入）
-	actionReg   *ActionRegistry          // S3a B3-3：动作库（post_actions 消费——app 装配注入）
+	b3                *repository.B3Store
+	b3DispatchEnabled bool
+	db                *pgxpool.Pool
+	ticketRepo        *repository.TicketRepo
+	orgRepo           *repository.OrgRepo
+	registry          resource.Registry
+	roleFetcher       middleware.RoleFetcher
+	delegation        OrgDelegationChecker
+	storageRepo       *repository.StorageRepo // B5-3：建单前附件落绑（域间经数据层共享——禁 service 互 import）
+	storageCfg        *pkgstorage.ConfigStore // F-D3：原子快照（附件数上限——05 号 §3 个数上限建单路径执行点）
+	fetcherReg        *datafetcher.Registry   // B1-4：取数联动（nil=无注册源，取数跳过）
+	eventReg          *domainevent.HookRegistry
+	keyGen            *humankey.Generator      // B6-1：领域事件（nil=不派发——首版装配态）
+	ccRepo            *repository.TicketCCRepo // S10 B10-1：抄送（自建自用——wire 零改）
+	tagRepo           *repository.TagRepo      // S10 B10-2：标签（自建自用——wire 零改）
+	dispatcher        *DispatchService         // S3a B3-2：自动分派（OnAfterCreate——app 装配注入）
+	actionReg         *ActionRegistry          // S3a B3-3：动作库（post_actions 消费——app 装配注入）
 }
 
 // NewTicketService 创建工单服务并自注册 TicketResource 到 Registry。
@@ -277,6 +279,12 @@ func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.
 	ticket, err := s.ticketRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	if s.b3 != nil {
+		ticket.TaskRuns, err = s.b3.TicketRuns(ctx, id)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return s.describeTicketDefinition(ctx, ticket)
 }

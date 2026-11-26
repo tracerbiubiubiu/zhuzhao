@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"log/slog"
 	"net/url"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -22,6 +24,7 @@ import (
 // 出站一律经 pkg/taskrunner client（AK/SK 签名 + request_id/actor 透传）；
 // 提交/触发同步落 job_submissions 提交凭证（E5，薄——执行细节不回传，request_id 跨查）。
 type TaskrunnerService struct {
+	hideB3 bool
 	client *taskrunner.Client // 可为 nil（base_url 未配置）——经 ensure 拦截
 	policy *TaskActionPolicy
 	subs   *repository.JobSubmissionRepo
@@ -59,6 +62,9 @@ type TaskSubmitInput struct {
 func (s *TaskrunnerService) Submit(ctx context.Context, in *TaskSubmitInput, actor, sourceIP, selfBaseURL string) (*taskrunner.SubmitResponse, error) {
 	if in == nil || in.Action == "" || len(in.Params) > 64<<10 || in.CallbackURL != "" || in.TimeoutSecs < 0 || in.TimeoutSecs > 86400 || utf8.RuneCountInString(in.TaskID) > 64 {
 		return nil, errcode.ErrInvalidParams
+	}
+	if b3protocol.IsAction(in.Action) {
+		return nil, errcode.ErrForbidden
 	}
 	if err := s.ensure(); err != nil {
 		return nil, err
@@ -171,9 +177,14 @@ func submissionReceiptState(err error) string {
 	return "unconfirmed"
 }
 
+func (s *TaskrunnerService) HideB3Runs() { s.hideB3 = true }
+
 // ---- 透传查询/管理（无本地状态；权限码在路由层） ----
 
 func (s *TaskrunnerService) GetTask(ctx context.Context, taskID string) (json.RawMessage, error) {
+	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
+		return nil, errcode.ErrNotFound
+	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
@@ -183,6 +194,9 @@ func (s *TaskrunnerService) GetTask(ctx context.Context, taskID string) (json.Ra
 func (s *TaskrunnerService) ListRuns(ctx context.Context, query url.Values) (json.RawMessage, error) {
 	if err := s.ensure(); err != nil {
 		return nil, err
+	}
+	if s.hideB3 {
+		return s.client.ListLegacyRuns(ctx, query)
 	}
 	return s.client.ListRuns(ctx, query)
 }
@@ -209,6 +223,9 @@ func (s *TaskrunnerService) UpdateJob(ctx context.Context, jobID string, body js
 }
 
 func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
+		return nil, errcode.ErrNotFound
+	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
@@ -219,6 +236,9 @@ func (s *TaskrunnerService) CancelTask(ctx context.Context, taskID, actor string
 }
 
 func (s *TaskrunnerService) RetryTask(ctx context.Context, taskID, actor string) (json.RawMessage, error) {
+	if s.hideB3 && strings.HasPrefix(taskID, "b3_") {
+		return nil, errcode.ErrNotFound
+	}
 	if err := s.ensure(); err != nil {
 		return nil, err
 	}
@@ -231,6 +251,9 @@ func (s *TaskrunnerService) RetryTask(ctx context.Context, taskID, actor string)
 func (s *TaskrunnerService) ListDeadLetters(ctx context.Context, query url.Values) (json.RawMessage, error) {
 	if err := s.ensure(); err != nil {
 		return nil, err
+	}
+	if s.hideB3 {
+		return s.client.ListLegacyDeadLetters(ctx, query)
 	}
 	return s.client.ListDeadLetters(ctx, query)
 }

@@ -298,6 +298,7 @@ P1 补修候选启用 `000095` 和 `000096` 后，须与同批 Core 一起启动
   | Phase 6 D06 模拟目录批次 | [首切片计划](../planning/phase6-d06-mock-directory-batch-plan.md)。主会话负责实现与路径提交，验收用例与复核由不同助手承担。 | 独占候选与结果见本地材料 ID `evidence/phase6-d06-mock-directory-batch-20261126.cJ156kn9/`，版本以 Git 为准。 | 2026-11-26 |
   | Phase 6 D06 模拟员工主部门调动 | [第二切片计划](../planning/phase6-d06-mock-primary-transfer-plan.md)。主会话负责实现与路径提交，验收用例与交叉复核由不同助手承担。 | 隔离候选以 Git 为准。 | 2026-11-26 |
   | Phase 6 D06 模拟直属主管解析 | [第三切片计划](../planning/phase6-d06-mock-manager-plan.md)。主会话实施与路径提交，真实命令验收及交叉复核由不同助手执笔。 | 候选与本地门禁结果以 Git 和验收收据为准。 | 2026-11-26 |
+  | Phase 6 第 12–14 项 | [B3 实施与验收计划](../planning/phase6-steps12-14-b3-plan.md)。接续复验使用独立 `codex/phase6-b3-verified` 四仓工作树，主会话统一核对路径和编号。 | [固定候选验收](../review/reports/phase6-b3-steps12-14-validation-2026-11-26.md)，版本以 Git 为准。 | 2026-11-26 |
   | Phase 6 第 10 项 | [实施与验收计划](../planning/phase6-step10-delivery-plan.md)。主会话负责集成与路径提交，目录、改权审计、入口和浏览器证据分人复验。 | 固定候选、隔离证据和远端门禁以 Git 与验收收据为准。 | 2026-11-26 |
   | Phase 6 第 11 项 | [合成参考应用实施与验收](../planning/phase6-step11-reference-app-plan.md)。分支 `codex/phase6-step11-b1`，本批独占运行资源，主会话负责集成。 | 仅本地候选。跨会话合流时核对共享状态文档。 | 2026-11-26 |
   | 公司仅 SSO、本地授权规划同步 | 主会话整合[接入计划](../planning/uaa-sso-local-authorization-plan.md)、阶段交接与机器排程；具名助手分工评审和独立树编辑。 | 文档候选由主会话交付；版本状态以 Git 为准。 | 2026-11-26 |

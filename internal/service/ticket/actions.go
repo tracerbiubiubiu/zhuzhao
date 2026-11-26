@@ -195,6 +195,9 @@ func (r *ActionRegistry) RunPostActions(ctx context.Context, logger *slog.Logger
 	}
 	actCtx := withActionDepth(ctx, depth+1)
 	for _, ref := range parsePostActions(tm) {
+		if b3Action(ref) != "" {
+			continue // Staged in the versioned transition transaction.
+		}
 		a, ok := r.Get(ref.Name)
 		if !ok {
 			if logger != nil {

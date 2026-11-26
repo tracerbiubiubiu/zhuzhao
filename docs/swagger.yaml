@@ -1165,6 +1165,88 @@ definitions:
         description: kv 行当前版本（回传 expected_version 用）
         type: integer
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.Ticket:
+    properties:
+      assigned_to:
+        example: "0"
+        type: string
+      assignee_name:
+        type: string
+      assignee_no:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        example: "0"
+        type: string
+      created_by_name:
+        description: |-
+          姓名回填（W4 随批件，03 S9：列表/详情处理人列 N+1 消除）——repo 层批量反查
+          users 非库列（db:"-"）；real_name 空回退 username，软删用户不回填（omitempty 隐去）。
+          结构化消歧（2026-10-13 展示统一批）：*_no = 工号独立字段（非合并串），前端
+          UserNameText 统一渲染「人名(工号)」三态降级。
+          四字段统一值类型 + omitempty（2026-10-14 契约审计 B3：原 Assignee 系 *string
+          与 Created 系形态不对称——空工号时一侧字段消失一侧出 ""；「有指派」语义由
+          AssignedTo 承载，回填组无需 tri-state）
+        type: string
+      created_by_no:
+        type: string
+      custom_data:
+        items:
+          type: integer
+        type: array
+      definition_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketDefinitionRef'
+      definition_resolution:
+        type: string
+      definition_version:
+        example: "0"
+        type: string
+      description:
+        type: string
+      escalation_supervisor_id:
+        description: |-
+          EscalationSupervisor 催办上级·人工指定（S10 B10-4——E-1 拍定：人工指定为
+          基线 > HR manager_id 为进阶[dd §31]；Create/Assign 可填可改）
+        example: "0"
+        type: string
+      human_key:
+        description: TK-yyyymmdd-NNNN
+        type: string
+      id:
+        example: "0"
+        type: string
+      org_id:
+        example: "0"
+        type: string
+      org_path:
+        description: ltree 路径
+        type: string
+      priority:
+        type: integer
+      revision:
+        example: "0"
+        type: string
+      sla_due_at:
+        type: string
+      status:
+        type: string
+      status_changed_at:
+        description: |-
+          StatusChangedAt 进入当前状态时刻（S10 B10-4——E-2 拍定 a 案：UpdateStatusTx
+          咽喉同写，节点停留时长数据源；存量回填=updated_at 近似）
+        type: string
+      task_runs:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTaskRun'
+        type: array
+      title:
+        type: string
+      type_code:
+        type: string
+      updated_at:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketActionCollectField:
     properties:
       key:
@@ -1325,6 +1407,32 @@ definitions:
       id:
         type: string
       message:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTaskRun:
+    properties:
+      action:
+        type: string
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      definition_hash:
+        type: string
+      node:
+        type: string
+      operation_id:
+        type: string
+      reason:
+        type: string
+      result:
+        type: object
+      status:
+        type: string
+      task_id:
+        type: string
+      ticket_revision:
+        example: "0"
         type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput:
@@ -4874,7 +4982,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Response'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.Ticket'
+              type: object
       summary: 工单详情
       tags:
       - ticket

@@ -24,6 +24,7 @@ type Config struct {
 	Log             LogConfig             `mapstructure:"log"`
 	Audit           AuditConfig           `mapstructure:"audit"`
 
+	B3                     B3Config                 `mapstructure:"b3"`
 	InternalJobs           InternalJobsConfig       `mapstructure:"internal_jobs"`
 	RiskIngest             RiskIngestConfig         `mapstructure:"risk_ingest"`
 	RiskAssetDirectory     RiskAssetDirectoryConfig `mapstructure:"risk_asset_directory"`
@@ -333,6 +334,8 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
+	viper.BindEnv("b3.al_command_sk", "B3_AL_COMMAND_SK")
+	viper.BindEnv("b3.source_sk", "B3_SOURCE_SK")
 	viper.BindEnv("risk_ingest.enabled", "RISK_INGEST_ENABLED")
 	viper.BindEnv("risk_ingest.source_ref", "RISK_INGEST_SOURCE_REF")
 	viper.BindEnv("risk_ingest.ak", "RISK_INGEST_AK")

@@ -12,6 +12,10 @@
 
 ## 1. 当前代码、变化及分期
 
+2026-11-26 第 12–14 项候选实现按[本批计划](../planning/phase6-steps12-14-b3-plan.md)追踪。以下存量接线描述指所核对的开工基线，运行验收以固定候选和隔离证据为准。
+
+候选实现将原已发布流转边的职责条件随任务保存在回执中。任务执行会按当前处理人、创建人、组织职责和有效角色复核原条件。工单推进后，仍具资格的操作者可完成原任务，结果仍归原修订。ActiveList 侧的拒绝语义和元数据范围见 [B3 受控命令](../../../activelist/docs/api/contract.md#b3-受控活动清单命令)。
+
 实际代码锚点均按文件与符号定位；兄弟仓路径相对于各自仓根：
 
 - 主仓`internal/service/ticket/actions_builtin.go`的`SpawnTaskAction.Execute`调用Submit且丢弃任务响应；`internal/service/taskrunner_service.go`的`TaskrunnerService.Submit/Trigger`先调用TR再记本地凭证。目标是先持久意图/快照，保存原节点与operation，再提交TR，消除“票显示已安排但无可靠交接”的窗口。

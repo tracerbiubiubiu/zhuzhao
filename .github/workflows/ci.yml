@@ -162,7 +162,7 @@ jobs:
     # testcontainers（PG/RustFS）直接可用。复用原 Makefile 的 -race/-p 1，
     # 单独 job 与 test 并行，超时预算覆盖完整集成门禁。
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

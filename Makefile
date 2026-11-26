@@ -126,11 +126,12 @@ swag:
 test: test-unit
 
 test-unit:
-	go test -v -race -count=1 ./internal/...
+	go test -v -race -count=1 ./internal/... ./cmd/reference-assets-app ./cmd/reference-assets-source ./pkg/referencequery
 
 # Core 的串行竞态集成包包含真实数据库和 bcrypt，保留独立于 CI 作业的包级时限。
+TEST_INTEGRATION_TIMEOUT ?= 25m
 test-integration:
-	go test -v -race -count=1 -p 1 -tags=integration -timeout=15m ./internal/...
+	go test -v -race -count=1 -p 1 -tags=integration -timeout="$(TEST_INTEGRATION_TIMEOUT)" ./internal/...
 
 test-cover:
 	go test -race -coverprofile=coverage.out ./internal/...

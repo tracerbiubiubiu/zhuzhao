@@ -122,6 +122,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/jobs/` `migrations/000066` |
 | **威胁情报缓存代理（P5-S9）** | intel_cache TTL 7/30 天 config 化 + singleflight + 429 降级矩阵（8 子测）+ intel_cleanup cron | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/threatintel/` `migrations/000067` |
 | **语义引擎（P5-S3a）** | transition 端点 + condition/validator（transition_meta "from>to" 键）+ assignment_rules 自动分派 + ActionRegistry 四动作（notify/cc/reassign/spawn_task）+ SLA0.5 deadline 激活 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/` `migrations/000068-000071` |
+| **B3 工单、Taskrunner 与 ActiveList 联动** | 原工单任务回执、清单条件写与持久变化触发只读任务。执行前复核原流转职责和当前范围，停用联动时原工单保留受权历史。 | 2026-11-26 固定候选的三条隔离链通过 | [第 12–14 项复验证据](reports/phase6-b3-steps12-14-validation-2026-11-26.md) |
 
 ### 工程与验证现状
 
@@ -290,6 +291,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000098 | 模拟员工和部门绑定及操作回执 | D06 第二切片已合入，第三切片复用 |
 | 000099 | 两条改权操作的事务回执、不可变审计事实和补送租约 | 第 10 项候选，存在审计或回执时保留迁移 |
 | 000100 | 模拟员工明确离职的来源标记，约束本地启用 | 第 10 项候选，沿用 C05 投影 |
+| 000101 | 工单与清单任务原号回执、派发意图、清单事件收件及运行授权 | B3 第 12–14 项候选，部署开关默认关闭 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 
@@ -311,6 +313,11 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-26 B3 第 12–14 项候选
+
+固定工单动作在版本化转换事务中保存原工单修订和待派发任务，按稳定任务号查询并补交。清单写入按当前准入与版本条件保存原号回执，监控类型的获权变化通过受控推送产生只读任务。完整接受范围以隔离运行证据为准。 [实施与验收计划](../planning/phase6-steps12-14-b3-plan.md)
+
 
 ### 2026-11-25 B2 Core 合入前门禁复验
 

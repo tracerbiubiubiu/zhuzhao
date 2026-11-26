@@ -36,6 +36,8 @@ type Deps struct {
 	AuditHandler           *handler.AuditHandler
 	TicketHandler          *handler.TicketHandler
 	TicketPeopleHandler    *handler.TicketPeopleHandler
+	B3Handler              *handler.B3Handler
+	B3                     config.B3Config
 
 	// phase5 S5 B5-1：登录态自服务面（avatar/*_create purpose——A.7）；
 	// 禁用态（storage.enabled=false）路由仍挂载、服务层显式拒绝
@@ -187,8 +189,16 @@ func New(deps Deps) *gin.Engine {
 		}}
 		internalGroup := r.Group("/internal", aksk.GinMiddleware(verifier, response.AKSKFail()))
 		internalGroup.POST("/jobs/callback", deps.JobsHandler.Callback)
+		if deps.B3Handler != nil {
+			internalGroup.POST("/jobs/status", deps.B3Handler.Status)
+		}
 		// P4-2 死信告警入口（E-⑥ 终败通知形态——taskrunner 投递，AK/SK 验签同组）
 		internalGroup.POST("/notify/dead-letter", deps.NotificationHandler.DeadLetter)
+	}
+
+	if deps.B3Handler != nil {
+		verifier := &aksk.Verifier{Keys: map[string][]byte{deps.B3.SourceAK: []byte(deps.B3.SourceSK)}}
+		r.POST("/internal/activelist/changes/push", aksk.GinMiddleware(verifier, response.AKSKFail()), deps.B3Handler.Push)
 	}
 
 	// 存量协议兼容层（2026-10-14 预接线，翻案决策见 phase1/02-auth §存量迁移

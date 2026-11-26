@@ -19,6 +19,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao/internal/gateway"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/audit"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3al"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/jobs"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/taskrunner"
@@ -362,6 +363,37 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	if err := actionReg.Register(ticket.NewSpawnTaskAction(&taskSubmitterAdapter{svc: taskrunnerService})); err != nil {
 		panic(err) // 装配期 fail-fast
 	}
+	b3Store := repository.NewB3Store(pool)
+	b3History, err := b3Store.HasHistory(context.Background())
+	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	if cfg.B3.Enabled || b3History {
+		ticketService.SetB3Store(b3Store, cfg.B3.Enabled)
+		taskrunnerService.HideB3Runs()
+	}
+	var b3Handler *handler.B3Handler
+	var b3Cron *service.CronScheduler
+	if cfg.B3.Enabled {
+		b := cfg.B3
+		al, err := b3al.NewClient(b.ALBaseURL, b.ALCommandAK, b.ALCommandSK)
+		if err != nil {
+			cleanup3()
+			cleanup2()
+			cleanup()
+			return nil, nil, err
+		}
+		flow := service.NewB3Flow(pool, b3Store, taskrunnerClient, al, ticketService.RunB3Authorized, riskEvidenceModel,
+			service.B3Subscription{TypeName: b.TypeName, Generation: b.Generation, ConsumerID: b.ConsumerID,
+				RuleID: b.RuleID, RuleVersion: b.RuleVersion, GrantRef: b.ReadGrantRef, GrantRevision: b.ReadGrantRev,
+				SubjectID: b.ReadSubject, Fields: b.ReadFields, EventFields: b.EventFields})
+		jobsHandler.SetB3Flow(flow)
+		b3Handler = handler.NewB3Handler(flow)
+		b3Cron = service.NewCronScheduler(pool, "b3_dispatch", flow, 2*time.Second, logger)
+	}
 	taskrunnerHandler := provideTaskrunnerHandler(taskrunnerService, taskrunnerConfig, jobsRegistry)
 	gatewayRegistry, err := provideGateway(cfg)
 	if err != nil {
@@ -426,6 +458,8 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	}
 	riskWorkflowHandler := handler.NewRiskWorkflowHandler(riskWorkflow)
 	deps := router.Deps{
+		B3Handler:           b3Handler,
+		B3:                  cfg.B3,
 		AuthHandler:         authHandler,
 		UserHandler:         userHandler,
 		RoleHandler:         roleHandler,
@@ -512,6 +546,10 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	app.riskReminder = riskCron
+	app.b3Dispatch = b3Cron
+	if b3Cron != nil {
+		cronRegistry.Register("b3_dispatch", b3Cron)
+	}
 	// C05 会话投影恢复 worker：跨进程按原 intent 重投（失败保留 pending，不删项）。
 	// 启动先扫一轮确认 bootstrap 意图，避免切换就绪门误伤首次登录。
 	sessionCtx, sessionCancel := context.WithCancel(context.Background())

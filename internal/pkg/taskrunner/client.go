@@ -119,7 +119,8 @@ func (c *Client) Submit(ctx context.Context, req SubmitRequest) (*SubmitResponse
 // GetTask GET /v1/tasks/{id}（执行结果唯一出口；live_state 含 in-flight 实时态）。
 func (c *Client) GetTask(ctx context.Context, taskID string) (json.RawMessage, error) {
 	var out json.RawMessage
-	return out, c.do(ctx, http.MethodGet, "/v1/tasks/"+url.PathEscape(taskID), nil, nil, "", &out)
+	err := c.do(ctx, http.MethodGet, "/v1/tasks/"+url.PathEscape(taskID), nil, nil, "", &out)
+	return out, err
 }
 
 // ListRuns GET /v1/runs（query 全量透传——request_id/action/status/from/to 及
@@ -258,4 +259,16 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n]
+}
+
+func (c *Client) ListLegacyRuns(ctx context.Context, query url.Values) (json.RawMessage, error) {
+	var out json.RawMessage
+	err := c.do(ctx, http.MethodGet, "/v1/runs/legacy", query, nil, "", &out)
+	return out, err
+}
+
+func (c *Client) ListLegacyDeadLetters(ctx context.Context, query url.Values) (json.RawMessage, error) {
+	var out json.RawMessage
+	err := c.do(ctx, http.MethodGet, "/v1/dead-letters/legacy", query, nil, "", &out)
+	return out, err
 }

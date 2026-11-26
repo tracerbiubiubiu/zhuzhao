@@ -9,6 +9,7 @@ import (
 	"github.com/tracerbiubiubiu/zhuzhao-utils/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/b3protocol"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/reqid"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service"
 )
@@ -18,6 +19,7 @@ import (
 // 编排逻辑在 service.JobsCallbackService（分层：handler 不直接触达 repository）。
 type JobsHandler struct {
 	svc *service.JobsCallbackService
+	b3  *service.B3Flow
 }
 
 func NewJobsHandler(svc *service.JobsCallbackService) *JobsHandler {
@@ -26,12 +28,17 @@ func NewJobsHandler(svc *service.JobsCallbackService) *JobsHandler {
 
 // jobCallbackBody 回调请求体（taskrunner callback client 契约字段）。
 type jobCallbackBody struct {
-	TaskID    string          `json:"task_id" binding:"required"`
-	Action    string          `json:"action" binding:"required"` // C10：标识在 body，URL 统一 /internal/jobs/callback
-	RequestID string          `json:"request_id"`                // taskrunner 侧关联键（cron 触发为空）
-	Params    json.RawMessage `json:"params"`
-	Actor     string          `json:"actor"` // 原始提交人工号（审计归因回传）
-	SourceIP  string          `json:"source_ip"`
+	ProtocolVersion int             `json:"protocol_version"`
+	ActionVersion   int             `json:"action_version"`
+	OperationID     string          `json:"operation_id"`
+	DeliveryID      string          `json:"delivery_id"`
+	JobID           string          `json:"job_id"`
+	TaskID          string          `json:"task_id" binding:"required"`
+	Action          string          `json:"action" binding:"required"` // C10：标识在 body，URL 统一 /internal/jobs/callback
+	RequestID       string          `json:"request_id"`                // taskrunner 侧关联键（cron 触发为空）
+	Params          json.RawMessage `json:"params"`
+	Actor           string          `json:"actor"` // 原始提交人工号（审计归因回传）
+	SourceIP        string          `json:"source_ip"`
 }
 
 // Callback
@@ -56,6 +63,23 @@ func (h *JobsHandler) Callback(c *gin.Context) {
 	// 覆盖 ctx 值供 job_submissions 落档——保证与 taskrunner job_runs 同键跨查。
 	if body.RequestID != "" {
 		c.Request = c.Request.WithContext(reqid.With(c.Request.Context(), body.RequestID))
+	}
+
+	if b3protocol.IsAction(body.Action) {
+		if h.b3 == nil || body.JobID != "" {
+			writeServiceError(c, errcode.ErrForbidden)
+			return
+		}
+		receipt, err := h.b3.Callback(c.Request.Context(), service.B3Callback{
+			ProtocolVersion: body.ProtocolVersion, ActionVersion: body.ActionVersion, TaskID: body.TaskID,
+			Action: body.Action, OperationID: body.OperationID, DeliveryID: body.DeliveryID, Params: body.Params,
+		})
+		if err != nil {
+			writeServiceError(c, err)
+			return
+		}
+		response.OK(c, receipt)
+		return
 	}
 
 	outcome, msg := h.svc.Execute(c.Request.Context(), service.CallbackInput{
@@ -83,3 +107,5 @@ func (h *JobsHandler) Callback(c *gin.Context) {
 		response.InternalError(c, msg)
 	}
 }
+
+func (h *JobsHandler) SetB3Flow(flow *service.B3Flow) { h.b3 = flow }
