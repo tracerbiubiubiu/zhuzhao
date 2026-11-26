@@ -22,6 +22,12 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, databaseURL string, input io.Reader, stdout, stderr io.Writer) int {
+	if len(args) != 0 && databaseURL != "" {
+		switch args[0] {
+		case "transfer-primary", "transfer-receipt":
+			return runTransfer(ctx, args, databaseURL, input, stdout, stderr)
+		}
+	}
 	if len(args) != 0 || databaseURL == "" {
 		_, _ = fmt.Fprintln(stderr, "usage: set D06_MOCK_DATABASE_URL and provide one synthetic JSON batch on stdin")
 		return 2

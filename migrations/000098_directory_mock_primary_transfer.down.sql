@@ -1,0 +1,3 @@
+DROP TABLE directory_mock_transfer_runs;
+DROP TABLE directory_mock_department_bindings;
+DROP TABLE directory_mock_employee_bindings;
