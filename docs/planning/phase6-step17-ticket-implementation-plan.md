@@ -2,6 +2,8 @@
 
 本计划以待实施的两批候选为出口。第一批交工单办理动作和一致的读范围。第二批交配置晋级、最小在途迁版和受控自动选路。第 18 项先完成可独立验收的前端基础，再随对应接口交完整页面。 [主排期](intranet-uaa-release-schedule.md#剩余开发顺序与验收) · [工单合同](../phase6/ticket-module-detail.md) · [生命周期合同](../design/business-lifecycle-contracts.md) · [原需求对账](../phase6/06-ticket-completeness.md#26件当前对账2026-11-14)
 
+第一批已完成固定本地候选独立复核与普通档验证。 [第一批验收记录](../review/reports/phase6-step17-batch1-validation-2026-11-28.md)
+
 ## 版本与共同样本
 
 - 起点固定 Core `df5bdfc338bd062e4f2b1365000d50c050e6d9f9`、UI `0aa1d5755e698e0df231d1d521da942272677c39`。Core 基线库为 `104`，Utils 按 Core `go.mod` 锁定。组合验收记录实际使用的 Taskrunner、ActiveList、运行依赖版本和制品摘要。第二批从第一批通过检查的固定版本接续。 [第 16 项基线证据](../review/reports/phase6-step16-completion-2026-11-27.md)

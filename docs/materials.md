@@ -22,6 +22,8 @@
 
 ## 本地档案中保存
 
+Phase 6 第 17 项第一批的合成验证材料 ID 为 `evidence/phase6-step17-batch1-20261128.65aggwha`，对应固定候选摘要、Core 及 UI 门禁收据、独立 B2 复验和夹具修复证据。 [第一批固定候选验收](review/reports/phase6-step17-batch1-validation-2026-11-28.md)
+
 本地档案根目录由维护者配置，当前机器的真实位置写在档案根`README.md`；克隆仓库不要求同时拥有该目录。以下稳定材料ID均为相对于档案根的路径：
 
 - `references/project-comparison-audit/`：原始项目比较与调研材料；正式结论由对应审查/设计承接。

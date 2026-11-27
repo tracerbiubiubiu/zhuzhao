@@ -323,6 +323,7 @@ P1 补修候选启用 `000095` 和 `000096` 后，须与同批 Core 一起启动
   | Phase 6 第 12–14 项 | [B3 实施与验收计划](../planning/phase6-steps12-14-b3-plan.md)。接续复验使用独立 `codex/phase6-b3-verified` 四仓工作树，主会话统一核对路径和编号。 | [固定候选验收](../review/reports/phase6-b3-steps12-14-validation-2026-11-26.md)，版本以 Git 为准。 | 2026-11-26 |
   | Phase 6 第 11–14 项集成 | 主会话负责四仓主线集成与显式路径提交。独立复核覆盖参考查询准入、任务身份与回执、清单变更、浏览器和组合启动配置。 | 四仓准确提交与检查以 PR、主线 CI 及隔离验收为准。启用范围沿用各项实施计划。 | 2026-11-27 |
   | Phase 6 第 11–14 项复验修复 | 独立树实施原号对账、排空、发布校验与 B1 错误分类。主会话管理固定候选和独占栈，各改动由另一助手复核。 | [修复计划与验收范围](../planning/phase6-b3-b1-repair-plan.md)。候选供审阅。 | 2026-11-27 |
+  | Phase 6 第 17 项第一批 | 读取统计、办理动作和 UI 在独立树分工。主会话统一固定候选并跑标准门禁，另一助手核对固定差异，独立执行者负责 B2 真进程复验。 | [第一批固定候选验收](../review/reports/phase6-step17-batch1-validation-2026-11-28.md)。交付范围为本地候选。 | 2026-11-28 |
   | Phase 6 第 15 项消息 | [实施与验收计划](../planning/phase6-step15-notifications-plan.md)。主会话负责 Core 与 UI 集成，源事务、签名 HTTP、故障回执和浏览器由不同助手验收或复核。 | [隔离验收记录](../review/reports/phase6-step15-notifications-2026-11-27.md)，本地候选通过门禁及 B2 专用浏览器 8 条，C04 补跑通过。 | 2026-11-27 |
   | Phase 6 第 16 项模拟风险来源及处置 | 独立分支 `codex/phase6-step16`。主会话持有集成，持久批接入、同单补核、误报和隔离验证各有具名分工。 | [首批验收](../review/reports/phase6-step16-scan-intake-2026-11-27.md) · [续批验收](../review/reports/phase6-step16-completion-2026-11-27.md)。 | 2026-11-27 |
   | Phase 6 第 10 项 | [实施与验收计划](../planning/phase6-step10-delivery-plan.md)。主会话负责集成与路径提交，目录、改权审计、入口和浏览器证据分人复验。 | 固定候选、隔离证据和远端门禁以 Git 与验收收据为准。 | 2026-11-26 |
