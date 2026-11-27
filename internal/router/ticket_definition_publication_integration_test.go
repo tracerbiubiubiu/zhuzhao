@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,6 +86,7 @@ func newDefinitionHTTPFixture(t *testing.T) *definitionHTTPFixture {
 	svc := ticket.NewTicketService(db, repository.NewTicketRepo(db), orgs, reg, roles, service.NewOrgDelegationService(db), nil, nil, nil)
 	actions := ticket.NewActionRegistry()
 	require.NoError(t, actions.Register(&ticket.NotifyAction{Svc: svc}))
+	require.NoError(t, actions.Register(ticket.NewSpawnTaskAction(nil)))
 	svc.SetActionRegistry(actions)
 	audit := peopleAudit{}
 	f.engine = router.New(router.Deps{
@@ -222,6 +224,54 @@ func TestD01DefinitionPublicationHTTP(t *testing.T) {
 		SELECT r.id,m.id FROM roles r CROSS JOIN menus m
 		WHERE r.code='d01_http_publisher' AND m.code='ticket_definition_publish_btn'`)
 	one, two := int64(1), int64(2)
+
+	t.Run("B3 ticket actions are checked at publication", func(t *testing.T) {
+		const code = "d01_http_b3_actions"
+		const update = `{"type_name":"review","document_id":"1","generation":"2","expected_revision":"3","grant_ref":"test-grant-review-v1","grant_revision":"4","patch":{"approved":true,"score":1.0}}`
+		f.exec(t, `INSERT INTO ticket_types(code,name) VALUES($1,'B3 publication fixture')`, code)
+		postAction := func(action, params string) map[string]any {
+			return map[string]any{"name": "spawn_task", "params": map[string]any{"action": action, "params": json.RawMessage(params)}}
+		}
+		saveDraft := func(action map[string]any) {
+			meta := map[string]any{"open>assigned": map[string]any{"post_actions": []any{action}}}
+			f.request(t, f.publisher, http.MethodPost, "/api/v1/ticket-types/update", "", map[string]any{"code": code, "transition_meta": meta}, http.StatusOK)
+		}
+		for _, tc := range []struct{ name, action, params string }{
+			{"missing report profile", "ticket.evidence.report.generate", "{}"},
+			{"unknown report profile", "ticket.evidence.report.generate", `{"report_profile":"unknown"}`},
+			{"report parameters are server-derived", "ticket.evidence.report.generate", `{"report_profile":"evidence_summary_v1","submitted_field_count":2}`},
+			{"read is reserved for subscriptions", "activelist.document.get", "{}"},
+			{"empty update patch", "activelist.document.update", strings.Replace(update, `{"approved":true,"score":1.0}`, "{}", 1)},
+			{"non-scalar update field", "activelist.document.update", strings.Replace(update, "true", "[]", 1)},
+			{"out-of-range update number", "activelist.document.update", strings.Replace(update, "1.0", "9007199254740992", 1)},
+			{"invalid update target", "activelist.document.update", strings.Replace(update, `"document_id":"1"`, `"document_id":"01"`, 1)},
+			{"missing update grant", "activelist.document.update", strings.Replace(update, `"grant_ref":"test-grant-review-v1",`, "", 1)},
+			{"invalid revision", "activelist.document.update", strings.Replace(update, `"expected_revision":"3"`, `"expected_revision":"0"`, 1)},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				saveDraft(postAction(tc.action, tc.params))
+				f.request(t, f.publisher, http.MethodPost, definitionPlanPath, "", f.baseline(t, code), http.StatusBadRequest)
+				f.assertPublication(t, code, nil, 0, 0)
+			})
+		}
+		saveDraft(postAction("ordinary.fixture", "null"))
+		base := f.baseline(t, code)
+		f.request(t, f.publisher, http.MethodPost, definitionPublishPath, "d01-b3-ordinary", definitionPublishBody(base, f.plan(t, base)), http.StatusOK)
+		f.assertPublication(t, code, &one, 1, 1)
+
+		saveDraft(postAction("activelist.document.update", update))
+		base = f.baseline(t, code)
+		plan := f.plan(t, base)
+		// Simulate an older plan for a draft without the required input.
+		f.exec(t, `UPDATE ticket_types SET transition_meta=jsonb_set(transition_meta, '{open>assigned,post_actions,0,params,params,patch}', '{}') WHERE code=$1`, code)
+		f.request(t, f.publisher, http.MethodPost, definitionPublishPath, "d01-b3-invalid-plan", definitionPublishBody(base, plan), http.StatusBadRequest)
+		f.assertPublication(t, code, &one, 1, 1)
+
+		saveDraft(postAction("activelist.document.update", update))
+		base = f.baseline(t, code)
+		f.request(t, f.publisher, http.MethodPost, definitionPublishPath, "d01-b3-update", definitionPublishBody(base, f.plan(t, base)), http.StatusOK)
+		f.assertPublication(t, code, &two, 2, 2)
+	})
 
 	t.Run("published configuration lifecycle", func(t *testing.T) {
 		const code = "d01_http_publication"

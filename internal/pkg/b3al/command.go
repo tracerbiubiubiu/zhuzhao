@@ -126,9 +126,45 @@ func canonicalBytes(value map[string]any) ([]byte, error) {
 	return out, nil
 }
 
+// ValidateDocumentUpdate checks only the frozen inputs. The current subject,
+// grant state and row policy are checked when the operation is executed.
+func ValidateDocumentUpdate(input b3protocol.DocumentUpdate) error {
+	c := Command{
+		TypeName: input.TypeName, DocumentID: input.DocumentID, Generation: input.Generation,
+		ExpectedRevision: input.ExpectedRevision, Patch: input.Patch,
+		AuthorizationRef: input.GrantRef, AuthorizationRevision: input.GrantRevision,
+	}
+	if !c.validTarget() {
+		return ErrInvalid
+	}
+	_, err := c.updatePatch(c.selected(true))
+	return err
+}
+
+func (c Command) validTarget() bool {
+	return b3protocol.ValidID(c.AuthorizationRef) && b3protocol.ValidType(c.TypeName) &&
+		b3protocol.PositiveNumber(c.DocumentID) && b3protocol.PositiveNumber(c.Generation) &&
+		b3protocol.PositiveNumber(c.AuthorizationRevision)
+}
+
+func (c Command) updatePatch(fields []string) (map[string]any, error) {
+	if !b3protocol.PositiveNumber(c.ExpectedRevision) || !b3protocol.ValidFields(fields, 32) {
+		return nil, ErrInvalid
+	}
+	patch := make(map[string]any, len(fields))
+	for _, f := range fields {
+		v, ok := scalar(c.Patch[f])
+		if !ok {
+			return nil, ErrInvalid
+		}
+		patch[f] = v
+	}
+	return patch, nil
+}
+
 func (c Command) envelope(now time.Time, path string) (map[string]any, error) {
 	write, lookup := path != getPath, path == receiptPath
-	if !b3protocol.ValidID(c.OperationID) || !b3protocol.ValidID(c.InvocationID) || !b3protocol.ValidID(c.AuthorizationRef) || !b3protocol.ValidID(c.RootID) || !b3protocol.ValidID(c.RootBudgetRef) || !b3protocol.ValidType(c.TypeName) || !b3protocol.PositiveNumber(c.DocumentID) || !b3protocol.PositiveNumber(c.Generation) || !b3protocol.PositiveNumber(c.AuthorizationRevision) || !b3protocol.PositiveNumber(c.Fence) {
+	if !b3protocol.ValidID(c.OperationID) || !b3protocol.ValidID(c.InvocationID) || !b3protocol.ValidID(c.RootID) || !b3protocol.ValidID(c.RootBudgetRef) || !c.validTarget() || !b3protocol.PositiveNumber(c.Fence) {
 		return nil, ErrInvalid
 	}
 	if (write && c.SubjectType != "human") || (!write && c.SubjectType != "service") || strings.TrimSpace(c.SubjectID) == "" || !utf8.ValidString(c.SubjectID) || utf8.RuneCountInString(c.SubjectID) > 128 || c.SubmittedAt.IsZero() || c.SubmittedAt.After(now) || !c.ExpiresAt.After(c.SubmittedAt) || (!lookup && !c.ExpiresAt.After(now)) {
@@ -150,29 +186,22 @@ func (c Command) envelope(now time.Time, path string) (map[string]any, error) {
 		seen[key] = true
 	}
 	fields := c.selected(write)
-	if !b3protocol.ValidFields(fields, 32) {
-		return nil, ErrInvalid
-	}
 	target := map[string]any{"owner": "activelist", "resource_type": "activelist_document", "resource_id": c.DocumentID, "type_name": c.TypeName, "generation": c.Generation}
 	params := map[string]any{"document_id": c.DocumentID, "type_name": c.TypeName, "generation": c.Generation}
 	action, kind, claims := "get", "al_read_request", "read_admission_claims"
 	if write {
-		if len(c.Fields) > 0 || !b3protocol.PositiveNumber(c.ExpectedRevision) || c.SourceEventID != "" || c.SourceEventRevision != "" {
+		if len(c.Fields) > 0 || c.SourceEventID != "" || c.SourceEventRevision != "" {
 			return nil, ErrInvalid
 		}
-		patch := make(map[string]any, len(fields))
-		for _, f := range fields {
-			v, ok := scalar(c.Patch[f])
-			if !ok {
-				return nil, ErrInvalid
-			}
-			patch[f] = v
+		patch, err := c.updatePatch(fields)
+		if err != nil {
+			return nil, err
 		}
 		params["patch"] = patch
 		params["expected_revision"] = c.ExpectedRevision
 		action, kind, claims = "update", "al_execution_request", "admission_claims"
 	} else {
-		if len(c.Patch) > 0 || c.ExpectedRevision != "" || (c.SourceEventID == "") != (c.SourceEventRevision == "") || c.SourceEventRevision != "" && !b3protocol.PositiveNumber(c.SourceEventRevision) {
+		if !b3protocol.ValidFields(fields, 32) || len(c.Patch) > 0 || c.ExpectedRevision != "" || (c.SourceEventID == "") != (c.SourceEventRevision == "") || c.SourceEventRevision != "" && !b3protocol.PositiveNumber(c.SourceEventRevision) {
 			return nil, ErrInvalid
 		}
 		params["fields"] = fields
