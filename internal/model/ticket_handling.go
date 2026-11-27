@@ -12,8 +12,9 @@ type TicketTransferRequest struct {
 }
 
 type TicketHandlingCapabilities struct {
-	Transfer bool `json:"transfer"`
-	Withdraw bool `json:"withdraw"`
+	Transfer                bool `json:"transfer"`
+	Withdraw                bool `json:"withdraw"`
+	WithdrawCommentRequired bool `json:"withdraw_comment_required,omitempty"`
 }
 
 type TicketHandlingResult struct {

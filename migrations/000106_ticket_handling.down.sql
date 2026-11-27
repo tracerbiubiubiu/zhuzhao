@@ -1,5 +1,6 @@
 -- Removing evidence of previous assignments can only make old tickets ineligible
 -- after re-upgrade. A successful command receipt must survive a lost response.
+LOCK TABLE tickets, ticket_handling_receipts IN ACCESS EXCLUSIVE MODE;
 DO $$ BEGIN
     IF EXISTS(SELECT 1 FROM ticket_handling_receipts) THEN
         RAISE EXCEPTION 'retain ticket handling receipts before rollback';

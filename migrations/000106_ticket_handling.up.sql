@@ -1,3 +1,32 @@
+-- A pre-existing state of this name belongs to the old graph, including
+-- immutable versions which are no longer the current published pointer.
+-- Fence configuration/publication and ticket writers before testing for it.
+LOCK TABLE ticket_types, ticket_type_definitions IN SHARE MODE;
+LOCK TABLE tickets IN ACCESS EXCLUSIVE MODE;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM tickets WHERE status = 'cancelled') OR EXISTS (
+        WITH graphs(states, edges, meta) AS (
+            SELECT states, transitions, transition_meta FROM ticket_types
+            UNION ALL
+            SELECT snapshot #> '{type,states}', snapshot #> '{type,transitions}',
+                   snapshot #> '{type,transition_meta}' FROM ticket_type_definitions
+        )
+        SELECT 1 FROM graphs
+        WHERE states ? 'cancelled' OR edges ? 'cancelled'
+           OR edges @? '$.*[*] ? (@ == "cancelled")'
+           OR EXISTS (
+               SELECT 1 FROM jsonb_object_keys(
+                   CASE WHEN jsonb_typeof(meta) = 'object' THEN meta ELSE '{}'::jsonb END
+               ) AS keys(key)
+               WHERE key = 'cancelled' OR key LIKE 'cancelled>%' OR key LIKE '%>cancelled'
+           )
+    ) THEN
+        RAISE EXCEPTION 'legacy cancelled ticket state exists; resolve the conflicting state before migration 000106';
+    END IF;
+END;
+$$;
+
 -- Only a trusted new open, unassigned create explicitly asserts this fact.
 -- Existing tickets and older writers cannot certify their previous history.
 ALTER TABLE tickets ADD COLUMN withdrawal_eligible BOOLEAN NOT NULL DEFAULT false;

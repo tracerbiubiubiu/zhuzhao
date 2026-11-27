@@ -52,34 +52,34 @@ func withdrawalRule(raw json.RawMessage, edges map[string][]string) (*Transition
 
 // Both discovery and execution evaluate the bound graph and the same L3
 // relationship. The enclosing command separately checks L1 and active risk links.
-func (s *Service) handlingAllowed(ctx context.Context, action string, t *model.Ticket, typ *model.TicketType, actor int64) error {
+func (s *Service) handlingAllowed(ctx context.Context, action string, t *model.Ticket, typ *model.TicketType, actor int64) (*TransitionMeta, error) {
 	if err := s.authorizeCheck(ctx, actor, action, strconv.FormatInt(t.ID, 10)); err != nil {
-		return err
+		return nil, err
 	}
 	var edges map[string][]string
 	if err := json.Unmarshal(typ.Transitions, &edges); err != nil {
-		return errcode.ErrServiceUnavailable
+		return nil, errcode.ErrServiceUnavailable
 	}
 	if action == transferAction {
 		if t.OrgID <= 0 || t.AssignedTo == nil || t.Status == StatusClosed || t.Status == StatusRejected || t.Status == StatusCancelled || len(edges[t.Status]) == 0 {
-			return errcode.ErrConcurrentModification
+			return nil, errcode.ErrConcurrentModification
 		}
-		return nil
+		return nil, nil
 	}
 	if actor != t.CreatedBy {
-		return errcode.ErrNoPermission
+		return nil, errcode.ErrNoPermission
 	}
 	if !t.WithdrawalEligible || t.Status != StatusOpen || t.AssignedTo != nil {
-		return errcode.ErrConcurrentModification
+		return nil, errcode.ErrConcurrentModification
 	}
 	rule, err := withdrawalRule(typ.TransitionMeta, edges)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if rule == nil {
-		return errcode.ErrNoPermission
+		return nil, errcode.ErrNoPermission
 	}
-	return checkValidator(withDictQuerier(ctx, repository.IAMDB(ctx, s.db)), rule, t)
+	return rule, checkValidator(withDictQuerier(ctx, repository.IAMDB(ctx, s.db)), rule, t)
 }
 
 // The GET exposes grants only for the authenticated HTTP actor. A direct
@@ -102,7 +102,7 @@ func (s *Service) handlingCapabilities(ctx context.Context, tx pgx.Tx, row *mode
 		if !grants[i] {
 			continue
 		}
-		err := s.handlingAllowed(ctx, action, row, typ, actor)
+		rule, err := s.handlingAllowed(ctx, action, row, typ, actor)
 		if errors.Is(err, errcode.ErrNoPermission) || errors.Is(err, errcode.ErrConcurrentModification) || errors.Is(err, errcode.ErrInvalidParams) {
 			continue
 		}
@@ -113,6 +113,7 @@ func (s *Service) handlingCapabilities(ctx context.Context, tx pgx.Tx, row *mode
 			caps.Transfer = true
 		} else {
 			caps.Withdraw = true
+			caps.WithdrawCommentRequired = rule.CommentRequired
 		}
 	}
 	return caps, nil
@@ -147,7 +148,7 @@ func (s *Service) transferCandidates(ctx context.Context, q model.TicketPeopleQu
 		if err != nil {
 			return err
 		}
-		if err := s.handlingAllowed(ctx, transferAction, row, typ, actor); err != nil {
+		if _, err := s.handlingAllowed(ctx, transferAction, row, typ, actor); err != nil {
 			return err
 		}
 		result, err = repository.NewTicketPeopleRepo(s.db).SearchCandidates(ctx, q.Query, row.OrgID, *row.AssignedTo)
@@ -220,7 +221,8 @@ func (s *Service) handleTicket(ctx context.Context, req model.TicketWithdrawRequ
 		if err != nil {
 			return err
 		}
-		if err := s.handlingAllowed(ctx, action, row, typ, actor); err != nil {
+		rule, err := s.handlingAllowed(ctx, action, row, typ, actor)
+		if err != nil {
 			return err
 		}
 		if row.Revision != rev {
@@ -246,10 +248,6 @@ func (s *Service) handleTicket(ctx context.Context, req model.TicketWithdrawRequ
 			dispatch.Action, dispatch.Payload = domainevent.TicketAssigned, domainevent.Payload{"from_assignee": event.FromValue, "to_assignee": event.ToValue}
 			row.AssignedTo = &target
 		} else {
-			rule, err := parseTransitionMeta(typ.TransitionMeta, StatusOpen, StatusCancelled)
-			if err != nil {
-				return err
-			}
 			if rule.CommentRequired && strings.TrimSpace(req.Comment) == "" {
 				return errcode.New(errcode.ErrInvalidParams.Code, "请填写撤回说明")
 			}

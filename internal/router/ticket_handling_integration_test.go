@@ -88,6 +88,22 @@ func TestTicketHandlingHTTP(t *testing.T) {
 		require.NoError(t, db.QueryRow(ctx, "SELECT count(*) FROM ticket_comments WHERE ticket_id=$1", row.ID).Scan(&count))
 		require.Equal(t, 1, count)
 	})
+	t.Run("withdrawal exposes pinned mandatory comment only to eligible creator", func(t *testing.T) {
+		f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta) SELECT 'handling_note','handling note',states,transitions,jsonb_set(transition_meta,'{open>cancelled,comment_required}','true') FROM ticket_types WHERE code='handling'`)
+		note, err := repo.GetTicketType(ctx, "handling_note")
+		require.NoError(t, err)
+		_, _, err = svc.PublishTicketType(ctx, note, creator)
+		require.NoError(t, err)
+		row, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "handling_note", Title: "pinned note", OrgID: org}, creator)
+		require.NoError(t, err)
+		require.True(t, caps(t, row.ID, creator)["withdraw_comment_required"])
+		require.False(t, caps(t, row.ID, assignee)["withdraw_comment_required"])
+		body := map[string]string{"id": fmt.Sprint(row.ID), "expected_revision": fmt.Sprint(row.Revision)}
+		submit(t, creator, "withdraw", "note-withdraw", body, 400)
+		body["comment"] = "required note"
+		submit(t, creator, "withdraw", "note-withdraw", body, 200)
+		require.False(t, caps(t, row.ID, creator)["withdraw_comment_required"])
+	})
 	t.Run("former assignment permanently disqualifies reopened ticket", func(t *testing.T) {
 		row := create(t)
 		f.exec(t, "UPDATE tickets SET assigned_to=$2,status='assigned' WHERE id=$1", row.ID, assignee)
