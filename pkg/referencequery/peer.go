@@ -99,6 +99,11 @@ func (p *Peer) Post(ctx context.Context, route string, request, response any) er
 		return statusFailure(503)
 	}
 	if res.StatusCode != http.StatusOK {
+		// This request authenticates a peer service. Its rejection describes
+		// an unavailable dependency and must not become a user's session error.
+		if res.StatusCode == http.StatusUnauthorized {
+			return statusFailure(http.StatusServiceUnavailable)
+		}
 		f := statusFailure(res.StatusCode)
 		// Only public standard classifications may cross the service boundary.
 		var body Failure

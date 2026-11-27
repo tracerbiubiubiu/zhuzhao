@@ -37,6 +37,11 @@ func TestAppRechecksAdmissionAndSourceRows(t *testing.T) {
 		if !reflect.DeepEqual(got, inv) {
 			t.Errorf("admission invocation changed: %+v", got)
 		}
+		if sourceMode.Load() == 6 {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = io.WriteString(w, `{"reason":"not_authorized"}`)
+			return
+		}
 		if sourceMode.Load() == 3 {
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = io.WriteString(w, `{"reason":"not_authorized"}`)
@@ -64,6 +69,10 @@ func TestAppRechecksAdmissionAndSourceRows(t *testing.T) {
 		switch sourceMode.Load() {
 		case 1:
 			org = "2"
+		case 7:
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = io.WriteString(w, `{"reason":"not_authorized"}`)
+			return
 		case 2:
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = io.WriteString(w, `{"reason":"source_unavailable"}`)
@@ -116,13 +125,16 @@ func TestAppRechecksAdmissionAndSourceRows(t *testing.T) {
 		name       string
 		mode       int64
 		wantStatus int
+		wantReason string
 		sourceHit  bool
 	}{
-		{"out-of-scope row", 1, http.StatusConflict, true},
-		{"unavailable provider", 2, http.StatusServiceUnavailable, true},
-		{"revoked admission", 3, http.StatusForbidden, false},
-		{"empty scope", 4, http.StatusOK, false},
-		{"expanded admission scope", 5, http.StatusServiceUnavailable, false},
+		{"out-of-scope row", 1, http.StatusConflict, "contract_mismatch", true},
+		{"unavailable provider", 2, http.StatusServiceUnavailable, "source_unavailable", true},
+		{"revoked admission", 3, http.StatusForbidden, "not_authorized", false},
+		{"empty scope", 4, http.StatusOK, "", false},
+		{"expanded admission scope", 5, http.StatusServiceUnavailable, "source_unavailable", false},
+		{"admission service rejects app identity", 6, http.StatusServiceUnavailable, "source_unavailable", false},
+		{"source service rejects app identity", 7, http.StatusServiceUnavailable, "source_unavailable", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sourceMode.Store(tc.mode)
@@ -130,6 +142,10 @@ func TestAppRechecksAdmissionAndSourceRows(t *testing.T) {
 			res, page := do("")
 			if tc.wantStatus != res.Code || tc.sourceHit != (sourceCalls.Load() > before) {
 				t.Fatalf("unexpected result (status %d, source calls %d): %s", res.Code, sourceCalls.Load()-before, res.Body)
+			}
+			var failure referencequery.Failure
+			if err := json.Unmarshal(res.Body.Bytes(), &failure); err != nil || failure.Code != tc.wantReason {
+				t.Fatalf("unexpected failure reason: %s", res.Body)
 			}
 			if tc.mode == 4 && (page.Items == nil || len(page.Items) != 0 || !page.Complete) {
 				t.Fatalf("empty scope must return a complete empty page: %s", res.Body)

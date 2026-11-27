@@ -19,10 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tracerbiubiubiu/zhuzhao-utils/aksk"
+	"github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/config"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/service/referenceassets"
 	"github.com/tracerbiubiubiu/zhuzhao/pkg/referencequery"
 )
@@ -76,7 +78,12 @@ func checkReferenceAdmissionLifecycle(
 	require.NoError(t, err)
 	svc := referenceassets.New(cfg, peer, pool, cache)
 	routes := gin.New()
-	routes.POST(referencequery.AdmissionPath, handler.NewReferenceAssetsHandler(svc, callbackAK, []byte(callbackKey)).Admit)
+	assets := handler.NewReferenceAssetsHandler(svc, callbackAK, []byte(callbackKey))
+	routes.Use(middleware.RequestID())
+	routes.POST(referencequery.AdmissionPath, assets.Admit)
+	tokens := jwt.NewManager(jwt.Config{Secret: "synthetic-reference-query-session-test", AccessTTL: time.Minute})
+	routes.GET(referencequery.QueryPath, middleware.JWT(tokens, cache, nil,
+		middleware.WithAccountSecurity(referenceAccountLookup{repository.NewAccountSecurityLookup(pool)})), assets.Query)
 	core.Config.Handler = routes
 	core.Start()
 
@@ -126,6 +133,60 @@ func checkReferenceAdmissionLifecycle(
 			require.NoError(t, setRole(ctx, true))
 		})
 	}
+	t.Run("query failures preserve the local login session", func(t *testing.T) {
+		bearer, _, err := tokens.GenerateAccessTokenWithSessionEpoch(credential.UserID, "reference test reader", false, 0, credential.Epoch)
+		require.NoError(t, err)
+		read := func(token string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodGet, referencequery.QueryPath+"?limit=1&requested_fields=device_id", nil).WithContext(ctx)
+			req.Header.Set("Authorization", "Bearer "+token)
+			res := httptest.NewRecorder()
+			routes.ServeHTTP(res, req)
+			return res
+		}
+		initialCalls := outbound.Load()
+		require.Equal(t, http.StatusUnauthorized, read("invalid-local-session").Code)
+		require.Equal(t, initialCalls, outbound.Load())
+
+		goodPage := func(ctx context.Context, inv referencequery.Invocation) (referencequery.QueryPage, error) {
+			admission, err := postAdmission(ctx, inv)
+			if err != nil {
+				return referencequery.QueryPage{}, err
+			}
+			return pageForAdmission(admission), nil
+		}
+		for _, tc := range []struct {
+			name   string
+			app    appScenario
+			status int
+			reason string
+		}{
+			{"old app rejects Core service identity", func(context.Context, referencequery.Invocation) (referencequery.QueryPage, error) {
+				return referencequery.QueryPage{}, &referencequery.Failure{Status: http.StatusUnauthorized, Code: "not_authorized"}
+			}, http.StatusServiceUnavailable, "source_unavailable"},
+			{"page has no admission acknowledgement", func(_ context.Context, inv referencequery.Invocation) (referencequery.QueryPage, error) {
+				return pageForAdmission(referencequery.Admission{Query: inv.Query}), nil
+			}, http.StatusServiceUnavailable, "source_unavailable"},
+			{"admitted page violates the query contract", func(ctx context.Context, inv referencequery.Invocation) (referencequery.QueryPage, error) {
+				page, err := goodPage(ctx, inv)
+				page.SourceID = "unexpected-reference-source"
+				return page, err
+			}, http.StatusConflict, "contract_mismatch"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				scenarios <- tc.app
+				res := read(bearer)
+				require.Equal(t, tc.status, res.Code, res.Body.String())
+				var failure referencequery.Failure
+				require.NoError(t, json.Unmarshal(res.Body.Bytes(), &failure))
+				require.Equal(t, tc.reason, failure.Code)
+
+				scenarios <- goodPage
+				success := read(bearer)
+				require.Equal(t, http.StatusOK, success.Code, success.Body.String())
+			})
+		}
+	})
+
 	t.Run("revoked after admission cannot continue", func(t *testing.T) {
 		scenarios <- func(ctx context.Context, inv referencequery.Invocation) (referencequery.QueryPage, error) {
 			admission, err := postAdmission(ctx, inv)
@@ -160,4 +221,14 @@ func requireReferenceDenied(t *testing.T, err error) {
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, http.StatusForbidden, failure.Status)
 	require.Equal(t, "not_authorized", failure.Code)
+}
+
+type referenceAccountLookup struct {
+	*repository.AccountSecurityLookup
+}
+
+func (r referenceAccountLookup) AccountSnapshot(ctx context.Context, user int64) (middleware.AccountSnapshot, error) {
+	snap, err := r.AccountSecuritySnapshot(ctx, user)
+	return middleware.AccountSnapshot{Status: snap.Status, Deleted: snap.Deleted,
+		SessionEpoch: snap.SessionEpoch, ProjectionEpoch: snap.ProjectionEpoch}, err
 }
