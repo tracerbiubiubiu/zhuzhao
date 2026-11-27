@@ -202,16 +202,21 @@ func (r *UserRepo) CurrentIAMAuthorization(ctx context.Context, userID int64) ([
 	if err != nil {
 		return nil, nil, err
 	}
-	rows, err = IAMDB(ctx, r.db).Query(ctx, `SELECT COALESCE(v0,''),COALESCE(v1,''),COALESCE(v2,'') FROM casbin_rule WHERE ptype='p' ORDER BY id`)
+	policies, err := r.CurrentIAMPolicies(ctx)
+	return roles, policies, err
+}
+
+// CurrentIAMPolicies returns the live Casbin policy projection on the guarded connection.
+func (r *UserRepo) CurrentIAMPolicies(ctx context.Context) ([][]string, error) {
+	rows, err := IAMDB(ctx, r.db).Query(ctx, `SELECT COALESCE(v0,''),COALESCE(v1,''),COALESCE(v2,'') FROM casbin_rule WHERE ptype='p' ORDER BY id`)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	policies, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) ([]string, error) {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) ([]string, error) {
 		p := make([]string, 3)
 		err := row.Scan(&p[0], &p[1], &p[2])
 		return p, err
 	})
-	return roles, policies, err
 }
 
 func (r *MenuRepo) WithIAMGuard(ctx context.Context, fn func(context.Context) error) error {

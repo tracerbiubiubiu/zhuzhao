@@ -32,7 +32,7 @@ func TestTicketHandlingHTTP(t *testing.T) {
 	e := newRouterTestEnforcer(t)
 	f := &definitionHTTPFixture{db: db, tokens: jwtpkg.NewManager(jwtpkg.Config{Secret: "handling-test-identity-012345678912345", AccessTTL: time.Minute})}
 	f.exec(t, "INSERT INTO roles(code,name,priority) VALUES('handling','handling',60)")
-	for path, method := range map[string]string{"/tickets/transfer": "POST", "/tickets/withdraw": "POST", "/tickets/:id/actions": "GET", "/tickets/transition": "POST", "/tickets/assign": "POST"} {
+	for path, method := range map[string]string{"/tickets/:id": "GET", "/tickets/transfer": "POST", "/tickets/withdraw": "POST", "/tickets/:id/actions": "GET", "/tickets/transition": "POST", "/tickets/assign": "POST"} {
 		path = "/api/v1" + path
 		_, err = e.AddPolicy("role::handling", path, method)
 		require.NoError(t, err)
@@ -153,6 +153,49 @@ func TestTicketHandlingHTTP(t *testing.T) {
 		submit(t, assignee, "transfer", "once-transfer", body, 404)
 		f.exec(t, "INSERT INTO user_orgs(user_id,org_id,ticket_scope) VALUES($1,$2,'assigned')", assignee, org)
 	})
+	t.Run("target needs active detail and transition grants", func(t *testing.T) {
+		noRole := actor("eligible_none", true)
+		readOnly := actor("eligible_reader", true)
+		stepOnly := actor("eligible_handler", true)
+		successor := actor("eligible_successor", true)
+		f.exec(t, "DELETE FROM user_roles WHERE user_id=ANY($1)", []int64{noRole, readOnly, stepOnly, successor})
+		var sourceOrg int64
+		require.NoError(t, db.QueryRow(ctx, "INSERT INTO organizations(code,name,path,status) VALUES('handling_grants','handling grants','handlinggrants',1) RETURNING id").Scan(&sourceOrg))
+		grants := []struct{ code, path, method string }{{"handling_read", "/api/v1/tickets/:id", "GET"}, {"handling_step", "/api/v1/tickets/transition", "POST"}}
+		for _, grant := range grants {
+			f.exec(t, "INSERT INTO roles(code,name,priority) VALUES($1,$1,60)", grant.code)
+			_, err := e.AddPolicy("role::"+grant.code, grant.path, grant.method)
+			require.NoError(t, err)
+			f.exec(t, "INSERT INTO casbin_rule(ptype,v0,v1,v2) VALUES('p',$1,$2,$3)", "role::"+grant.code, grant.path, grant.method)
+		}
+		f.exec(t, `INSERT INTO user_roles(user_id,role_id) SELECT u,id FROM roles CROSS JOIN unnest($1::bigint[]) AS u WHERE code='handling_read'`, []int64{readOnly, successor})
+		f.exec(t, "INSERT INTO user_roles(user_id,role_id) SELECT $1,id FROM roles WHERE code='handling_step'", stepOnly)
+		f.exec(t, "INSERT INTO user_orgs(user_id,org_id) VALUES($1,$2)", successor, sourceOrg)
+		f.exec(t, "INSERT INTO org_roles(org_id,role_id) SELECT $1,id FROM roles WHERE code='handling_step'", sourceOrg)
+		row := create(t)
+		f.exec(t, "UPDATE tickets SET status='assigned',assigned_to=$2 WHERE id=$1", row.ID, assignee)
+		query := fmt.Sprintf("/api/v1/tickets/people?purpose=transfer&ticket_id=%d&q=eligible_", row.ID)
+		picked := f.request(t, assignee, "GET", query, "", nil, 200).Body.String()
+		require.Contains(t, picked, "eligible_successor")
+		for _, name := range []string{"eligible_none", "eligible_reader", "eligible_handler"} {
+			require.NotContains(t, picked, name)
+		}
+		body := map[string]string{"id": fmt.Sprint(row.ID), "expected_revision": fmt.Sprint(row.Revision + 1)}
+		for _, id := range []int64{noRole, readOnly, stepOnly} {
+			body["to_user_id"] = fmt.Sprint(id)
+			submit(t, assignee, "transfer", "target-check", body, 400)
+		}
+		body["to_user_id"] = fmt.Sprint(successor)
+		f.exec(t, "UPDATE organizations SET status=0 WHERE id=$1", sourceOrg)
+		require.NotContains(t, f.request(t, assignee, "GET", query, "", nil, 200).Body.String(), "eligible_successor")
+		submit(t, assignee, "transfer", "target-check", body, 400)
+		f.exec(t, "UPDATE organizations SET status=1 WHERE id=$1", sourceOrg)
+		submit(t, assignee, "transfer", "target-check", body, 200)
+		f.request(t, successor, "GET", fmt.Sprintf("/api/v1/tickets/%d", row.ID), "", nil, 200)
+		result := submit(t, successor, "transition", "", map[string]string{"id": fmt.Sprint(row.ID), "to": "closed"}, 200)
+		require.Equal(t, "closed", result["status"])
+	})
+
 	t.Run("legacy unknown and previously accepted cannot withdraw", func(t *testing.T) {
 		var legacy int64
 		require.NoError(t, db.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path,definition_version)

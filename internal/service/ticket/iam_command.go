@@ -153,7 +153,7 @@ func (s *Service) freshCommandRoles(ctx context.Context, actor int64, modelText 
 	return roles, nil
 }
 
-func commandRouteGrants(modelText string, roles []string, policies [][]string, routes []ticketPolicyRoute) ([]bool, error) {
+func commandPolicyEnforcer(modelText string, policies [][]string) (*casbin.Enforcer, error) {
 	m, err := casbinmodel.NewModelFromString(modelText)
 	if err != nil {
 		return nil, errcode.ErrNoPermission
@@ -164,6 +164,14 @@ func commandRouteGrants(modelText string, roles []string, policies [][]string, r
 	}
 	if _, err := enforcer.AddPolicies(policies); err != nil {
 		return nil, errcode.ErrNoPermission
+	}
+	return enforcer, nil
+}
+
+func commandRouteGrants(modelText string, roles []string, policies [][]string, routes []ticketPolicyRoute) ([]bool, error) {
+	enforcer, err := commandPolicyEnforcer(modelText, policies)
+	if err != nil {
+		return nil, err
 	}
 	grants := make([]bool, len(routes))
 	for i, route := range routes {

@@ -22,25 +22,40 @@ var ticketOrgCandidateSQL = `u.status=1 AND u.deleted_at IS NULL
     AND (membership.expires_at IS NULL OR membership.expires_at>statement_timestamp())
     AND ` + OrgSourceActiveSQL("source_org") + `))`
 
-func (r *TicketPeopleRepo) EligibleTransferTarget(ctx context.Context, id, org, previous int64) (bool, error) {
-	var found bool
-	err := IAMDB(ctx, r.db).QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users u WHERE u.id=$1 AND u.id<>$3 AND `+ticketOrgCandidateSQL+`)`, id, org, previous).Scan(&found)
-	return found, err
+// TransferRouteRoles are derived from current Casbin policy for this ticket.
+// Different effective roles may grant detail read and transition.
+type TransferRouteRoles struct {
+	Read       []int64
+	Transition []int64
+}
+
+func (r *TicketPeopleRepo) TransferCandidates(ctx context.Context, term string, orgID, exclude, target int64, grants TransferRouteRoles) ([]model.TicketPerson, error) {
+	if len(grants.Read) == 0 || len(grants.Transition) == 0 {
+		return []model.TicketPerson{}, nil
+	}
+	return r.searchCandidates(ctx, term, orgID, exclude, target, &grants)
 }
 
 // SearchEnabled searches enabled, undeleted candidates.
 func (r *TicketPeopleRepo) SearchEnabled(ctx context.Context, term string, orgID int64) ([]model.TicketPerson, error) {
-	return r.SearchCandidates(ctx, term, orgID, 0)
+	return r.searchCandidates(ctx, term, orgID, 0, 0, nil)
 }
 
-func (r *TicketPeopleRepo) SearchCandidates(ctx context.Context, term string, orgID, exclude int64) ([]model.TicketPerson, error) {
+func (r *TicketPeopleRepo) searchCandidates(ctx context.Context, term string, orgID, exclude, target int64, grants *TransferRouteRoles) ([]model.TicketPerson, error) {
 	// Treat wildcard characters as literal input. Searching never exposes full user rows.
 	pattern := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(term) + "%"
-	rows, err := IAMDB(ctx, r.db).Query(ctx, `SELECT u.id,
+	query := `SELECT u.id,
 	 COALESCE(NULLIF(u.real_name,''),u.username) || '(' || COALESCE(u.employee_no,'') || ')'
-	 FROM users u WHERE `+ticketOrgCandidateSQL+` AND u.id<>$3
-	 AND (u.real_name ILIKE $1 ESCAPE '\' OR u.username ILIKE $1 ESCAPE '\' OR u.employee_no ILIKE $1 ESCAPE '\')
-	 ORDER BY COALESCE(NULLIF(u.real_name,''),u.username),u.id LIMIT 20`, pattern, orgID, exclude)
+	 FROM users u WHERE ` + ticketOrgCandidateSQL + ` AND u.id<>$3
+	 AND (u.real_name ILIKE $1 ESCAPE '\' OR u.username ILIKE $1 ESCAPE '\' OR u.employee_no ILIKE $1 ESCAPE '\')`
+	args := []any{pattern, orgID, exclude}
+	if grants != nil {
+		query += ` AND ($4::bigint=0 OR u.id=$4) AND (` + effectiveRoleCTEFor("u.id") + `
+    SELECT bool_or(id=ANY($5::bigint[])) AND bool_or(id=ANY($6::bigint[])) FROM expanded)`
+		args = append(args, target, grants.Read, grants.Transition)
+	}
+	query += " ORDER BY COALESCE(NULLIF(u.real_name,''),u.username),u.id LIMIT 20"
+	rows, err := IAMDB(ctx, r.db).Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

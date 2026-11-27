@@ -151,10 +151,50 @@ func (s *Service) transferCandidates(ctx context.Context, q model.TicketPeopleQu
 		if _, err := s.handlingAllowed(ctx, transferAction, row, typ, actor); err != nil {
 			return err
 		}
-		result, err = repository.NewTicketPeopleRepo(s.db).SearchCandidates(ctx, q.Query, row.OrgID, *row.AssignedTo)
+		result, err = s.qualifiedTransferTargets(ctx, row, purpose.Model, q.Query, 0)
 		return err
 	})
 	return result, err
+}
+
+// Match the two successor L1 routes once per role, then apply the effective
+// direct/org/inherited role predicate in SQL before the candidate LIMIT.
+func (s *Service) qualifiedTransferTargets(ctx context.Context, row *model.Ticket, modelText, term string, target int64) ([]model.TicketPerson, error) {
+	policies, err := repository.NewUserRepo(s.db).CurrentIAMPolicies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	enforcer, err := commandPolicyEnforcer(modelText, policies)
+	if err != nil {
+		return nil, err
+	}
+	roles, err := repository.NewRoleRepo(s.db).List(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+	var grants repository.TransferRouteRoles
+	detail := "/api/v1/tickets/" + strconv.FormatInt(row.ID, 10)
+	for _, role := range roles {
+		if role.Status != 1 {
+			continue
+		}
+		subject := "role::" + role.Code
+		read, err := enforcer.Enforce(subject, detail, "GET")
+		if err != nil {
+			return nil, errcode.ErrServiceUnavailable
+		}
+		transition, err := enforcer.Enforce(subject, "/api/v1/tickets/transition", "POST")
+		if err != nil {
+			return nil, errcode.ErrServiceUnavailable
+		}
+		if read {
+			grants.Read = append(grants.Read, role.ID)
+		}
+		if transition {
+			grants.Transition = append(grants.Transition, role.ID)
+		}
+	}
+	return repository.NewTicketPeopleRepo(s.db).TransferCandidates(ctx, term, row.OrgID, *row.AssignedTo, target, grants)
 }
 
 func handlingID(raw string) (int64, error) {
@@ -189,7 +229,8 @@ func (s *Service) handleTicket(ctx context.Context, req model.TicketWithdrawRequ
 	if key == "" || len(key) > 128 || strings.IndexFunc(key, func(r rune) bool { return r < '!' || r > '~' }) >= 0 || len(req.Comment) > RichtextMaxBytes {
 		return nil, errcode.ErrInvalidParams
 	}
-	if _, ok := middleware.IAMRequestFromContext(ctx); !ok {
+	purpose, ok := middleware.IAMRequestFromContext(ctx)
+	if !ok {
 		return nil, errcode.ErrNoPermission
 	}
 	raw, err := json.Marshal(struct {
@@ -234,11 +275,11 @@ func (s *Service) handleTicket(ctx context.Context, req model.TicketWithdrawRequ
 			if target == *row.AssignedTo {
 				return errcode.ErrConflict
 			}
-			eligible, err := repository.NewTicketPeopleRepo(s.db).EligibleTransferTarget(ctx, target, row.OrgID, *row.AssignedTo)
+			eligible, err := s.qualifiedTransferTargets(ctx, row, purpose.Model, "", target)
 			if err != nil {
 				return err
 			}
-			if !eligible {
+			if len(eligible) != 1 {
 				return errcode.New(errcode.ErrInvalidParams.Code, "转办目标不在本工单可选范围")
 			}
 			if err := s.ticketRepo.UpdateAssignedToTx(ctx, tx, id, &target); err != nil {
