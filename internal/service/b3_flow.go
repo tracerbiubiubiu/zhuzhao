@@ -45,6 +45,7 @@ type B3Flow struct {
 	authorize    b3TicketAuthority
 	policyModel  string
 	subscription B3Subscription
+	draining     bool
 }
 
 func NewB3Flow(db *pgxpool.Pool, store *repository.B3Store, tr B3TaskTransport, al b3ActiveList, authorize b3TicketAuthority, policyModel string, subscription B3Subscription) *B3Flow {
@@ -63,9 +64,17 @@ func (f *B3Flow) Handle(ctx context.Context, _ json.RawMessage) error {
 			return err
 		}
 		call, cancel := context.WithTimeout(ctx, 20*time.Second)
-		accepted := f.deliver(call, delivery)
+		accepted := delivery.Accepted
+		if f.draining {
+			err = f.drainDelivery(call, delivery)
+		} else {
+			accepted = f.deliver(call, delivery)
+		}
 		cancel()
-		if err := f.store.DeliveryResult(ctx, delivery, accepted); err != nil {
+		if resultErr := f.store.DeliveryResult(ctx, delivery, accepted); resultErr != nil {
+			return resultErr
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -232,12 +241,14 @@ func (f *B3Flow) Callback(ctx context.Context, input B3Callback) (B3Receipt, err
 			_ = f.store.ReleaseExecution(ctx, run)
 		}
 	}()
-	switch run.Action {
-	case b3protocol.Report:
+	switch {
+	case f.draining:
+		err = f.drainExecution(ctx, run)
+	case run.Action == b3protocol.Report:
 		err = f.runReport(ctx, run)
-	case b3protocol.Update:
+	case run.Action == b3protocol.Update:
 		err = f.runUpdate(ctx, run)
-	case b3protocol.Read:
+	case run.Action == b3protocol.Read:
 		err = f.runRead(ctx, run)
 	}
 	if err != nil {

@@ -334,6 +334,7 @@ func Load(path string) (*Config, error) {
 	viper.BindEnv("database.password", "DB_PASSWORD")
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 	viper.BindEnv("internal_jobs.taskrunner_sk", "INTERNAL_JOBS_SK")
+	viper.BindEnv("b3.drain", "B3_DRAIN")
 	viper.BindEnv("b3.al_command_sk", "B3_AL_COMMAND_SK")
 	viper.BindEnv("b3.source_sk", "B3_SOURCE_SK")
 	viper.BindEnv("risk_ingest.enabled", "RISK_INGEST_ENABLED")

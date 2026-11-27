@@ -26,12 +26,8 @@ func (s *B3Store) StageSource(ctx context.Context, source, eventID, streamID str
 		return "", err
 	}
 	if tag.RowsAffected() == 0 {
-		var originalHash string
-		err := tx.QueryRow(ctx, `
-			SELECT payload_hash,stage_commit_ref FROM activelist_source_inbox
-			WHERE source=$1 AND event_id=$2
-		`, source, eventID).Scan(&originalHash, &reference)
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && hash != originalHash) {
+		reference, err = b3SourceStage(ctx, tx, source, eventID, hash)
+		if errors.Is(err, pgx.ErrNoRows) {
 			return "", errcode.ErrConflict
 		}
 		if err != nil {
@@ -44,6 +40,26 @@ func (s *B3Store) StageSource(ctx context.Context, source, eventID, streamID str
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
+	}
+	return reference, nil
+}
+
+// ExistingSourceStage checks a previously committed event without staging work.
+func (s *B3Store) ExistingSourceStage(ctx context.Context, source, eventID, hash string) (string, error) {
+	return b3SourceStage(ctx, s.db, source, eventID, hash)
+}
+
+func b3SourceStage(ctx context.Context, db IAMDBTX, source, eventID, hash string) (string, error) {
+	var originalHash, reference string
+	err := db.QueryRow(ctx, `
+		SELECT payload_hash,stage_commit_ref FROM activelist_source_inbox
+		WHERE source=$1 AND event_id=$2
+	`, source, eventID).Scan(&originalHash, &reference)
+	if err != nil {
+		return "", err
+	}
+	if hash != originalHash {
+		return "", errcode.ErrConflict
 	}
 	return reference, nil
 }
