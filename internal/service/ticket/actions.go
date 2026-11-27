@@ -126,6 +126,14 @@ func parsePostAction(raw json.RawMessage) (actionRef, bool) {
 }
 
 func (r *ActionRegistry) validatePostActions(actions []json.RawMessage) error {
+	return r.validateActions(actions, false)
+}
+
+func (r *ActionRegistry) validatePublishedPostActions(actions []json.RawMessage) error {
+	return r.validateActions(actions, true)
+}
+
+func (r *ActionRegistry) validateActions(actions []json.RawMessage, publishing bool) error {
 	for i, raw := range actions {
 		ref, ok := parsePostAction(raw)
 		if !ok {
@@ -141,6 +149,11 @@ func (r *ActionRegistry) validatePostActions(actions []json.RawMessage) error {
 		if validator, ok := action.(interface{ validateParams(map[string]any) error }); ok {
 			if err := validator.validateParams(ref.Params); err != nil {
 				return fmt.Errorf("动作 %q: %w", ref.Name, err)
+			}
+		}
+		if kind := b3Action(ref); publishing && kind != "" {
+			if _, err := parseB3TicketParams(kind, ref.Params["params"]); err != nil {
+				return fmt.Errorf("第 %d 个动作 %q: %w", i+1, kind, err)
 			}
 		}
 	}

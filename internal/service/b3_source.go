@@ -52,26 +52,7 @@ func (f *B3Flow) Push(ctx context.Context, input b3protocol.SourceDelivery) (b3p
 	if err != nil {
 		return empty, errcode.ErrInvalidParams
 	}
-	scope := event.Source + "/" + event.ID
-	var derived *repository.B3Execution
-	if event.CanDerive(s.RuleID) {
-		payload, err := json.Marshal(b3protocol.SourceRead{
-			TypeName: s.TypeName, Generation: s.Generation, DocumentID: event.Data.DocumentID,
-			Fields: s.Fields, EventID: event.ID, EventRevision: event.Data.DocumentRevision, Causality: event.Data.Causality,
-			GrantRef: s.GrantRef, GrantRevision: s.GrantRevision, SubjectID: s.SubjectID, RuleID: s.RuleID,
-		})
-		if err != nil {
-			return empty, errcode.ErrServiceUnavailable
-		}
-		operation := b3protocol.Identity("op_evt_", scope+"/"+s.RuleID+"/"+s.RuleVersion+"/0")
-		derived = &repository.B3Execution{
-			TicketTaskRun: model.TicketTaskRun{OperationID: operation, TaskID: b3protocol.TaskID(operation), Action: b3protocol.Read},
-			Payload:       payload,
-		}
-	}
-	cursor, _ := strconv.ParseInt(event.Data.Cursor, 10, 64)
-	stage, err := f.store.StageSource(ctx, event.Source, event.ID, event.Data.StreamID, cursor, hash,
-		b3protocol.Identity("stage_", scope), input.Event, derived)
+	stage, err := f.stageSource(ctx, event, hash, input.Event)
 	if errors.Is(err, errcode.ErrConflict) {
 		return empty, err
 	}
@@ -82,6 +63,33 @@ func (f *B3Flow) Push(ctx context.Context, input b3protocol.SourceDelivery) (b3p
 		SchemaVersion: "1", DeliveryID: input.DeliveryID, Source: event.Source, EventID: event.ID,
 		PayloadSHA256: hash, StageCommitRef: stage, State: "durably_staged",
 	}, nil
+}
+
+func (f *B3Flow) stageSource(ctx context.Context, event b3protocol.SourceEvent, hash string, raw json.RawMessage) (string, error) {
+	if f.draining {
+		return f.store.ExistingSourceStage(ctx, event.Source, event.ID, hash)
+	}
+	s := f.subscription
+	scope := event.Source + "/" + event.ID
+	var derived *repository.B3Execution
+	if event.CanDerive(s.RuleID) {
+		payload, err := json.Marshal(b3protocol.SourceRead{
+			TypeName: s.TypeName, Generation: s.Generation, DocumentID: event.Data.DocumentID,
+			Fields: s.Fields, EventID: event.ID, EventRevision: event.Data.DocumentRevision, Causality: event.Data.Causality,
+			GrantRef: s.GrantRef, GrantRevision: s.GrantRevision, SubjectID: s.SubjectID, RuleID: s.RuleID,
+		})
+		if err != nil {
+			return "", err
+		}
+		operation := b3protocol.Identity("op_evt_", scope+"/"+s.RuleID+"/"+s.RuleVersion+"/0")
+		derived = &repository.B3Execution{
+			TicketTaskRun: model.TicketTaskRun{OperationID: operation, TaskID: b3protocol.TaskID(operation), Action: b3protocol.Read},
+			Payload:       payload,
+		}
+	}
+	cursor, _ := strconv.ParseInt(event.Data.Cursor, 10, 64)
+	return f.store.StageSource(ctx, event.Source, event.ID, event.Data.StreamID, cursor, hash,
+		b3protocol.Identity("stage_", scope), raw, derived)
 }
 
 func (f *B3Flow) runRead(ctx context.Context, run repository.B3Execution) error {

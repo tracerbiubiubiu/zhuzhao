@@ -69,6 +69,8 @@ query_id 的每个版本都要明确 parameters/items schema、允许的排序�
 
 mock 与私有 HTTP connector 实现同一 QueryPort，环境只换 endpoint/secret/profile；真实源断开不得静默改用 mock。connector 将厂商字典映射为公共枚举并保留映射版本/原值受权引用；未知状态显式 unknown 或 contract_mismatch，不能默认 healthy/active。多参数预填支持用户/部门/时间等注册输入；传递 request context/取消，外部取数在业务事务外，结果仍须服务端字段校验，不能用取数结果写授权锚点。
 
+合成参考页通过本地会话读取。公开查询的 401 表示本地凭据失效，应用、来源或准入回调的服务验签失败归为 503。可解析的结果缺少准入确认时返回 503。上游结果无法按合同解析，或准入确认后返回的页违反查询合同，均返回 409。身份通过验签而当前读取授权被拒时遵循现行授权错误分类。
+
 X02-F 仅在实际启用目录/发现同步时增加 [D06 envelope](foundation-iam-module-detail.md#5-d06-与-uaa-c来源目录和组织生命周期)或[风险接入 DTO](risk-module-detail.md)。一个数据集一个采集/重试主；默认直通核心事务提交接收记录+领域事实后返回 applied ACK，才推进 committed checkpoint。若选择异步收件，必须先持久保存完整可重放 payload，返回 staged/accepted receipt；它只证明可靠接收，接收侧拥有继续重试责任，独立 received checkpoint 可以前进，**领域 committed checkpoint 仍等 applied receipt**。AL push 的 durable inbox ACK 与此同为“可恢复收件”，不等于后继任务/领域已完成。真实上游仅允许一个 checkpoint 时，先在契约明确其代表已可靠接收还是领域提交，不混名。需提前确认上游时先持久存可重投批次，不能 checkpoint 领先 payload。全量缺失处理须完整性证明；查询 HTTP200、SCIM 分页计数和本地 received_at 都不能证明删除/最新。只取数与回传分开授权，默认关闭回写。
 
 ### 3.1 配置、数据和升级边界

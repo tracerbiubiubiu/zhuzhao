@@ -425,7 +425,7 @@ func (s *Service) previewDefinitionSnapshot(ctx context.Context, tx pgx.Tx, draf
 			seen[to] = true
 		}
 	}
-	if err := validateTransitionEdges(states, edges, draft.TransitionMeta, s.actionReg.validatePostActions); err != nil {
+	if err := validateTransitionEdges(states, edges, draft.TransitionMeta, s.actionReg.validatePublishedPostActions); err != nil {
 		return "", err
 	}
 	inputs := make([]model.TicketTypeFieldInput, 0, len(fields))

@@ -21,6 +21,7 @@ import (
 const b3Submitter = "service:zhuzhao-b3"
 
 type B3TaskTransport interface {
+	CallerAK() string
 	Submit(context.Context, taskrunner.SubmitRequest) (*taskrunner.SubmitResponse, error)
 	GetTask(context.Context, string) (json.RawMessage, error)
 	RetryTask(context.Context, string, string) (json.RawMessage, error)
@@ -44,6 +45,7 @@ type B3Flow struct {
 	authorize    b3TicketAuthority
 	policyModel  string
 	subscription B3Subscription
+	draining     bool
 }
 
 func NewB3Flow(db *pgxpool.Pool, store *repository.B3Store, tr B3TaskTransport, al b3ActiveList, authorize b3TicketAuthority, policyModel string, subscription B3Subscription) *B3Flow {
@@ -62,9 +64,17 @@ func (f *B3Flow) Handle(ctx context.Context, _ json.RawMessage) error {
 			return err
 		}
 		call, cancel := context.WithTimeout(ctx, 20*time.Second)
-		accepted := f.deliver(call, delivery)
+		accepted := delivery.Accepted
+		if f.draining {
+			err = f.drainDelivery(call, delivery)
+		} else {
+			accepted = f.deliver(call, delivery)
+		}
 		cancel()
-		if err := f.store.DeliveryResult(ctx, delivery, accepted); err != nil {
+		if resultErr := f.store.DeliveryResult(ctx, delivery, accepted); resultErr != nil {
+			return resultErr
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -72,13 +82,20 @@ func (f *B3Flow) Handle(ctx context.Context, _ json.RawMessage) error {
 }
 
 func (f *B3Flow) deliver(ctx context.Context, d repository.B3Delivery) bool {
+	if d.RemoteStarted && d.Action == b3protocol.Update {
+		// The original ActiveList effect is independent of broker state.
+		f.recoverStartedUpdate(ctx, d.TaskID)
+	}
 	raw, err := f.tr.GetTask(ctx, d.TaskID)
-	if b3ErrorCode(err, errcode.ErrNotFound) && !d.Accepted {
+	if b3ErrorCode(err, errcode.ErrNotFound) && !d.Accepted && !d.RemoteStarted {
 		params, _ := json.Marshal(b3protocol.TaskParams{OperationID: d.OperationID})
 		response, err := f.tr.Submit(ctx, taskrunner.SubmitRequest{
 			TaskID: d.TaskID, Action: d.Action, Params: params, SubmittedBy: b3Submitter, TimeoutSecs: 15,
 		})
-		return err == nil && response != nil && response.TaskID == d.TaskID
+		// An idempotent response echoes request fields. Confirm the original
+		// record on the next lookup before marking that delivery accepted.
+		return err == nil && response != nil && response.Accepted &&
+			matchesB3Task(d, response.TaskID, response.Action, response.Params)
 	}
 	if err != nil {
 		return false
@@ -87,39 +104,46 @@ func (f *B3Flow) deliver(ctx context.Context, d repository.B3Delivery) bool {
 		TaskID      string `json:"task_id"`
 		Action      string `json:"action"`
 		SubmittedBy string `json:"submitted_by"`
+		JobID       string `json:"job_id"`
 		Params      string `json:"params"`
 		Status      string `json:"status"`
 	}
-	var params b3protocol.TaskParams
-	if json.Unmarshal(raw, &view) != nil || view.TaskID != d.TaskID || view.Action != d.Action ||
-		view.SubmittedBy != b3Submitter || b3protocol.DecodeBytes([]byte(view.Params), &params) != nil ||
-		params.OperationID != d.OperationID {
+	if json.Unmarshal(raw, &view) != nil || view.JobID != "" ||
+		(view.SubmittedBy != b3Submitter && view.SubmittedBy != "service:"+f.tr.CallerAK()) ||
+		!matchesB3Task(d, view.TaskID, view.Action, []byte(view.Params)) {
 		return false
 	}
-	switch view.Status {
-	case "failed", "dead", "canceled":
-		f.recoverDelivery(ctx, d, view.Status)
+	if !d.RemoteStarted {
+		switch view.Status {
+		case "failed", "dead", "canceled":
+			f.recoverDelivery(ctx, d, view.Status)
+		}
 	}
 	return true
 }
 
+func matchesB3Task(d repository.B3Delivery, taskID, action string, rawParams []byte) bool {
+	var params b3protocol.TaskParams
+	return taskID == d.TaskID && action == d.Action &&
+		b3protocol.DecodeBytes(rawParams, &params) == nil && params.OperationID == d.OperationID
+}
+
 // A terminal queue delivery does not establish a terminal business outcome.
 func (f *B3Flow) recoverDelivery(ctx context.Context, delivery repository.B3Delivery, queueStatus string) {
-	if !delivery.RemoteStarted {
-		if queueStatus == "canceled" {
-			f.finishUndelivered(ctx, delivery, "task_delivery_canceled")
-			return
-		}
-		if time.Since(delivery.CreatedAt) >= b3CommandLifetime {
-			f.finishUndelivered(ctx, delivery, "execution_expired")
-			return
-		}
-		// The worker only runs after its current claim. A retry of this
-		// confirmed failed delivery reuses the original Taskrunner identity.
-		_, _ = f.tr.RetryTask(ctx, delivery.TaskID, b3Submitter)
+	if queueStatus == "canceled" {
+		f.finishUndelivered(ctx, delivery, "task_delivery_canceled")
 		return
 	}
-	run, err := f.store.Execution(ctx, delivery.TaskID)
+	if time.Since(delivery.CreatedAt) >= b3CommandLifetime {
+		f.finishUndelivered(ctx, delivery, "execution_expired")
+		return
+	}
+	// A retry of the confirmed failed delivery keeps the original task ID.
+	_, _ = f.tr.RetryTask(ctx, delivery.TaskID, b3Submitter)
+}
+
+func (f *B3Flow) recoverStartedUpdate(ctx context.Context, taskID string) {
+	run, err := f.store.Execution(ctx, taskID)
 	if err != nil || run.Status != "pending" || run.Action != b3protocol.Update {
 		return
 	}
@@ -127,24 +151,29 @@ func (f *B3Flow) recoverDelivery(ctx context.Context, delivery repository.B3Deli
 		return
 	}
 	defer f.store.ReleaseExecution(ctx, run)
+	if run.RemoteStarted {
+		_ = f.reconcileUpdate(ctx, run)
+	}
+}
+
+// reconcileUpdate only observes the original operation. A missing receipt
+// does not establish that an earlier request had no effect.
+func (f *B3Flow) reconcileUpdate(ctx context.Context, run repository.B3Execution) error {
 	command, input, err := f.documentUpdateCommand(run)
 	if err != nil {
-		_ = f.unknownUpdate(ctx, run)
-		return
+		return f.unknownUpdate(ctx, run)
 	}
 	err = f.authorize(ctx, run, f.policyModel, func(ctx context.Context) error {
 		return f.store.AuthorizeDocumentUpdate(ctx, run.ActorID, input)
 	})
 	if err != nil {
-		_ = f.unknownUpdate(ctx, run)
-		return
+		return f.unknownUpdate(ctx, run)
 	}
 	result, err := f.al.LookupUpdate(ctx, command)
 	if err != nil {
-		_ = f.unknownUpdate(ctx, run)
-		return
+		return f.unknownUpdate(ctx, run)
 	}
-	_ = f.finish(ctx, run, "succeeded", "", result)
+	return f.finish(ctx, run, "succeeded", "", result)
 }
 
 func (f *B3Flow) finishUndelivered(ctx context.Context, delivery repository.B3Delivery, reason string) {
@@ -212,12 +241,14 @@ func (f *B3Flow) Callback(ctx context.Context, input B3Callback) (B3Receipt, err
 			_ = f.store.ReleaseExecution(ctx, run)
 		}
 	}()
-	switch run.Action {
-	case b3protocol.Report:
+	switch {
+	case f.draining:
+		err = f.drainExecution(ctx, run)
+	case run.Action == b3protocol.Report:
 		err = f.runReport(ctx, run)
-	case b3protocol.Update:
+	case run.Action == b3protocol.Update:
 		err = f.runUpdate(ctx, run)
-	case b3protocol.Read:
+	case run.Action == b3protocol.Read:
 		err = f.runRead(ctx, run)
 	}
 	if err != nil {
@@ -301,45 +332,23 @@ func (f *B3Flow) documentUpdateCommand(run repository.B3Execution) (b3al.Command
 }
 
 func (f *B3Flow) runUpdate(ctx context.Context, run repository.B3Execution) error {
+	if run.RemoteStarted {
+		return f.reconcileUpdate(ctx, run)
+	}
 	command, input, err := f.documentUpdateCommand(run)
 	if err != nil {
 		return f.finish(ctx, run, "failed_no_effect", "invalid_document_update", nil)
 	}
-	check := func(markSent bool) error {
-		return f.authorize(ctx, run, f.policyModel, func(ctx context.Context) error {
-			if err := f.store.AuthorizeDocumentUpdate(ctx, run.ActorID, input); err != nil {
-				return err
-			}
-			if markSent {
-				return f.store.MarkRemoteStarted(ctx, run)
-			}
-			return nil
-		})
-	}
-	if run.RemoteStarted {
-		if err := check(false); err != nil {
-			return f.unknownUpdate(ctx, run)
-		}
-		result, err := f.al.LookupUpdate(ctx, command)
-		if err == nil {
-			return f.finish(ctx, run, "succeeded", "", result)
-		}
-		var upstream *b3al.HTTPError
-		if !errors.As(err, &upstream) || upstream.Status != 404 {
-			return f.unknownUpdate(ctx, run)
-		}
-	}
 	if !time.Now().Before(command.ExpiresAt) {
-		// A missing receipt is a snapshot. A previously sent write may still commit.
-		if run.RemoteStarted {
-			return f.unknownUpdate(ctx, run)
-		}
 		return f.finish(ctx, run, "failed_no_effect", "execution_expired", nil)
 	}
-	if err := check(true); err != nil {
-		if run.RemoteStarted {
-			return f.unknownUpdate(ctx, run)
+	err = f.authorize(ctx, run, f.policyModel, func(ctx context.Context) error {
+		if err := f.store.AuthorizeDocumentUpdate(ctx, run.ActorID, input); err != nil {
+			return err
 		}
+		return f.store.MarkRemoteStarted(ctx, run)
+	})
+	if err != nil {
 		if deniedB3(err) {
 			return f.finish(ctx, run, "held", "document_authorization_revoked", nil)
 		}

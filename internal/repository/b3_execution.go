@@ -186,3 +186,10 @@ func (s *B3Store) HasHistory(ctx context.Context) (bool, error) {
 	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM command_receipts)").Scan(&present)
 	return present, err
 }
+
+// HasPending reports whether an initialized B3 store still needs reconciliation.
+func (s *B3Store) HasPending(ctx context.Context) (bool, error) {
+	var pending bool
+	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM command_receipts WHERE status='pending')").Scan(&pending)
+	return pending, err
+}

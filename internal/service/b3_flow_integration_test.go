@@ -27,6 +27,8 @@ type b3TaskPeer struct {
 	retried     []string
 }
 
+func (*b3TaskPeer) CallerAK() string { return "synthetic-core" }
+
 func (p *b3TaskPeer) GetTask(_ context.Context, taskID string) (json.RawMessage, error) {
 	if result, ok := p.runs[taskID]; ok {
 		return result, nil
@@ -39,7 +41,7 @@ func (p *b3TaskPeer) Submit(_ context.Context, input taskrunner.SubmitRequest) (
 	var err error
 	p.runs[input.TaskID], err = json.Marshal(map[string]any{
 		"task_id": input.TaskID, "action": input.Action,
-		"submitted_by": input.SubmittedBy, "params": string(input.Params),
+		"submitted_by": "service:" + p.CallerAK(), "params": string(input.Params),
 	})
 	require.NoError(p.t, err)
 	return nil, fmt.Errorf("synthetic lost response after Taskrunner accepted")
@@ -189,7 +191,8 @@ func TestB3SentUpdateRecovery(t *testing.T) {
 		wantLookup, wantWrite            bool
 		status, reason                   string
 	}{
-		{name: "valid_same_operation_retry", sent: true, wantLookup: true, wantWrite: true, status: "succeeded"},
+		{name: "missing_receipt_stays_unknown", sent: true, wantLookup: true, status: "pending", reason: "document_outcome_unconfirmed"},
+		{name: "first_write_when_unsent", wantWrite: true, status: "succeeded"},
 		{name: "expired_uncertain", sent: true, expired: true, wantLookup: true, status: "pending", reason: "document_outcome_unconfirmed"},
 		{name: "expired_receipt", sent: true, expired: true, receipt: true, wantLookup: true, status: "succeeded"},
 		{name: "canceled_uncertain", sent: true, canceled: true, wantLookup: true, status: "pending", reason: "document_outcome_unconfirmed"},
@@ -261,6 +264,18 @@ func TestB3SentUpdateRecovery(t *testing.T) {
 			}
 			require.Empty(t, tr.retried)
 			require.Zero(t, tr.submissions)
+			if tt.name == "missing_receipt_stays_unknown" {
+				al.receiptAvailable = true
+				// The Taskrunner ledger may be unavailable even after ActiveList commits.
+				delete(tr.runs, task)
+				require.NoError(t, flow.Handle(ctx, nil))
+				recovered, err := store.Execution(ctx, task)
+				require.NoError(t, err)
+				require.Equal(t, "succeeded", recovered.Status)
+				require.Equal(t, []string{op, op}, al.lookups)
+				require.Empty(t, al.writes)
+				require.Zero(t, tr.submissions)
+			}
 		})
 	}
 }

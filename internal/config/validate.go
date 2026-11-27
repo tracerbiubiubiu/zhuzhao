@@ -65,7 +65,7 @@ func (c *Config) Validate() error {
 		if c.ReferenceAssets.Enabled && upstream.Prefix != "" && referenceRouteConflict(upstream.Prefix) {
 			return fmt.Errorf("reference_assets: gateway prefix conflicts with a reserved reference route")
 		}
-		if c.B3.Enabled && gatewayRouteConflict(upstream.Prefix, B3SourcePushPath, InternalJobsPrefix+B3TaskStatusRoute) {
+		if c.B3.RuntimeEnabled() && gatewayRouteConflict(upstream.Prefix, B3SourcePushPath, InternalJobsPrefix+B3TaskStatusRoute) {
 			return fmt.Errorf("b3: gateway prefix conflicts with a reserved B3 route")
 		}
 	}

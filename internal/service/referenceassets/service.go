@@ -91,8 +91,11 @@ func (s *Service) Read(ctx context.Context, cred middleware.ReadCredential, id s
 	// the acknowledgement so the returned page cannot certify a different read.
 	data, err := s.cache.GetDel(ctx, key+":accepted").Bytes()
 	var accepted referencequery.QueryRequest
-	if err != nil || json.Unmarshal(data, &accepted) != nil || referencequery.ValidatePage(accepted, page) != nil {
+	if err != nil || json.Unmarshal(data, &accepted) != nil || referencequery.ValidateRequest(accepted) != nil {
 		return referencequery.QueryPage{}, unavailable
+	}
+	if err := referencequery.ValidatePage(accepted, page); err != nil {
+		return referencequery.QueryPage{}, err
 	}
 	if page.NextCursor != "" {
 		cursor := newReferenceToken()

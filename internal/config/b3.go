@@ -17,6 +17,7 @@ const (
 // identities. The keys are provided by the deployment environment.
 type B3Config struct {
 	Enabled      bool     `mapstructure:"enabled"`
+	Drain        bool     `mapstructure:"drain"`
 	ALBaseURL    string   `mapstructure:"al_base_url"`
 	ALCommandAK  string   `mapstructure:"al_command_ak"`
 	ALCommandSK  string   `mapstructure:"al_command_sk"`
@@ -34,9 +35,16 @@ type B3Config struct {
 	EventFields  []string `mapstructure:"event_fields"`
 }
 
+func (b B3Config) RuntimeEnabled() bool {
+	return b.Enabled || b.Drain
+}
+
 func (c *Config) validateB3() error {
 	b := c.B3
-	if !b.Enabled {
+	if b.Enabled && b.Drain {
+		return fmt.Errorf("b3.enabled and b3.drain are mutually exclusive")
+	}
+	if !b.RuntimeEnabled() {
 		return nil
 	}
 	if !c.InternalJobs.Enabled || c.Taskrunner.BaseURL == "" || b.ALBaseURL == "" ||
@@ -71,7 +79,7 @@ func (c *Config) validateB3() error {
 
 func (c *Config) validateB3ReferenceCredentials(outboundKey, callbackKey string) error {
 	ref, b3 := c.ReferenceAssets, c.B3
-	if !ref.Enabled || !b3.Enabled {
+	if !ref.Enabled || !b3.RuntimeEnabled() {
 		return nil
 	}
 	for _, credential := range [...][2]string{

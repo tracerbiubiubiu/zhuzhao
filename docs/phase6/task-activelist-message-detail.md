@@ -79,6 +79,10 @@ ResultProjection.Apply(ctx: TrustedServiceContext,
 
 存量兼容：旧job_submissions/status/message_log列继续可读；无法证明的历史成功只标legacy_observed。切换按consumer停旧Hook/旧直接spawn路径后启新意图，影子阶段只产不投，避免双发。回退先停新副作用，兼容reader/对账worker保留到在途收敛；不down删除unknown/receipt或正式历史，不让不理解新状态的旧worker接手自动执行。
 
+首批 B3 排空使用 `b3.enabled=false`、`b3.drain=true`。保留连接和专用签名配置，拒绝新工单意图和首次源事件。已保存源事件仍可确认，尚未接收的事实留在 ActiveList。未开始的清单写持久记录为暂缓，可能已发送的只查原操作回执。完整停用在 Core 取得单例所有权后检查待处理记录。 [启停和对账操作](../ops/runbook.md#66-b3-停接与原号对账)
+
+Core 核对 Taskrunner 已保存的一次性任务时同时检查任务号、动作和原操作号。归因接受既有受信代报值以及实际签名 AK 对应的服务归因，受理仍分开记录。工单定义的预检与发布校验固定动作及参数形状，清单读取由变更订阅发起。
+
 ## 4. 工单节点→TR→结果与AL写
 
 ### 4.1 提交与执行

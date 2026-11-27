@@ -39,7 +39,7 @@ func (s *Service) PublishTicketType(ctx context.Context, expected *model.TicketT
 		if err = json.Unmarshal(draft.Transitions, &edges); err != nil {
 			return err
 		}
-		if err = validateTransitionEdges(states, edges, draft.TransitionMeta, s.actionReg.validatePostActions); err != nil {
+		if err = validateTransitionEdges(states, edges, draft.TransitionMeta, s.actionReg.validatePublishedPostActions); err != nil {
 			return err
 		}
 		inputs := make([]model.TicketTypeFieldInput, 0, len(fields))
