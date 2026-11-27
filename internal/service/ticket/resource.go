@@ -57,7 +57,7 @@ func (r *Resource) Name() string { return "工单 (Ticket)" }
 
 // Actions 返回工单资源支持的动作
 func (r *Resource) Actions() []string {
-	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note", "transition"}
+	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note", "transition", "transfer", "withdraw"}
 }
 
 // Authorize 资源级鉴权（L2 可见性 → L3 属主 + canOperate）
@@ -209,7 +209,12 @@ func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID 
 			return true, nil
 		}
 		needDelegation = true
-	case "assign":
+	case "withdraw":
+		return isCreator, nil
+	case "assign", "transfer":
+		if action == "transfer" && isAssignee {
+			return true, nil
+		}
 		// 2b 主管（scope group/all 且工单在其子树）；2c + org admin·owner
 		if scope.AllScope {
 			return true, nil

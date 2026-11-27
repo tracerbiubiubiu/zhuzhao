@@ -2,13 +2,14 @@ package ticket
 
 import (
 	"context"
+	"strconv"
+	"strings"
+	"unicode/utf8"
+
 	"github.com/casbin/casbin/v3"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/middleware"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
-	"strconv"
-	"strings"
-	"unicode/utf8"
 )
 
 // PeopleSearcher is intentionally narrower than the user administration repository.
@@ -37,6 +38,11 @@ func (s *PeopleService) Search(ctx context.Context, q model.TicketPeopleQuery, a
 	var path, action string
 	orgID := int64(0)
 	switch q.Purpose {
+	case "transfer":
+		if q.TicketID <= 0 || q.OrgID != 0 || q.TypeCode != "" {
+			return nil, errcode.ErrInvalidParams
+		}
+		path = "/api/v1/tickets/transfer"
 	case "assign", "cc":
 		if q.TicketID <= 0 || q.OrgID != 0 || q.TypeCode != "" {
 			return nil, errcode.ErrInvalidParams
@@ -95,6 +101,9 @@ func (s *PeopleService) Search(ctx context.Context, q model.TicketPeopleQuery, a
 			return nil, errcode.ErrNoPermission
 		}
 	}
+	if q.Purpose == "transfer" {
+		return s.ticket.transferCandidates(ctx, q, actor)
+	}
 	if action != "" {
 		if err := s.ticket.authorizeCheck(ctx, actor, action, strconv.FormatInt(q.TicketID, 10)); err != nil {
 			return nil, err
@@ -104,7 +113,7 @@ func (s *PeopleService) Search(ctx context.Context, q model.TicketPeopleQuery, a
 		if err != nil {
 			return nil, err
 		}
-		if q.Purpose == "assign" && tk.Status == StatusClosed {
+		if q.Purpose == "assign" && (tk.Status == StatusClosed || tk.Status == StatusCancelled) {
 			return nil, errcode.ErrTicketAlreadyClosed
 		}
 	}

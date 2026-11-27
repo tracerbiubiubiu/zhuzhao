@@ -27,7 +27,7 @@ type ticketCommandRoles struct {
 // only after the guard has committed.
 func (s *Service) withHTTPCommand(ctx context.Context, action string, actor int64, fn func(context.Context, pgx.Tx) error, ids ...int64) error {
 	purpose, http := middleware.IAMRequestFromContext(ctx)
-	exclusive := action == "assign" || action == "delete" || action == "cc" || action == "cc/remove"
+	exclusive := action == "transfer" || action == "assign" || action == "delete" || action == "cc" || action == "cc/remove"
 	run := func(ctx context.Context, tx pgx.Tx) error {
 		if riskLifecycleAction(action) {
 			// Keep the ordinary condition/validator snapshot. The actual lifecycle
@@ -62,7 +62,7 @@ func (s *Service) withHTTPCommand(ctx context.Context, action string, actor int6
 		path = "/api/v1/tickets/transition"
 	case "relations":
 		path = ticketRelationPath
-	case "close", "assign", "delete", "comments", "notes":
+	case "close", "assign", "delete", "comments", "notes", "transfer", "withdraw":
 		path = "/api/v1/tickets/" + action
 	case "cc", "cc/remove", "tags", "tags/remove":
 		path = "/api/v1/tickets/" + action

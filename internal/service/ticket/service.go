@@ -460,7 +460,7 @@ func (s *Service) updateCommand(ctx context.Context, tx pgx.Tx, req *model.Updat
 	if err != nil {
 		return nil, err
 	}
-	if ticket.Status == StatusClosed {
+	if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
 	// patch 语义：仅校验显式传入的 priority（W4 十六批 Med——写侧改字段级 COALESCE，
@@ -565,7 +565,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 		if err != nil {
 			return err
 		}
-		if ticket.Status == StatusClosed {
+		if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 			return errcode.ErrTicketAlreadyClosed
 		}
 		sm, err := FromTicketType(ttype)
@@ -723,7 +723,7 @@ func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRe
 			return err
 		}
 		// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
-		if ticket.Status == StatusClosed {
+		if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 			return errcode.ErrTicketAlreadyClosed
 		}
 		// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写

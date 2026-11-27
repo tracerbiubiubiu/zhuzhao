@@ -24,7 +24,7 @@ import (
 //	@Router		/api/v1/ticket-types/definitions/plan [post]
 func (h *TicketHandler) PlanTicketDefinition(c *gin.Context) {
 	var req model.TicketDefinitionPlanRequest
-	if !bindDefinitionPublication(c, &req) {
+	if !bindStrictTicketJSON(c, &req) {
 		return
 	}
 	plan, err := h.ticketService.PlanTicketDefinition(c.Request.Context(), req, c.GetInt64("userID"))
@@ -49,7 +49,7 @@ func (h *TicketHandler) PlanTicketDefinition(c *gin.Context) {
 //	@Router		/api/v1/ticket-types/definitions/publish [post]
 func (h *TicketHandler) PublishTicketDefinition(c *gin.Context) {
 	var req model.TicketDefinitionPublishRequest
-	if !bindDefinitionPublication(c, &req) {
+	if !bindStrictTicketJSON(c, &req) {
 		return
 	}
 	keys := c.Request.Header.Values("Idempotency-Key")
@@ -103,7 +103,7 @@ func (h *TicketHandler) GetTicketDefinitionDraftFields(c *gin.Context) {
 	response.OK(c, gin.H{"fields": fields})
 }
 
-func bindDefinitionPublication(c *gin.Context, req any) bool {
+func bindStrictTicketJSON(c *gin.Context, req any) bool {
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(req); err != nil {

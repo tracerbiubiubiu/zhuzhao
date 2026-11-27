@@ -38,7 +38,7 @@ const ticketSelectColumns = `
 	ELSE COALESCE(description, '') END AS description, priority, status,
 	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
 	status_changed_at, escalation_supervisor_id, created_at, updated_at,
-	COALESCE(human_key, '') AS human_key, definition_version, revision`
+	COALESCE(human_key, '') AS human_key, definition_version, revision, withdrawal_eligible`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -58,12 +58,12 @@ func (r *TicketRepo) Create(ctx context.Context, t *model.Ticket) error {
 // CreateTx 事务内创建工单
 func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id, definition_version)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11, $12)
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id, definition_version, withdrawal_eligible)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11, $12, $13)
 		RETURNING id, created_at, updated_at, status_changed_at, revision`
 	err := exec.QueryRow(ctx, q,
 		t.TypeCode, t.Title, t.Description, t.Priority, t.Status,
-		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor, t.DefinitionVersion,
+		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor, t.DefinitionVersion, t.WithdrawalEligible,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt, &t.Revision)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
@@ -377,7 +377,7 @@ func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[stri
 		FROM ticket_type_fields f
 		LEFT JOIN tickets t
 			ON t.type_code = f.type_code
-			AND t.status NOT IN ('closed', 'rejected')
+			AND t.status NOT IN ('closed', 'rejected','cancelled')
 			AND t.custom_data ? f.field_key
 		WHERE f.type_code = $1
 		GROUP BY f.field_key`, typeCode)
@@ -405,7 +405,7 @@ func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[stri
 func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketID int64) ([]byte, error) {
 	var cd []byte
 	err := exec.QueryRow(ctx,
-		`SELECT custom_data FROM tickets WHERE id=$1 AND status <> 'closed' FOR UPDATE`, ticketID).Scan(&cd)
+		`SELECT custom_data FROM tickets WHERE id=$1 AND status NOT IN ('closed','cancelled') FOR UPDATE`, ticketID).Scan(&cd)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
@@ -432,7 +432,7 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 			priority = COALESCE($4, priority),
 			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
-		WHERE id = $1 AND status <> 'closed'
+		WHERE id = $1 AND status NOT IN ('closed','cancelled')
 		RETURNING` + ticketSelectColumns
 	ticket, err := scanTicketRow(exec.QueryRow(ctx, q, id, title, description, priority, customData))
 	if err != nil {
@@ -455,7 +455,7 @@ func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, exec rowExec, i
 	if err != nil {
 		return fmt.Errorf("resolve ticket state: %w", err)
 	}
-	if status == "closed" {
+	if status == "closed" || status == "cancelled" {
 		return errcode.ErrTicketAlreadyClosed
 	}
 	// 状态被并发迁移为其他值：以冲突语义拒绝（调用方重读后重试）
@@ -490,7 +490,7 @@ func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64,
 // 不可被分派/改派，消除并发 Close 后换处理人的窗口）
 func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id int64, assignedTo *int64) error {
 	tag, err := exec.Exec(ctx,
-		`UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1 AND status <> 'closed'`,
+		`UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1 AND status NOT IN ('closed','cancelled')`,
 		id, assignedTo)
 	if err != nil {
 		return fmt.Errorf("update assigned_to: %w", err)
@@ -893,7 +893,7 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
 		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
-		&t.HumanKey, &t.DefinitionVersion, &t.Revision, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
+		&t.HumanKey, &t.DefinitionVersion, &t.Revision, &t.WithdrawalEligible, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
 	)
 	if err != nil {
 		return nil, err

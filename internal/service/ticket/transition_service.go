@@ -216,6 +216,9 @@ func (s *Service) checkTransitionMeta(ctx context.Context, ticket *model.Ticket,
 // checkTransitionCondition uses ownership and roles from the current transaction.
 // Evidence validators run separately on the submitted candidate.
 func (s *Service) checkTransitionCondition(ctx context.Context, ticket *model.Ticket, toStatus string, actorUserID int64, ttype *model.TicketType) (*TransitionMeta, error) {
+	if reservedHandlingEdge(ticket.Status, toStatus) {
+		return nil, errcode.ErrNoPermission
+	}
 	tm, err := parseTransitionMeta(ttype.TransitionMeta, ticket.Status, toStatus)
 	if err != nil {
 		return nil, errcode.New(errcode.ErrInvalidParams.Code, err.Error())

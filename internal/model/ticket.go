@@ -7,6 +7,7 @@ import (
 
 // Ticket 工单主表模型
 type Ticket struct {
+	WithdrawalEligible   bool                 `json:"-" db:"withdrawal_eligible"`
 	TaskRuns             []TicketTaskRun      `json:"task_runs,omitempty" db:"-"`
 	Revision             int64                `json:"revision,string" db:"revision"`
 	DefinitionRef        *TicketDefinitionRef `json:"definition_ref" db:"-"`

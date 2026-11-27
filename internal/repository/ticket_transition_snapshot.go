@@ -36,7 +36,7 @@ func (r *TicketRepo) LockTransitionSnapshotTx(ctx context.Context, tx pgx.Tx, ex
 	if err != nil {
 		return err
 	}
-	if current.Status != expected.Status && current.Status == "closed" {
+	if current.Status != expected.Status && (current.Status == "closed" || current.Status == "cancelled") {
 		return errcode.ErrTicketAlreadyClosed
 	}
 	// GetByID enriches these four display-only values after reading the ticket.
