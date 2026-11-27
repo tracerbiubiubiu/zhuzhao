@@ -58,6 +58,9 @@ func New(cfg Config) *Client {
 	}
 }
 
+// CallerAK returns the identity the client uses for its signed requests.
+func (c *Client) CallerAK() string { return c.ak }
+
 // envelope taskrunner 统一响应（utils response）。
 type envelope struct {
 	Code    int             `json:"code"`
