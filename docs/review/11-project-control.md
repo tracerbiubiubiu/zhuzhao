@@ -118,6 +118,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 既有能力已交付；2026-11-08 RR-DOC-01：UI14事件选项/跨仓集合守卫及A.9登记已原gate复验 | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061`；[06号A.9](../phase5/06-s6-message-notification.md) |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |
 | **复核消息与模拟 HTTP 投递（第 15 项）** | 复核入箱与应发同事务、当前资格查询、合成模板预览和原投递回执 | 已通过本地候选隔离验收及 B2 专用浏览器 8 条，模拟外送默认关闭 | `internal/app/riskworkflow/notification.go` `internal/service/message_delivery.go`；[验收记录](reports/phase6-step15-notifications-2026-11-27.md) · [切换与回退](../ops/runbook.md#67-复核消息切换与回退) |
+| **模拟风险来源、人工补核与处置（第 16 项）** | 签名接入与原批恢复、情报/资产/目录合成旅程、原单补齐身份、整改派单约束和有期误报抑制 | 首批真实 HTTP 隔离专项 13 组通过，续批实际门禁见验收记录。接入默认关闭 | `internal/service/risk/report_batch.go`、`internal/service/risk/mutation.go`、`internal/service/risk/false_positive.go`。[首批验收](reports/phase6-step16-scan-intake-2026-11-27.md) · [续批验收](reports/phase6-step16-completion-2026-11-27.md) |
 | **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24；2026-11-18编辑会话与撤销隔离本地通过 | zhuzhao-ui（02 号附录 A） |
 | **工单协作与提醒（P5-S10）** | 抄送（L2 特例通道——可见不可改）/标签（entity_type 泛型）/角标（计算器注册制）/节点超时+催办/Excel 导出（BK-21 同源三件套） | ✅ 2026-10-24（五批全清；🔵 待走查） | `internal/service/ticket/` `migrations/000062-000065` |
 | **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/jobs/` `migrations/000066` |
@@ -294,6 +295,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000100 | 模拟员工明确离职的来源标记，约束本地启用 | 第 10 项候选，沿用 C05 投影 |
 | 000101 | 工单与清单任务原号回执、派发意图、清单事件收件及运行授权 | B3 第 12–14 项候选，部署开关默认关闭 |
 | 000102 | 复核消息原事实关联、模拟渠道绑定、投递、尝试和提供方事件，含模拟模板种子归属与预览权限 | 第 15 项候选，已验隔离往返和模板依赖预检，有投递或复核历史时保留迁移并前修 |
+| 000103 | 签名风险接入批次、钉版输入、原批和逐项结果，新增已应用观察的风险索引 | 第 16 项，存在接入回执时保留迁移 |
+| 000104 | 风险误报限期抑制、授权读取和按钮目录 | 第 16 项，存在处置或抑制历史时保留迁移 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 

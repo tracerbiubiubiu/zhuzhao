@@ -52,8 +52,9 @@ func TestRiskRoutes_AuditOnlyMetadataOnSuccessAndDenial(t *testing.T) {
 	// Exercise every registered risk route behind JWT and Casbin, including the group root.
 	// The source ingest route is separately mounted behind AK/SK.
 	for _, route := range r.Routes() {
-		if (route.Path != "/api/v1/risk-items" && !strings.HasPrefix(route.Path, "/api/v1/risk-items/")) ||
-			route.Path == "/api/v1/risk-items/report" {
+		risk := route.Path == "/api/v1/risk-items" || strings.HasPrefix(route.Path, "/api/v1/risk-items/")
+		suppression := route.Path == "/api/v1/risk-suppressions" || strings.HasPrefix(route.Path, "/api/v1/risk-suppressions/")
+		if (!risk && !suppression) || route.Path == "/api/v1/risk-items/report" {
 			continue
 		}
 		t.Run("denied/"+route.Method+route.Path, func(t *testing.T) {

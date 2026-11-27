@@ -2051,6 +2051,51 @@
                 }
             }
         },
+        "/api/v1/risk-items/false-positive": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "关闭误报并记录限期抑制",
+                "parameters": [
+                    {
+                        "description": "误报、抑制期限及回执身份",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskFalsePositiveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/risk-items/ingest-receipts/{id}": {
             "get": {
                 "produces": [
@@ -2701,6 +2746,96 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-suppressions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "按主锚管理权限查询误报抑制",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页条数",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionList"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/risk-suppressions/remove": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "risk"
+                ],
+                "summary": "终止误报抑制",
+                "parameters": [
+                    {
+                        "description": "抑制及当前修订",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRemoveRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -6889,6 +7024,9 @@
                     "type": "string",
                     "example": "0"
                 },
+                "identity_supplement": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskIdentitySupplement"
+                },
                 "level": {
                     "type": "string"
                 },
@@ -7022,6 +7160,53 @@
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskFalsePositiveRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id",
+                "operation_id",
+                "reason",
+                "suppression_valid_until"
+            ],
+            "properties": {
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                },
+                "suppression_valid_until": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskIdentitySupplement": {
+            "type": "object",
+            "properties": {
+                "asset_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef"
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef"
+                    }
+                },
+                "finding_key": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt": {
             "type": "object",
             "properties": {
@@ -7127,6 +7312,128 @@
                     "type": "string"
                 },
                 "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult": {
+            "type": "object",
+            "properties": {
+                "receipt_ref": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt"
+                },
+                "risk": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "suppression": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRef"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionList": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionView"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRef": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "valid_until": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRemoveRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id",
+                "operation_id",
+                "reason"
+            ],
+            "properties": {
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "operation_id": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionView": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ended_at": {
+                    "type": "string"
+                },
+                "ended_by": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ended_reason": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "risk_id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "valid_until": {
                     "type": "string"
                 }
             }

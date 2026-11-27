@@ -591,6 +591,7 @@ func New(deps Deps) *gin.Engine {
 					riskItems.POST("/create", deps.RiskHandler.Create)
 					riskItems.POST("/assess", deps.RiskHandler.Assess)
 					riskItems.POST("/assign", deps.RiskHandler.Assign)
+					riskItems.POST("/false-positive", deps.RiskHandler.FalsePositive)
 					riskItems.POST("/dispatch-plan", deps.RiskDispatchHandler.DispatchPlan)
 					riskItems.POST("/dispatch", deps.RiskDispatchHandler.Dispatch)
 					riskItems.POST("/batch-dispatch", deps.RiskDispatchHandler.Dispatch)
@@ -605,6 +606,8 @@ func New(deps Deps) *gin.Engine {
 					riskItems.POST("/remediation-assign-handler", deps.RiskWorkflowHandler.AssignHandler)
 					riskItems.POST("/remediation-accept-assignment", deps.RiskWorkflowHandler.AcceptAssignment)
 				}
+				biz.GET("/risk-suppressions", deps.RiskHandler.Suppressions)
+				biz.POST("/risk-suppressions/remove", deps.RiskHandler.RemoveSuppression)
 			}
 
 			// 网关反代（批次 B/E13）：上游路由对账属跨仓边界（BK-22 v1，见 catalog.go）

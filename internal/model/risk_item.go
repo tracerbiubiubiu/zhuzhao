@@ -73,16 +73,24 @@ type RiskCreateRequest struct {
 	Attributes       json.RawMessage   `json:"attributes,omitempty" swaggertype:"object"`
 }
 
+// RiskIdentitySupplement 声明获权人员查证的稳定漏洞和资产身份。
+type RiskIdentitySupplement struct {
+	FindingKey   string            `json:"finding_key"`
+	AssetRef     RiskAssetRef      `json:"asset_ref"`
+	EvidenceRefs []RiskEvidenceRef `json:"evidence_refs"`
+}
+
 // RiskAssessRequest 核实/评估（POST /risk-items/assess；详设 §2.2）。
 type RiskAssessRequest struct {
-	OperationID             string     `json:"operation_id" binding:"required,max=128"`
-	ID                      int64      `json:"id,string" binding:"required"`
-	ExpectedRevision        string     `json:"expected_revision" binding:"required"`
-	Level                   string     `json:"level" binding:"required"`
-	AssessmentNote          string     `json:"assessment_note"`
-	Treatment               string     `json:"treatment" binding:"required"`
-	Deadline                *time.Time `json:"deadline,omitempty"`
-	DispatchBasisValidUntil *time.Time `json:"dispatch_basis_valid_until,omitempty"`
+	OperationID             string                  `json:"operation_id" binding:"required,max=128"`
+	ID                      int64                   `json:"id,string" binding:"required"`
+	ExpectedRevision        string                  `json:"expected_revision" binding:"required"`
+	Level                   string                  `json:"level" binding:"required"`
+	AssessmentNote          string                  `json:"assessment_note"`
+	Treatment               string                  `json:"treatment" binding:"required"`
+	Deadline                *time.Time              `json:"deadline,omitempty"`
+	DispatchBasisValidUntil *time.Time              `json:"dispatch_basis_valid_until,omitempty"`
+	IdentitySupplement      *RiskIdentitySupplement `json:"identity_supplement,omitempty"`
 }
 
 // RiskAssignRequest 责任确认（POST /risk-items/assign；详设 §2.2 主锚管理者）。

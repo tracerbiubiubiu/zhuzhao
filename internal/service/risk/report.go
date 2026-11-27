@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -50,68 +52,20 @@ type observationFingerprint struct {
 	Attributes     any                       `json:"attributes,omitempty"`
 }
 
-// Report 合成来源上报（单条观察由 handler 归一为批量入口）。
+// Report preserves the internal human command path. The signed feed stages its
+// input separately before calling the same application code.
 func (s *Service) Report(ctx context.Context, req model.RiskReportRequest, actor int64) (*model.RiskReportResult, error) {
-	return s.report(ctx, req, actor, "")
-}
-
-// ReportFromSource uses the identity bound to the verified feed credential.
-func (s *Service) ReportFromSource(ctx context.Context, req model.RiskReportRequest, sourceRef string) (*model.RiskReportResult, error) {
-	if sourceRef == "" {
-		return nil, errcode.ErrNoPermission
+	sourceRef, err := validateRiskReport(req, "")
+	if err != nil {
+		return nil, err
 	}
-	return s.report(ctx, req, 0, sourceRef)
-}
-
-func (s *Service) report(ctx context.Context, req model.RiskReportRequest, actor int64, verifiedSource string) (*model.RiskReportResult, error) {
-	obs := req.Observations
-	if len(obs) == 0 {
-		return nil, errcode.ErrInvalidParams
-	}
-	if len(obs) > maxReportBatch {
-		return nil, ErrRiskBatchTooLarge
-	}
-	// 形状校验在任何写入之前：整批 400/413/403 且零接入效果（详设 §2.1）。
-	sourceRef := obs[0].SourceRef
-	if verifiedSource != "" && sourceRef != verifiedSource {
-		return nil, errcode.ErrNoPermission
-	}
-	for i := range obs {
-		o := &obs[i]
-		if o.SourceRef == "" || o.SourceRef != sourceRef {
-			return nil, errcode.ErrInvalidParams // 单批次限一来源
-		}
-		if o.SourceItemKey == "" || o.EventID == "" || o.MappingRef == "" || o.ObservedAt.IsZero() {
-			return nil, errcode.ErrInvalidParams
-		}
-		if o.ValidUntil != nil && !o.ValidUntil.After(o.ObservedAt) {
-			return nil, errcode.ErrInvalidParams
-		}
-		switch o.ObservationKind {
-		case "", obsKindObserved, obsKindWithdrawn, obsKindDeleted:
-		default:
-			return nil, errcode.ErrInvalidParams
-		}
-		if o.SourceSequence != "" {
-			if err := validateCanonicalSequence(o.SourceSequence); err != nil {
-				return nil, errcode.ErrInvalidParams
-			}
-		}
-	}
-
-	// The existing number allocator uses the pool. Reserve numbers outside the transaction.
-	reservedKeys := make([]string, len(obs))
-	for i, observation := range obs {
-		if observation.ObservationKind == "" || observation.ObservationKind == obsKindObserved {
-			key, err := s.humanKeys.Next(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("reserve risk number: %w", err)
-			}
-			reservedKeys[i] = key
-		}
+	observations := newReportObservations(req.Observations)
+	reservedKeys, err := s.reserveRiskNumbers(ctx, observations)
+	if err != nil {
+		return nil, err
 	}
 	var result *model.RiskReportResult
-	err := s.withHTTPCommand(ctx, riskReportPath, actor, func(ctx context.Context, tx pgx.Tx) error {
+	err = s.withHTTPCommand(ctx, riskReportPath, actor, func(ctx context.Context, tx pgx.Tx) error {
 		src, err := repository.GetRiskSource(ctx, tx, sourceRef)
 		if err != nil {
 			return err
@@ -122,44 +76,17 @@ func (s *Service) report(ctx context.Context, req model.RiskReportRequest, actor
 		if src.DefaultOrgID == nil {
 			return ErrRiskSourceScope
 		}
-		if verifiedSource != "" && !containsInt64(src.AllowedOrgIDs, *src.DefaultOrgID) {
-			return ErrRiskSourceScope
+		allowed, err := repository.TxBool(ctx, tx, `SELECT `+orgManageOnOrgSQL()+`
+			FROM organizations go WHERE go.id=$1`, *src.DefaultOrgID, actor)
+		if err != nil {
+			return err
 		}
-		if verifiedSource == "" {
-			allowed, err := repository.TxBool(ctx, tx, `SELECT `+orgManageOnOrgSQL()+`
-				FROM organizations go WHERE go.id=$1`, *src.DefaultOrgID, actor)
-			if err != nil {
-				return err
-			}
-			if !allowed {
-				return errcode.ErrNoPermission
-			}
+		if !allowed {
+			return errcode.ErrNoPermission
 		}
-		// 并发首报确定性（外审阻断③）：同 (fingerprint_scope, source_item_key)
-		// 的并发批次先按稳定键升序取事务级 advisory 锁再进应用路径——
-		// 首报无镜像行可锁，advisory 锁先于一切行锁串行同键事务，
-		// 锁内（重）读到的等序/旧序判定不再依赖先到者的提交时机，也不产生锁环。
-		for _, key := range sourceItemLockKeys(src.FingerprintScope, obs) {
-			if err := repository.AdvisoryLockSourceItemTx(ctx, tx, key); err != nil {
-				return err
-			}
-		}
-		if len(obs) > 1 {
-			families := make([]string, len(obs))
-			for i := range obs {
-				families[i] = canonicalKeyHex(src.FingerprintScope, obs[i].SourceItemKey)
-			}
-			if err := repository.LockObservedRiskItemsTx(ctx, tx, src.FingerprintScope, src.KeySchemaVersion, families); err != nil {
-				return err
-			}
-		}
-		items := make([]model.RiskReportItem, 0, len(obs))
-		for i := range obs {
-			item, err := s.applyObservation(ctx, tx, src, obs[i], actor, reservedKeys[i])
-			if err != nil {
-				return err
-			}
-			items = append(items, item)
+		items, err := s.applyReport(ctx, tx, src, observations, actor, reservedKeys)
+		if err != nil {
+			return err
 		}
 		result = &model.RiskReportResult{BatchReceipt: uuid.NewString(), Items: items}
 		return nil
@@ -170,9 +97,102 @@ func (s *Service) report(ctx context.Context, req model.RiskReportRequest, actor
 	return result, nil
 }
 
-func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *repository.RiskSourceRow,
-	o model.FindingObservationV1, actor int64, humanKey string) (model.RiskReportItem, error) {
-	item := model.RiskReportItem{EventID: o.EventID}
+func validateRiskReport(req model.RiskReportRequest, verifiedSource string) (string, error) {
+	obs := req.Observations
+	if len(obs) == 0 {
+		return "", errcode.ErrInvalidParams
+	}
+	if len(obs) > maxReportBatch {
+		return "", ErrRiskBatchTooLarge
+	}
+	sourceRef := obs[0].SourceRef
+	if verifiedSource != "" && sourceRef != verifiedSource {
+		return "", errcode.ErrNoPermission
+	}
+	for _, o := range obs {
+		if o.SourceRef == "" || o.SourceRef != sourceRef {
+			return "", errcode.ErrInvalidParams
+		}
+		if o.SourceItemKey == "" || o.EventID == "" || o.MappingRef == "" || o.ObservedAt.IsZero() {
+			return "", errcode.ErrInvalidParams
+		}
+		if o.ValidUntil != nil && !o.ValidUntil.After(o.ObservedAt) {
+			return "", errcode.ErrInvalidParams
+		}
+		switch o.ObservationKind {
+		case "", obsKindObserved, obsKindWithdrawn, obsKindDeleted:
+		default:
+			return "", errcode.ErrInvalidParams
+		}
+		if o.SourceSequence != "" {
+			if err := validateCanonicalSequence(o.SourceSequence); err != nil {
+				return "", errcode.ErrInvalidParams
+			}
+		}
+	}
+	return sourceRef, nil
+}
+
+type reportObservation struct {
+	IngestID string                     `json:"ingest_id"`
+	Input    model.FindingObservationV1 `json:"input"`
+	// ContentHash preserves the legacy observation fingerprint before JSONB
+	// normalizes the staged input, including a signed zero in attributes.
+	ContentHash []byte `json:"content_hash,omitempty"`
+}
+
+func newReportObservations(input []model.FindingObservationV1) []reportObservation {
+	observations := make([]reportObservation, len(input))
+	for i, obs := range input {
+		observations[i] = reportObservation{IngestID: newIngestID(), Input: obs}
+	}
+	return observations
+}
+
+func (s *Service) reserveRiskNumbers(ctx context.Context, observations []reportObservation) ([]string, error) {
+	// The number allocator uses the pool, so keep it outside the application transaction.
+	keys := make([]string, len(observations))
+	for i, observation := range observations {
+		if observation.Input.ObservationKind == "" || observation.Input.ObservationKind == obsKindObserved {
+			key, err := s.humanKeys.Next(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("reserve risk number: %w", err)
+			}
+			keys[i] = key
+		}
+	}
+	return keys, nil
+}
+
+func (s *Service) applyReport(ctx context.Context, tx pgx.Tx, src *repository.RiskSourceRow,
+	observations []reportObservation, actor int64, reservedKeys []string) ([]model.RiskReportItem, error) {
+	// Serialize source item and event identities before locking a family or risk row.
+	for _, key := range sourceReportLockKeys(src.FingerprintScope, observations) {
+		if err := repository.AdvisoryLockSourceItemTx(ctx, tx, key); err != nil {
+			return nil, err
+		}
+	}
+	if len(observations) > 1 {
+		families := make([]string, len(observations))
+		for i, observation := range observations {
+			families[i] = canonicalKeyHex(src.FingerprintScope, observation.Input.SourceItemKey)
+		}
+		if err := repository.LockObservedRiskItemsTx(ctx, tx, src.FingerprintScope, src.KeySchemaVersion, families); err != nil {
+			return nil, err
+		}
+	}
+	items := make([]model.RiskReportItem, 0, len(observations))
+	for i, observation := range observations {
+		item, err := s.applyObservation(ctx, tx, src, observation, actor, reservedKeys[i])
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func fingerprintObservation(o model.FindingObservationV1) observationFingerprint {
 	kind := o.ObservationKind
 	if kind == "" {
 		kind = obsKindObserved
@@ -187,7 +207,19 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 	if o.ValidUntil != nil {
 		fp.ValidUntil = o.ValidUntil.UTC().Format(time.RFC3339Nano)
 	}
-	hash := canonicalHash(fp)
+	return fp
+}
+
+func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *repository.RiskSourceRow,
+	observation reportObservation, actor int64, humanKey string) (model.RiskReportItem, error) {
+	o := observation.Input
+	item := model.RiskReportItem{EventID: o.EventID}
+	fp := fingerprintObservation(o)
+	kind := fp.Kind
+	hash := observation.ContentHash
+	if hash == nil {
+		hash = canonicalHash(fp)
+	}
 	var seq *string
 	if o.SourceSequence != "" {
 		s := o.SourceSequence
@@ -224,7 +256,7 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 	if err != nil {
 		return item, fmt.Errorf("observation savepoint: %w", err)
 	}
-	row, inserted, err := repository.InsertObservationTx(ctx, sp, newIngestID(), o.SourceRef,
+	row, inserted, err := repository.InsertObservationTx(ctx, sp, observation.IngestID, o.SourceRef,
 		o.EventID, o.SourceItemKey, seq, o.ObservedAt, hash, o.MappingRef, kind)
 	if err != nil {
 		_ = sp.Rollback(ctx)
@@ -256,37 +288,47 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 	}
 	item.IngestID = row.IngestID
 	// ④ 不可判定 → held（缺失/映射/范围分别可区别；零业务效果）。
-	hold := func(reason string) (model.RiskReportItem, error) {
-		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", "held", nil, reason); err != nil {
+	deferObservation := func(result, reason string) (model.RiskReportItem, error) {
+		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", result, nil, reason); err != nil {
 			return item, err
 		}
-		item.Result, item.Processing, item.SafeReason = "held", "held", reason
+		item.Result, item.Processing, item.SafeReason = result, "held", reason
 		return item, nil
 	}
 	if src.Ordered && seq == nil {
-		return hold("missing_sequence")
+		return deferObservation("held", "missing_sequence")
 	}
 	if o.MappingRef != src.MappingRef {
-		return hold("mapping_not_approved")
+		return deferObservation("held", "mapping_not_approved")
 	}
 	if src.DefaultOrgID == nil {
-		return hold("org_unassigned")
+		return deferObservation("held", "org_unassigned")
 	}
 	if !containsInt64(src.AllowedOrgIDs, *src.DefaultOrgID) {
-		return hold(fmt.Sprintf("org_not_authorized:%d", *src.DefaultOrgID))
+		return deferObservation("held", fmt.Sprintf("org_not_authorized:%d", *src.DefaultOrgID))
 	}
-	// ⑤ 旧序号：stale，保留收据、不覆盖镜像、不建周期。
-	latest, recordExists, err := repository.LockSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey)
+	// ⑤ 旧观察和无法确定次序的观察保留收据，不覆盖镜像或写风险历史。
+	latest, err := repository.LockSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey)
 	if err != nil {
 		return item, err
 	}
-	if recordExists && latest != nil && seq != nil && compareCanonicalSequence(*seq, *latest) < 0 {
-		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", "stale",
-			nil, "stale_sequence:"+*latest); err != nil {
-			return item, err
+	if latest != nil {
+		switch {
+		case seq != nil && latest.Sequence != nil:
+			if compareCanonicalSequence(*seq, *latest.Sequence) < 0 {
+				return deferObservation("stale", "stale_sequence:"+*latest.Sequence)
+			}
+		case latest.ObservedAt == nil:
+			return deferObservation("held", "missing_observed_at_baseline")
+		default:
+			// Use the just-persisted timestamp at the same precision as the mirror.
+			switch row.ObservedAt.Compare(*latest.ObservedAt) {
+			case -1:
+				return deferObservation("stale", "stale_observed_at")
+			case 0:
+				return deferObservation("held", "ambiguous_observed_at")
+			}
 		}
-		item.Result, item.Processing, item.SafeReason = "stale", "held", "stale_sequence:"+*latest
-		return item, nil
 	}
 	// 应用：family 稳定键 → 周期 → 镜像（§4 锁序：family 稳定键 → risk ID）。
 	canonicalKeyHash := canonicalKeyHex(src.FingerprintScope, o.SourceItemKey)
@@ -298,22 +340,52 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 	if err != nil {
 		return item, err
 	}
+	var priorSuppressedCycle int64
 	if hasItem {
 		locked, err := repository.LockRiskItemTx(ctx, tx, itemID)
 		if err != nil {
 			return item, err
 		}
-		ordinal, err := repository.NextEventOrdinalTx(ctx, tx, itemID, locked.Revision, "source_observed")
+		if actor == 0 && locked.OrgID != *src.DefaultOrgID {
+			return deferObservation("held", "risk_scope_changed")
+		}
+		window, err := repository.GetRiskSuppressionWindowTx(ctx, tx, familyID)
 		if err != nil {
 			return item, err
 		}
-		if err := repository.InsertEventTx(ctx, tx, itemID, locked.Revision, "source_observed",
-			ordinal, actor, "", jsonBytes(map[string]any{
-				"source_ref": o.SourceRef, "event_id": o.EventID, "kind": kind,
-			})); err != nil {
-			return item, err
+		if window != nil {
+			fresh := row.ObservedAt.After(window.EffectiveUntil)
+			cycleCutoff := window.PreviousEffectiveUntil
+			if window.RiskID != itemID {
+				cycleCutoff = &window.EffectiveUntil
+			}
+			if cycleCutoff != nil && !row.ObservedAt.After(*cycleCutoff) {
+				return deferObservation("stale", "before_suppression_window_end")
+			}
+			if window.RiskID == itemID && !window.Active && fresh &&
+				kind == obsKindObserved && locked.Status == "closed" && derefStr(locked.ClosureKind) == "false_positive" &&
+				(o.ValidUntil == nil || o.ValidUntil.After(time.Now())) {
+				priorSuppressedCycle = itemID
+				hasItem = false
+			}
 		}
-	} else if kind == obsKindObserved {
+		if hasItem {
+			ordinal, err := repository.NextEventOrdinalTx(ctx, tx, itemID, locked.Revision, "source_observed")
+			if err != nil {
+				return item, err
+			}
+			if err := repository.InsertEventTx(ctx, tx, itemID, locked.Revision, "source_observed",
+				ordinal, actor, "", jsonBytes(map[string]any{
+					"source_ref": o.SourceRef, "event_id": o.EventID, "kind": kind,
+				})); err != nil {
+				return item, err
+			}
+		}
+	}
+	if !hasItem && kind == obsKindObserved {
+		if !validRiskIdentityStorage(o) {
+			return deferObservation("held", "identity_too_long")
+		}
 		newRow := &repository.RiskItemRow{
 			HumanKey: humanKey, FamilyID: familyID, Status: "new",
 			OrgID: *src.DefaultOrgID, Title: deriveObservationTitle(o),
@@ -327,20 +399,24 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 			newRow.AssetProvider = &o.AssetRef.Provider
 			newRow.AssetExternalID = &o.AssetRef.ExternalID
 		}
-		itemID, err = repository.InsertRiskItemTx(ctx, tx, newRow)
+		created := map[string]any{"origin": "source", "source_ref": o.SourceRef, "event_id": o.EventID, "kind": kind}
+		if priorSuppressedCycle == 0 {
+			itemID, err = repository.InsertRiskItemTx(ctx, tx, newRow)
+		} else {
+			itemID, err = repository.InsertRiskCycleAfterSuppressionTx(ctx, tx, newRow, priorSuppressedCycle)
+			created["reason"] = "suppression_expired"
+			created["previous_cycle_id"] = fmt.Sprint(priorSuppressedCycle)
+		}
 		if err != nil {
 			return item, err
 		}
-		if err := repository.InsertEventTx(ctx, tx, itemID, 1, "created", 0, actor, "",
-			jsonBytes(map[string]any{
-				"origin": "source", "source_ref": o.SourceRef, "event_id": o.EventID, "kind": kind,
-			})); err != nil {
+		if err := repository.InsertEventTx(ctx, tx, itemID, 1, "created", 0, actor, "", jsonBytes(created)); err != nil {
 			return item, err
 		}
 		hasItem = true
 	}
 	mirror := jsonBytes(fp)
-	if recordExists {
+	if latest != nil {
 		err = repository.UpdateSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey,
 			seq, o.ObservedAt, hash, o.MappingRef, mirror)
 	} else {
@@ -373,19 +449,27 @@ func canonicalKeyHex(scope, itemKey string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// sourceItemLockKeys 批次的来源项锁键（去重后升序——固定获取顺序防批间交叉等待）。
-func sourceItemLockKeys(scope string, obs []model.FindingObservationV1) []int64 {
-	seen := make(map[int64]bool, len(obs))
-	keys := make([]int64, 0, len(obs))
-	for i := range obs {
-		k := repository.SourceItemLockKey(scope, obs[i].SourceItemKey)
-		if !seen[k] {
-			seen[k] = true
-			keys = append(keys, k)
+// sourceReportLockKeys orders both keys together. The same event in conflicting
+// deliveries can name different source items, whose locks do not overlap.
+func sourceReportLockKeys(scope string, obs []reportObservation) []int64 {
+	seen := make(map[int64]bool, 2*len(obs))
+	keys := make([]int64, 0, 2*len(obs))
+	for _, observation := range obs {
+		o := observation.Input
+		for _, key := range [...]int64{repository.SourceItemLockKey(scope, o.SourceItemKey), sourceEventLockKey(o.SourceRef, o.EventID)} {
+			if !seen[key] {
+				seen[key] = true
+				keys = append(keys, key)
+			}
 		}
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 	return keys
+}
+
+func sourceEventLockKey(sourceRef, eventID string) int64 {
+	sum := sha256.Sum256([]byte("risk-source-event\x00" + sourceRef + "\x00" + eventID))
+	return int64(binary.BigEndian.Uint64(sum[:8]))
 }
 
 // replayOrQuarantineEvent 同 (source,event) 的重放判定：
@@ -396,6 +480,7 @@ func replayOrQuarantineEvent(ctx context.Context, tx pgx.Tx, row *repository.Ris
 		item.IngestID = row.IngestID
 		item.Result = "duplicate"
 		item.Processing = row.ProcessingStatus
+		item.SafeReason = derefStr(row.SafeReason)
 		if row.RiskID != nil {
 			ref, err := riskRefByIDTx(ctx, tx, *row.RiskID)
 			if err != nil {
@@ -443,15 +528,34 @@ func containsInt64(list []int64, v int64) bool {
 	return false
 }
 
+// Existing cycles keep the source's identity in the JSON mirror. These
+// column limits only apply when copying that identity into a new risk row.
+func validRiskIdentityStorage(o model.FindingObservationV1) bool {
+	if utf8.RuneCountInString(o.FindingKey) > 200 {
+		return false
+	}
+	asset := o.AssetRef
+	return asset == nil ||
+		(utf8.RuneCountInString(asset.Provider) <= 100 && utf8.RuneCountInString(asset.ExternalID) <= 200)
+}
+
 func deriveObservationTitle(o model.FindingObservationV1) string {
+	title := o.SourceItemKey
 	switch {
 	case o.FindingKey != "" && o.AssetRef != nil && o.AssetRef.ExternalID != "":
-		return fmt.Sprintf("%s @ %s", o.FindingKey, o.AssetRef.ExternalID)
+		title = o.FindingKey + " @ " + o.AssetRef.ExternalID
 	case o.FindingKey != "":
-		return o.FindingKey
-	default:
-		return o.SourceItemKey
+		title = o.FindingKey
 	}
+	const maxTitleCharacters = 200
+	characters := 0
+	for index := range title {
+		if characters == maxTitleCharacters {
+			return title[:index]
+		}
+		characters++
+	}
+	return title
 }
 
 func riskRefByIDTx(ctx context.Context, tx pgx.Tx, id int64) (*model.RiskRef, error) {

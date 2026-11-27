@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -225,7 +226,7 @@ func (s *Service) Create(ctx context.Context, req model.RiskCreateRequest, actor
 }
 
 // Assess 核实/评估（POST /risk-items/assess；详设 §2.2）。
-// 允许 new/assessed；L3 = 主锚管理范围 ∨ owner 本人；deadline 首次写入即 init_deadline。
+// 允许 new/assessed。普通评估允许主锚管理者或 owner，补核身份要求主锚管理资格。
 func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor int64) (*model.RiskMutationResult, error) {
 	if req.ID <= 0 || !validLevels[req.Level] || !validTreatments[req.Treatment] {
 		return nil, errcode.ErrInvalidParams
@@ -242,18 +243,29 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 	if evidenceUntil != nil && (evidenceUntil.IsZero() || strings.TrimSpace(req.AssessmentNote) == "") {
 		return nil, errcode.ErrInvalidParams
 	}
+	supplement := req.IdentitySupplement
+	command := "assess"
+	if supplement != nil {
+		if evidenceUntil == nil || !validIdentitySupplement(supplement) {
+			return nil, errcode.ErrInvalidParams
+		}
+		command = assessIdentityCommand
+	}
 	input := map[string]any{
-		"command": "assess", "id": req.ID, "expected_revision": expected,
+		"command": command, "id": req.ID, "expected_revision": expected,
 		"level": req.Level, "treatment": req.Treatment,
 		"note": req.AssessmentNote, "deadline": deadline,
 	}
 	if evidenceUntil != nil {
 		input["dispatch_basis_valid_until"] = evidenceUntil.UTC()
 	}
+	if supplement != nil {
+		input["identity_supplement"] = supplement
+	}
 	hash := canonicalHash(input)
 	var result *model.RiskMutationResult
 	err = s.withHTTPCommand(ctx, riskAssessPath, actor, func(ctx context.Context, tx pgx.Tx) error {
-		receipt, replayed, err := repository.ClaimOperationTx(ctx, tx, actor, req.OperationID, hash, "assess")
+		receipt, replayed, err := repository.ClaimOperationTx(ctx, tx, actor, req.OperationID, hash, command)
 		if err != nil {
 			return err
 		}
@@ -268,12 +280,24 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 			result = replayResult(receipt)
 			return nil
 		}
-		row, err := repository.RiskItemAuthorizedTx(ctx, tx, req.ID, actor, false)
+		row, err := repository.RiskItemAuthorizedTx(ctx, tx, req.ID, actor, supplement != nil)
 		if err != nil {
 			return err
 		}
 		if row.Status != "new" && row.Status != "assessed" {
 			return ErrRiskInvalidState
+		}
+		if supplement != nil {
+			if !evidenceUntil.After(time.Now()) {
+				return errcode.ErrInvalidParams
+			}
+			currentEvidence, err := repository.CurrentRiskSourceEvidenceTx(ctx, tx, row.ID)
+			if err != nil {
+				return err
+			}
+			if !hasIndependentSupplementEvidence(supplement.EvidenceRefs, row.EvidenceRefs, currentEvidence) {
+				return errcode.ErrInvalidParams
+			}
 		}
 		updated, err := repository.AssessRiskItemTx(ctx, tx, req.ID, expected, req.Level, req.Treatment, deadline)
 		if err != nil {
@@ -285,6 +309,14 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 		}
 		if evidenceUntil != nil {
 			evidence["dispatch_basis_valid_until"] = evidenceUntil.UTC()
+		}
+		if supplement != nil {
+			updated, err = repository.FillRiskIdentityTx(ctx, tx, updated.ID, updated.Revision,
+				supplement.FindingKey, supplement.AssetRef.Provider, supplement.AssetRef.ExternalID)
+			if err != nil {
+				return err
+			}
+			evidence["identity_supplement"] = supplement
 		}
 		if err := repository.InsertEventTx(ctx, tx, updated.ID, updated.Revision, "assessed", 0, actor,
 			req.OperationID, jsonBytes(evidence)); err != nil {
@@ -301,7 +333,7 @@ func (s *Service) Assess(ctx context.Context, req model.RiskAssessRequest, actor
 			Deadline:     updated.Deadline,
 			InitDeadline: updated.InitDeadline,
 			Receipt: model.RiskReceipt{
-				OperationID: req.OperationID, Command: "assess", Status: updated.Status,
+				OperationID: req.OperationID, Command: command, Status: updated.Status,
 				RiskID: updated.ID, Revision: updated.Revision,
 			},
 		}

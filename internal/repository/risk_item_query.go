@@ -30,19 +30,31 @@ const riskItemViewSelect = `ri.id, ri.human_key, ri.family_id, ri.status, ri.clo
 ri.org_id, ri.affected_org_id, ri.owner_user_id, ri.level, ri.deadline, ri.init_deadline, ri.treatment,
 ri.title, ri.description, ri.system_ref, ri.finding_key, ri.asset_provider, ri.asset_external_id,
 ri.evidence_refs, ri.attributes, ri.created_by,
-COALESCE((SELECT sr.mirror->'source_severity' FROM risk_observations o
-	 JOIN risk_source_records sr ON sr.source_ref = o.source_ref AND sr.source_item_key = o.source_item_key
-	 WHERE o.risk_id = ri.id AND o.result_kind IN ('accepted','duplicate')
-	 ORDER BY o.observed_at DESC, o.ingest_id DESC LIMIT 1), 'null'::jsonb)`
+COALESCE(current_source.mirror->'source_severity', 'null'::jsonb)`
 
-func scanRiskItemWithSeverity(row pgx.Row) (*RiskItemRow, []byte, error) {
+// Match each source item to its applied watermark before choosing a source
+// across the risk's mirrors. Observation time alone cannot order an ordered feed.
+const riskCurrentSourceJoin = `
+	LEFT JOIN LATERAL (
+		SELECT o.ingest_id, o.source_ref, o.source_item_key, o.source_sequence, o.observed_at,
+			sr.mirror, sr.content_hash, sr.mapping_ref
+		FROM risk_observations o
+		JOIN risk_source_records sr ON sr.source_ref = o.source_ref AND sr.source_item_key = o.source_item_key
+			AND sr.content_hash = o.content_hash
+		WHERE o.risk_id = ri.id AND o.processing_status = 'applied'
+		ORDER BY o.observed_at DESC, o.ingest_id DESC
+		LIMIT 1
+	) current_source ON TRUE`
+
+func scanRiskItemWithSeverity(row pgx.Row, extra ...any) (*RiskItemRow, []byte, error) {
 	var r RiskItemRow
 	var severity []byte
-	err := row.Scan(&r.ID, &r.HumanKey, &r.FamilyID, &r.Status, &r.ClosureKind, &r.Revision,
+	fields := []any{&r.ID, &r.HumanKey, &r.FamilyID, &r.Status, &r.ClosureKind, &r.Revision,
 		&r.OrgID, &r.AffectedOrgID, &r.OwnerUserID, &r.Level, &r.Deadline, &r.InitDeadline,
 		&r.Treatment, &r.Title, &r.Description, &r.SystemRef,
 		&r.FindingKey, &r.AssetProvider, &r.AssetExternalID, &r.EvidenceRefs, &r.Attributes, &r.CreatedBy,
-		&severity)
+		&severity}
+	err := row.Scan(append(fields, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, ErrRiskNotFound
 	}
@@ -102,7 +114,7 @@ func ListRiskItems(ctx context.Context, q IAMDBTX, filter RiskListFilter, actor 
 		JOIN organizations go ON go.id = ri.org_id
 		LEFT JOIN organizations ao ON ao.id = ri.affected_org_id
 		JOIN risk_families f ON f.id = ri.family_id
-		` + where + ` ` + riskListOrder(filter.Sort) + `
+		` + riskCurrentSourceJoin + ` ` + where + ` ` + riskListOrder(filter.Sort) + `
 		LIMIT $` + fmt.Sprint(len(args)+1) + ` OFFSET $` + fmt.Sprint(len(args)+2)
 	args = append(args, filter.Limit, filter.Offset)
 	rows, err := q.Query(ctx, sql, args...)
@@ -137,20 +149,28 @@ func CountRiskItems(ctx context.Context, q IAMDBTX, filter RiskListFilter, actor
 }
 
 // GetRiskItemVisible 单条授权读取（不可见与不存在同 404）。
-// 返回行、来源严重性镜像与最近一条已应用观察（详情来源摘要用）。
+// 返回行、来源严重性镜像与镜像对应的已应用观察。
 func GetRiskItemVisible(ctx context.Context, q IAMDBTX, id, actor int64) (*RiskItemRow, []byte, *RiskObservationRow, error) {
 	row := q.QueryRow(ctx, `SELECT `+riskItemViewSelect+`
+		, current_source.ingest_id, current_source.source_ref, current_source.source_item_key,
+		current_source.source_sequence, current_source.observed_at
 		FROM risk_items ri
 		JOIN organizations go ON go.id = ri.org_id
 		LEFT JOIN organizations ao ON ao.id = ri.affected_org_id
+		`+riskCurrentSourceJoin+`
 		WHERE ri.id=$1 AND `+riskVisiblePredicate("$2"), id, actor)
-	r, severity, err := scanRiskItemWithSeverity(row)
+	var ingestID, sourceRef, sourceItemKey, sourceSequence *string
+	var observedAt *time.Time
+	r, severity, err := scanRiskItemWithSeverity(row, &ingestID, &sourceRef, &sourceItemKey, &sourceSequence, &observedAt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	obs, err := LatestAppliedObservation(ctx, q, id)
-	if err != nil {
-		return nil, nil, nil, err
+	if ingestID == nil {
+		return r, severity, nil, nil
+	}
+	obs := &RiskObservationRow{
+		IngestID: *ingestID, SourceRef: *sourceRef, SourceItemKey: *sourceItemKey,
+		SourceSequence: sourceSequence, ObservedAt: *observedAt,
 	}
 	return r, severity, obs, nil
 }
@@ -165,21 +185,6 @@ func CanReadActiveTicketRisks(ctx context.Context, q IAMDBTX, ticketID, actorID 
 		JOIN organizations go ON go.id=ri.org_id
 		LEFT JOIN organizations ao ON ao.id=ri.affected_org_id
 		WHERE dg.ticket_id=$1 AND dg.ended_at IS NULL`, ticketID, actorID)
-}
-
-// LatestAppliedObservation 风险最近一条已应用观察（有界来源摘要）。
-func LatestAppliedObservation(ctx context.Context, q IAMDBTX, riskID int64) (*RiskObservationRow, error) {
-	row := q.QueryRow(ctx, `SELECT `+riskObservationColumns+`
-		FROM risk_observations WHERE risk_id=$1 AND result_kind IN ('accepted','duplicate')
-		ORDER BY observed_at DESC, ingest_id DESC LIMIT 1`, riskID)
-	obs, err := scanObservationRow(row)
-	if errors.Is(err, ErrRiskNotFound) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return obs, nil
 }
 
 // ListRiskEvents 风险历史（先复用 L2 谓词确认可读，再分页）。

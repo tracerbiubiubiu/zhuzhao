@@ -50,6 +50,7 @@ type App struct {
 	b3Dispatch        *service.CronScheduler
 	prepareDisabledB3 func(context.Context) error
 	riskReminder      *service.CronScheduler
+	riskIntake        *service.CronScheduler
 	messageDelivery   *service.CronScheduler
 	inboxCleanup      *service.CronScheduler // S6 B6-7 消息保留清理：恒启用（nil=装配缺省）
 	intelCleanup      *service.CronScheduler // G-11 S9 情报缓存物理清理：恒启用（nil=intel 未启用）
@@ -351,7 +352,7 @@ func (a *App) Run() error {
 	if a.policyEval != nil {
 		a.policyEval.Start(requestCtx, ownerCtx)
 	}
-	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.iamAuditDelivery, a.b3Dispatch, a.messageDelivery, a.storageGC, a.timeoutScan, a.riskReminder, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
+	for _, scheduler := range []*service.CronScheduler{a.auditCron, a.iamAuditDelivery, a.b3Dispatch, a.messageDelivery, a.storageGC, a.timeoutScan, a.riskReminder, a.riskIntake, a.inboxCleanup, a.intelCleanup, a.storageUsageSample, a.notifyVolumeCheck} {
 		if scheduler == nil {
 			continue
 		}
