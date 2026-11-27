@@ -233,7 +233,8 @@ func TestC02ReviewHistoricalProxyStillReadable(t *testing.T) {
 				require.NoError(t, repo.Create(ctx, target))
 				other := &model.User{Username: "historical", EmployeeNo: "E8CR" + uniqueSuffix(), Password: "hash", Status: 1}
 				require.NoError(t, repo.Create(ctx, other))
-				bucket, old, next := "readable-"+uniqueSuffix(), "avatars/"+uniqueSuffix()+".png", "avatars/"+uniqueSuffix()+".png"
+				fixtureKey := uniqueSuffix()
+				bucket, old, next := "readable-"+fixtureKey, "avatars/old-"+fixtureKey+".png", "avatars/next-"+fixtureKey+".png"
 				for _, key := range []string{old, next} {
 					_, err := testPool.Exec(ctx, `INSERT INTO file_objects(bucket,object_key,purpose,status,file_name,mime_type,created_by,confirmed_at) VALUES($1,$2,'avatar','confirmed','a','image/png',$3,NOW()-interval '30 days')`, bucket, key, target.ID)
 					require.NoError(t, err)

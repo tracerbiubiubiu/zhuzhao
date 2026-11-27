@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -145,11 +146,10 @@ func mustScan(t *testing.T, row interface{ Scan(dest ...any) error }, dest ...an
 	}
 }
 
-var randCounter int
+var fixtureCounter atomic.Uint64
 
 func randSuffix() string {
-	randCounter++
-	return strconv.Itoa(randCounter) + strconv.FormatInt(time.Now().UnixNano()%100000, 10)
+	return strconv.FormatUint(fixtureCounter.Add(1), 10)
 }
 
 // ─── 服务与调用助手 ───
