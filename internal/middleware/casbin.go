@@ -51,17 +51,22 @@ func SelfService() gin.HandlerFunc {
 	}
 }
 
-// CasbinAuth 路由级 RBAC 鉴权中间件（g 表消除 + 逐角色 enforce）。
-// logger 为 nil 时使用 slog.Default()；enforce 错误记 Error、最终拒绝记 Warn（§2.1 修复）
+// CasbinAuth adapts programmatically constructed enforcers without a source
+// definition. The application supplies its configured definition explicitly.
 func CasbinAuth(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger *slog.Logger) gin.HandlerFunc {
-	// The model configuration is immutable after router construction. Read its
-	// definition once under Casbin's lock; no in-memory policy is trusted later.
 	iamModel := ""
 	if enforcer != nil {
 		enforcer.GetLock().RLock()
 		iamModel = enforcer.GetModel().ToText()
 		enforcer.GetLock().RUnlock()
 	}
+	return CasbinAuthWithDefinition(enforcer, roleFetcher, logger, iamModel)
+}
+
+// CasbinAuthWithDefinition enforces route RBAC and carries the original model
+// to command-time checks. Casbin ToText emits already-escaped matcher literals,
+// so reparsing its output can change the authorization result.
+func CasbinAuthWithDefinition(enforcer *casbin.SyncedEnforcer, roleFetcher RoleFetcher, logger *slog.Logger, iamModel string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger := logger
 		if logger == nil {

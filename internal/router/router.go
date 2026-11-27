@@ -68,6 +68,7 @@ type Deps struct {
 
 	JWTManager       *jwt.Manager
 	Enforcer         *casbin.SyncedEnforcer
+	CasbinModel      string
 	RedisClient      *redis.Client
 	DBPool           *pgxpool.Pool
 	AccountSnapshots middleware.AccountSnapshotter
@@ -142,6 +143,12 @@ func (d Deps) RateLimitOrDisabled() config.RateLimitConfig {
 // New 创建 Gin 引擎并注册路由
 func New(deps Deps) *gin.Engine {
 	r := gin.New()
+	var casbinAuth gin.HandlerFunc
+	if deps.CasbinModel != "" {
+		casbinAuth = middleware.CasbinAuthWithDefinition(deps.Enforcer, deps.RoleFetcher, deps.Logger, deps.CasbinModel)
+	} else {
+		casbinAuth = middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger)
+	}
 
 	// B1-4：ClientIP 信任链——不配置则不信任任何代理（X-Forwarded-For 不参与
 	// 解析），防伪造审计 IP / last_login_ip；Nginx 前置时按内网网段配置
@@ -252,7 +259,7 @@ func New(deps Deps) *gin.Engine {
 			// 自服务路由（Casbin 白名单：任何已认证有角色用户可访问）
 			// 注意：SelfService 必须先于 CasbinAuth 注册（router_test.go 行为测试守护此顺序）
 			selfService := authed.Group("")
-			selfService.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			selfService.Use(middleware.SelfService(), casbinAuth)
 			{
 				// F3: original write-action and concrete resource checks live in PeopleService.
 				selfService.GET("/tickets/people", deps.TicketPeopleHandler.Search)
@@ -325,7 +332,7 @@ func New(deps Deps) *gin.Engine {
 			ticketExport.Use(
 				middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...),
 				middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
-				middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
+				casbinAuth,
 			)
 			{
 				ticketExport.GET("/tickets/export", deps.TicketHandler.Export)
@@ -337,7 +344,7 @@ func New(deps Deps) *gin.Engine {
 			// catalogExempt 仅是启动对账豁免不产生运行时跳过，普通角色被 Casbin 全拦。
 			// authed 级 JWT+限流+审计链保留（删附件审计经通用审计中间件落行）。
 			storageSelf := authed.Group("")
-			storageSelf.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			storageSelf.Use(middleware.SelfService(), casbinAuth)
 			{
 				storageSelf.POST("/storage/presign/upload", deps.StorageHandler.PresignUpload)
 				// B5-2-3：头像回写（A.4 #7 契约行——B5-2 新增）
@@ -356,7 +363,7 @@ func New(deps Deps) *gin.Engine {
 			// 注意：必须挂 authed 级且标记先于 CasbinAuth（与上 selfService 同模式），
 			// 挂 biz 子组时组级 Casbin 先于子组标记执行
 			orgDelegated := authed.Group("/orgs")
-			orgDelegated.Use(middleware.SelfService(), middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			orgDelegated.Use(middleware.SelfService(), casbinAuth)
 			{
 				orgDelegated.POST("/delete", deps.OrgHandler.Delete)
 				orgDelegated.POST("/members", deps.OrgHandler.AddMember)
@@ -373,7 +380,7 @@ func New(deps Deps) *gin.Engine {
 
 			// 业务路由（需 Casbin 策略）
 			biz := authed.Group("")
-			biz.Use(middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger))
+			biz.Use(casbinAuth)
 			{
 				// 用户模块
 				users := biz.Group("/users")
@@ -627,7 +634,7 @@ func New(deps Deps) *gin.Engine {
 			middleware.JWT(deps.JWTManager, deps.RedisClient, deps.PatLookup, jwtOpts...),
 			middleware.RateLimit(deps.RedisClient, deps.RateLimitOrDisabled()),
 			middleware.AuditLog(deps.AuditService, deps.GatewayPrefixList()...),
-			middleware.CasbinAuth(deps.Enforcer, deps.RoleFetcher, deps.Logger),
+			casbinAuth,
 		)
 	}
 

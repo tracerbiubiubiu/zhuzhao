@@ -272,7 +272,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	orgDelegationService := service.NewOrgDelegationService(pool)
 	menuRepo := repository.NewMenuRepo(pool)
 	casbinConfig := cfg.Casbin
-	syncedEnforcer, cleanup3, err := casbin.New(casbinConfig, pool)
+	syncedEnforcer, casbinModelDefinition, cleanup3, err := casbin.New(casbinConfig, pool)
 	if err != nil {
 		cleanup2()
 		cleanup()
@@ -350,10 +350,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	ticketHandler := handler.NewTicketHandler(ticketService, auditService, dispatchSvc)
 	ticketPeopleHandler := handler.NewTicketPeopleHandler(ticket.NewPeopleService(ticketService, syncedEnforcer, repository.NewTicketPeopleRepo(pool)))
 	storageAuth := ticket.NewRiskWorkflowAttachmentCommand(ticketService, cfg.RiskRemediationEnabled)
-	syncedEnforcer.GetLock().RLock()
-	riskEvidenceModel := syncedEnforcer.GetModel().ToText()
-	syncedEnforcer.GetLock().RUnlock()
-	storageService.UseRiskEvidenceRouteReader(ticketService.RiskEvidenceRouteReader(riskEvidenceModel))
+	storageService.UseRiskEvidenceRouteReader(ticketService.RiskEvidenceRouteReader(casbinModelDefinition))
 	storageHandler := handler.NewStorageHandler(storageService, storageAuth, auditService)
 	settingsRepo := repository.NewSettingsRepo(pool)
 	settingsService := service.NewSettingsService(settingsRepo, storageStore, logger)
@@ -394,7 +391,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 			cleanup()
 			return nil, nil, err
 		}
-		flow := service.NewB3Flow(pool, b3Store, taskrunnerClient, al, ticketService.RunB3Authorized, riskEvidenceModel,
+		flow := service.NewB3Flow(pool, b3Store, taskrunnerClient, al, ticketService.RunB3Authorized, casbinModelDefinition,
 			service.B3Subscription{TypeName: b.TypeName, Generation: b.Generation, ConsumerID: b.ConsumerID,
 				RuleID: b.RuleID, RuleVersion: b.RuleVersion, GrantRef: b.ReadGrantRef, GrantRevision: b.ReadGrantRev,
 				SubjectID: b.ReadSubject, Fields: b.ReadFields, EventFields: b.EventFields})
@@ -427,10 +424,10 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	// 未读数注入 badges sections；90 天保留清理骑 CronScheduler）
 	inboxSvc := ticket.NewInboxService(pool, 90, logger)
 	reviewCheck := func(ctx context.Context, tx pgx.Tx, source repository.MessageDeliverySource) (bool, string, error) {
-		return riskworkflow.CheckReviewNotice(ctx, tx, ticketService, riskEvidenceModel, riskworkflow.ReviewNotice(source))
+		return riskworkflow.CheckReviewNotice(ctx, tx, ticketService, casbinModelDefinition, riskworkflow.ReviewNotice(source))
 	}
 	receiptCheck := func(ctx context.Context, tx pgx.Tx, source repository.MessageDeliverySource) (bool, string, error) {
-		return riskworkflow.CheckReviewNoticeReceipt(ctx, tx, ticketService, riskEvidenceModel, riskworkflow.ReviewNotice(source))
+		return riskworkflow.CheckReviewNoticeReceipt(ctx, tx, ticketService, casbinModelDefinition, riskworkflow.ReviewNotice(source))
 	}
 
 	inboxSvc.SetReviewNoticeCheck(reviewCheck)
@@ -510,6 +507,7 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		SettingsHandler:     settingsHandler,
 		JWTManager:          manager,
 		Enforcer:            syncedEnforcer,
+		CasbinModel:         casbinModelDefinition,
 		RedisClient:         client,
 		DBPool:              pool,
 		Logger:              logger,

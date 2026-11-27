@@ -93,10 +93,14 @@ e = some(where (p.eft == allow))
 [matchers]
 m = r.sub == "role::superadmin" || \
     r.sub == "role::admin" || \
-    (r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (r.act == p.act || p.act == "*"))
+    (r.sub == p.sub && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && \
+        (p.obj != "/api/v1/tickets/:id" || regexMatch(r.obj, "^/api/v1/tickets/\d+$")) && \
+        (r.act == p.act || p.act == "*"))
 ```
 
 无 `[role_definition] g` 段。用户→角色在 `user_roles` 表，中间件 subject 为 `role::{code}`。
+
+`internal/casbin/enforcer.go` 的 `LoadModel` 在启动时读取一次原始定义。路由鉴权、事务内权限复查和后台授权使用同一份定义。事务内复查仍按当前数据库角色和策略判定，工单详情匹配数字 ID，统计和导出各自要求路由授权。
 
 ### 角色菜单集合更新
 
