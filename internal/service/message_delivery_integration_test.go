@@ -43,6 +43,58 @@ func makeSyntheticDeliveryDue(t *testing.T, ctx context.Context, id string) {
 	require.NoError(t, err)
 }
 
+func TestMessage_BacklogCountsOnlyScheduledOrLeasedWork(t *testing.T) {
+	ctx := context.Background()
+	const profile = "synthetic-backlog-v1"
+	store := repository.NewMessageDeliveryRepo(testPool)
+	tx, err := testPool.Begin(ctx)
+	require.NoError(t, err)
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO notification_deliveries
+		    (id,source,source_event_id,rule_id,rule_version,recipient_user_id,channel,
+		     semantic_key,ticket_id,ticket_revision,operation_id,profile_ref,payload,payload_sha256,
+		     state,reason,expires_at)
+		SELECT 'synthetic-history-' || n,'fixture.backlog',n::text,'review',1,3815,'http_mock',
+		       'review_requested',n,1,'synthetic-history',$1,'{}'::jsonb,'',
+		       CASE WHEN n % 2 = 0 THEN 'accepted' ELSE 'unknown' END,
+		       'reconciliation_limit', clock_timestamp() + interval '1 day'
+		FROM generate_series(1,5000) AS series(n)`, profile)
+	require.NoError(t, err)
+
+	source := repository.MessageDeliverySource{
+		TicketID: 7819, TicketRevision: 1, RecipientID: 3815, OperationID: "synthetic-new-review",
+	}
+	id, err := store.Record(ctx, tx, source, profile, "Review", "Open the workspace", "template-v1", "")
+	require.NoError(t, err, "saved receipts with no schedule or lease cannot exhaust the worker backlog")
+	require.NotEmpty(t, id)
+
+	_, err = tx.Exec(ctx, `UPDATE notification_deliveries SET next_at=clock_timestamp()+interval '1 hour'
+		WHERE profile_ref=$1 AND source='fixture.backlog' AND ticket_id BETWEEN 1 AND 4998`, profile)
+	require.NoError(t, err)
+	_, err = tx.Exec(ctx, `UPDATE notification_deliveries SET state='sending',lease_until=clock_timestamp()+interval '2 minutes'
+		WHERE profile_ref=$1 AND id='synthetic-history-5000'`, profile)
+	require.NoError(t, err)
+
+	source.TicketRevision++
+	source.OperationID = "synthetic-at-capacity"
+	_, err = store.Record(ctx, tx, source, profile, "Review", "Open the workspace", "template-v1", "")
+	require.ErrorContains(t, err, "backlog at capacity")
+
+	source.TicketRevision++
+	source.OperationID = "synthetic-configuration-failure"
+	failed, err := store.Record(ctx, tx, source, profile, "", "", "template-v1", "template_unavailable")
+	require.NoError(t, err, "a failure receipt does not schedule any more work")
+	var state, reason string
+	require.NoError(t, tx.QueryRow(ctx, "SELECT state,reason FROM notification_deliveries WHERE id=$1", failed).Scan(&state, &reason))
+	require.Equal(t, "failed", state)
+	require.Equal(t, "template_unavailable", reason)
+	require.NoError(t, tx.QueryRow(ctx, "SELECT state,reason FROM notification_deliveries WHERE id='synthetic-history-4999'").Scan(&state, &reason))
+	require.Equal(t, "unknown", state)
+	require.Equal(t, "reconciliation_limit", reason)
+}
+
 func TestMessage_TimeoutUnknown(t *testing.T) {
 	ctx := context.Background()
 	store := repository.NewMessageDeliveryRepo(testPool)
@@ -113,11 +165,16 @@ func TestMessage_ProviderCallbackOutOfOrder(t *testing.T) {
 	})
 	var request channelsender.SendRequestV1
 	observed := time.Now().UTC().Truncate(time.Second)
-	port := &syntheticMessagePort{send: func(r channelsender.SendRequestV1) (channelsender.SendReceiptV1, error) {
-		request = r
-		return channelsender.SendReceiptV1{SchemaVersion: "1", DeliveryID: id, ChannelProfileRef: profile,
-			PayloadSHA256: r.PayloadSHA256, State: "accepted", ObservedAt: observed.Format(time.RFC3339), RetryClass: "none"}, nil
-	}}
+	port := &syntheticMessagePort{
+		send: func(r channelsender.SendRequestV1) (channelsender.SendReceiptV1, error) {
+			request = r
+			return channelsender.SendReceiptV1{SchemaVersion: "1", DeliveryID: id, ChannelProfileRef: profile,
+				PayloadSHA256: r.PayloadSHA256, State: "accepted", ObservedAt: observed.Format(time.RFC3339), RetryClass: "none"}, nil
+		},
+		query: func(channelsender.QueryRequestV1) (channelsender.SendReceiptV1, error) {
+			return channelsender.SendReceiptV1{}, channelsender.ErrQueryUnsupported
+		},
+	}
 	check := func(context.Context, pgx.Tx, repository.MessageDeliverySource) (bool, string, error) {
 		return true, "", nil
 	}
@@ -131,9 +188,28 @@ func TestMessage_ProviderCallbackOutOfOrder(t *testing.T) {
 	_, err = svc.Receipt(ctx, source.RecipientID+1, id)
 	require.ErrorIs(t, err, errcode.ErrNotFound)
 
+	makeSyntheticDeliveryDue(t, ctx, id)
+	require.NoError(t, worker.Handle(ctx, nil))
+	require.EqualValues(t, 1, port.queries.Load())
+	snapshot, err = svc.Receipt(ctx, source.RecipientID, id)
+	require.NoError(t, err)
+	require.Equal(t, "accepted", snapshot.State)
+	require.Equal(t, "query_unsupported", snapshot.Reason)
+	accepted := channelsender.AsyncReceiptV1{ProviderEventID: "accepted-while-paused", SendReceiptV1: channelsender.SendReceiptV1{
+		SchemaVersion: "1", DeliveryID: id, ChannelProfileRef: profile, PayloadSHA256: request.PayloadSHA256,
+		State: "accepted", ProviderReceiptRef: "acceptance-1", ObservedAt: observed.Add(time.Second).Format(time.RFC3339), RetryClass: "none",
+	}}
+	require.NoError(t, svc.AcceptProviderReceipt(ctx, accepted))
+	snapshot, err = svc.Receipt(ctx, source.RecipientID, id)
+	require.NoError(t, err)
+	require.Equal(t, "acceptance-1", snapshot.ProviderReceiptRef)
+	var scheduled bool
+	require.NoError(t, testPool.QueryRow(ctx, "SELECT next_at IS NOT NULL OR lease_until IS NOT NULL FROM notification_deliveries WHERE id=$1", id).Scan(&scheduled))
+	require.False(t, scheduled, "valid evidence must not restart unsupported reconciliation")
+
 	proven := channelsender.AsyncReceiptV1{ProviderEventID: "proof-delivered", SendReceiptV1: channelsender.SendReceiptV1{
 		SchemaVersion: "1", DeliveryID: id, ChannelProfileRef: profile, PayloadSHA256: request.PayloadSHA256,
-		State: "delivered", ProviderReceiptRef: "proof-1", ObservedAt: observed.Add(time.Second).Format(time.RFC3339), RetryClass: "none",
+		State: "delivered", ProviderReceiptRef: "proof-1", ObservedAt: observed.Add(2 * time.Second).Format(time.RFC3339), RetryClass: "none",
 	}}
 	mismatched := proven
 	mismatched.PayloadSHA256 = strings.Repeat("1", 64)
@@ -155,7 +231,7 @@ func TestMessage_ProviderCallbackOutOfOrder(t *testing.T) {
 	require.Equal(t, "proof-1", snapshot.ProviderReceiptRef)
 	var events int
 	require.NoError(t, testPool.QueryRow(ctx, "SELECT count(*) FROM notification_provider_events WHERE delivery_id=$1", id).Scan(&events))
-	require.Equal(t, 2, events)
+	require.Equal(t, 3, events)
 }
 
 func TestMessage_IntentPreferenceAndPreview(t *testing.T) {

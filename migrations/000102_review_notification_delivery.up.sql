@@ -33,7 +33,8 @@ CREATE TABLE notification_deliveries (
 );
 
 CREATE INDEX notification_delivery_ready ON notification_deliveries
-    (profile_ref, next_at, lease_until) WHERE state IN ('pending','sending','accepted','unknown');
+    (profile_ref, next_at, lease_until) WHERE state IN ('pending','sending','accepted','unknown')
+    AND (next_at IS NOT NULL OR lease_until IS NOT NULL);
 
 CREATE TABLE notification_delivery_attempts (
     delivery_id TEXT NOT NULL REFERENCES notification_deliveries(id) ON DELETE CASCADE,
@@ -64,8 +65,10 @@ CREATE TABLE notification_review_notices (
 );
 CREATE INDEX notification_review_notices_recipient ON notification_review_notices (recipient_id) WHERE notification_id IS NOT NULL;
 
-INSERT INTO message_templates (code, name, channel, biz_type, subject, body)
-VALUES ('ticket_review_http_mock', '工单待复核（模拟外送）', 'webhook', 'ticket', '有工单待复核', '请登录工作台查看待复核工单。')
+-- A preexisting or recreated template with the same code retains its own identity.
+ALTER TABLE message_templates ADD COLUMN review_http_mock_seed BOOLEAN NOT NULL DEFAULT false;
+INSERT INTO message_templates (code, name, channel, biz_type, subject, body, review_http_mock_seed)
+VALUES ('ticket_review_http_mock', '工单待复核（模拟外送）', 'webhook', 'ticket', '有工单待复核', '请登录工作台查看待复核工单。', true)
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO menu_apis (menu_id, api_path, api_method)

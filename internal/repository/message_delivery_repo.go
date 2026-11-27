@@ -68,7 +68,8 @@ func (r *MessageDeliveryRepo) RegisterProfile(ctx context.Context, profile, bind
 
 func (r *MessageDeliveryRepo) ReviewTemplate(ctx context.Context, tx pgx.Tx) (subject, body string, version int64, err error) {
 	err = tx.QueryRow(ctx, `SELECT subject,body,version FROM message_templates
-		WHERE code=$1 AND channel='webhook' AND biz_type='ticket' AND enabled`, ReviewNoticeTemplate).Scan(&subject, &body, &version)
+		WHERE code=$1 AND review_http_mock_seed AND channel='webhook' AND biz_type='ticket' AND enabled`, ReviewNoticeTemplate).
+		Scan(&subject, &body, &version)
 	return
 }
 
@@ -94,16 +95,20 @@ func (r *MessageDeliveryRepo) Record(ctx context.Context, tx pgx.Tx, source Mess
 	const ruleVersion = int64(1)
 	const channel = "http_mock"
 	const semanticKey = "review_requested"
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('message-backlog:' || $1, 0))`, profile); err != nil {
-		return "", err
-	}
-	var queued int
-	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM notification_deliveries
-		WHERE profile_ref=$1 AND state IN ('pending','sending','accepted','unknown')`, profile).Scan(&queued); err != nil {
-		return "", err
-	}
-	if queued >= 5000 {
-		return "", errors.New("message delivery backlog at capacity")
+	if reason == "" {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('message-backlog:' || $1, 0))`, profile); err != nil {
+			return "", err
+		}
+		// Accepted or unknown receipts remain readable after automatic reconciliation stops.
+		var queued int
+		if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM notification_deliveries
+			WHERE profile_ref=$1 AND state IN ('pending','sending','accepted','unknown')
+			  AND (next_at IS NOT NULL OR lease_until IS NOT NULL)`, profile).Scan(&queued); err != nil {
+			return "", err
+		}
+		if queued >= 5000 {
+			return "", errors.New("message delivery backlog at capacity")
+		}
 	}
 	eventID := "risk-review-ticket-" + strconv.FormatInt(source.TicketID, 10) + ":" + strconv.FormatInt(source.TicketRevision, 10)
 	recipient := strconv.FormatInt(source.RecipientID, 10)
@@ -165,7 +170,7 @@ func (r *MessageDeliveryRepo) Claim(ctx context.Context, tx pgx.Tx, profile stri
 	var claim MessageDeliveryClaim
 	err := tx.QueryRow(ctx, `WITH candidate AS (
 		SELECT id, state FROM notification_deliveries
-		WHERE profile_ref=$1 AND (
+		WHERE profile_ref=$1 AND (next_at IS NOT NULL OR lease_until IS NOT NULL) AND (
 			(state='pending' AND next_at<=clock_timestamp())
 			OR (state IN ('sending','accepted','unknown') AND expires_at>clock_timestamp() AND attempts<20 AND
 				(lease_until<=clock_timestamp() OR (lease_until IS NULL AND next_at<=clock_timestamp()))))
@@ -264,9 +269,11 @@ func (r *MessageDeliveryRepo) ApplyProviderReceipt(ctx context.Context, configur
 		var sends, attempts int
 		var observedAt *time.Time
 		var expiresAt time.Time
-		err := tx.QueryRow(ctx, `SELECT payload_sha256,state,sends,attempts,provider_observed_at,expires_at
+		var active bool
+		err := tx.QueryRow(ctx, `SELECT payload_sha256,state,sends,attempts,provider_observed_at,expires_at,
+			       next_at IS NOT NULL OR lease_until IS NOT NULL
 			FROM notification_deliveries WHERE id=$1 AND profile_ref=$2 FOR UPDATE`, receipt.DeliveryID, configuredProfile).
-			Scan(&hash, &state, &sends, &attempts, &observedAt, &expiresAt)
+			Scan(&hash, &state, &sends, &attempts, &observedAt, &expiresAt, &active)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInvalidProviderMessage
 		}
@@ -294,7 +301,8 @@ func (r *MessageDeliveryRepo) ApplyProviderReceipt(ctx context.Context, configur
 			observedAt != nil && out.ObservedAt.Before(*observedAt) || state == "accepted" && out.State == "unknown" {
 			return nil
 		}
-		if (out.State == "accepted" || out.State == "unknown") && attempts < 20 && time.Now().Add(5*time.Second).Before(expiresAt) {
+		// Late evidence can update a paused receipt without restarting reconciliation.
+		if active && (out.State == "accepted" || out.State == "unknown") && attempts < 20 && time.Now().Add(5*time.Second).Before(expiresAt) {
 			next := time.Now().Add(5 * time.Second)
 			out.NextAt = &next
 		}
