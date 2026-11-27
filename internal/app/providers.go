@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/datafetcher"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
 	pkgstorage "github.com/tracerbiubiubiu/zhuzhao/internal/pkg/storage"
@@ -224,6 +225,12 @@ func provideRateLimitConfig(cfg *config.Config) *config.RateLimitConfig {
 // 闭包注册/条件初始化——wire 表达不了）已整体搬至此处；wire.go 的 wire.Build
 // 只引用本 provider，再生永远可重现（"wire 转正"的真终态）。
 func provideApp(cfg *config.Config) (*App, func(), error) {
+	mockCfg := cfg.Notification.HTTPMock
+	messageHTTP, err := mockCfg.Open()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	referencePeer, referenceCallbackKey, err := cfg.OpenReferenceAssets()
 	if err != nil {
 		return nil, nil, err
@@ -235,6 +242,16 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if messageHTTP != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := repository.NewMessageDeliveryRepo(pool).RegisterProfile(ctx, mockCfg.Profile, mockCfg.Binding())
+		cancel()
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("initialize HTTP message profile: %w", err)
+		}
+	}
+
 	userRepo := repository.NewUserRepo(pool)
 	jwtConfig := cfg.JWT
 	manager := provideJWTManager(jwtConfig)
@@ -409,6 +426,15 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 	// S6 二期 B6-7 站内消息中心（inbox=事件消费者——订阅 ticket/ops 双域；
 	// 未读数注入 badges sections；90 天保留清理骑 CronScheduler）
 	inboxSvc := ticket.NewInboxService(pool, 90, logger)
+	reviewCheck := func(ctx context.Context, tx pgx.Tx, source repository.MessageDeliverySource) (bool, string, error) {
+		return riskworkflow.CheckReviewNotice(ctx, tx, ticketService, riskEvidenceModel, riskworkflow.ReviewNotice(source))
+	}
+	receiptCheck := func(ctx context.Context, tx pgx.Tx, source repository.MessageDeliverySource) (bool, string, error) {
+		return riskworkflow.CheckReviewNoticeReceipt(ctx, tx, ticketService, riskEvidenceModel, riskworkflow.ReviewNotice(source))
+	}
+
+	inboxSvc.SetReviewNoticeCheck(reviewCheck)
+
 	badgeSvc := ticket.NewBadgeService(pool)
 	badgeSvc.RegisterUnread(func(ctx context.Context, uid int64) (int64, error) {
 		return inboxSvc.UnreadCount(ctx, uid)
@@ -449,19 +475,23 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		ReceiptService: riskworkflow.NewReceiptService(pool, ticketService),
 		pool:           pool, tickets: ticketService, storage: storageStore, enabled: cfg.RiskRemediationEnabled,
 		assignment: assignment,
+		reviewNotice: func(ctx context.Context, tx pgx.Tx, notice riskworkflow.ReviewNotice) error {
+			return service.RecordReviewNotice(ctx, tx, pool, repository.MessageDeliverySource(notice), mockCfg.Profile)
+		},
 	}
 	riskWorkflowHandler := handler.NewRiskWorkflowHandler(riskWorkflow)
 	deps := router.Deps{
-		B3Handler:           b3Handler,
-		B3:                  cfg.B3,
-		AuthHandler:         authHandler,
-		UserHandler:         userHandler,
-		RoleHandler:         roleHandler,
-		OrgHandler:          orgHandler,
-		MenuHandler:         menuHandler,
-		AuditHandler:        auditHandler,
-		NotificationHandler: notificationHandler,
-		DictHandler:         dictHandler,
+		MessageDeliveryHandler: handler.NewMessageDeliveryHandler(service.NewMessageDeliveryService(pool, receiptCheck, mockCfg.Profile), mockCfg.CallbackAK, mockCfg.CallbackSK),
+		B3Handler:              b3Handler,
+		B3:                     cfg.B3,
+		AuthHandler:            authHandler,
+		UserHandler:            userHandler,
+		RoleHandler:            roleHandler,
+		OrgHandler:             orgHandler,
+		MenuHandler:            menuHandler,
+		AuditHandler:           auditHandler,
+		NotificationHandler:    notificationHandler,
+		DictHandler:            dictHandler,
 		MessageTemplateHandler: handler.NewMessageTemplateHandler(
 			service.NewMessageTemplateService(repository.NewMessageTemplateRepo(pool))),
 		MessageAdminHandler:     handler.NewMessageAdminHandler(service.NewMessageAdminService(pool)),
@@ -540,6 +570,11 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	app.riskReminder = riskCron
+	if messageHTTP != nil {
+		worker := service.NewMessageDeliveryWorker(pool, mockCfg.Profile, messageHTTP, reviewCheck)
+		app.messageDelivery = service.NewCronScheduler(pool, "message_delivery", worker, 2*time.Second, logger)
+		cronRegistry.Register("message_delivery", app.messageDelivery)
+	}
 	app.b3Dispatch = b3Cron
 	if b3Cron != nil {
 		cronRegistry.Register("b3_dispatch", b3Cron)

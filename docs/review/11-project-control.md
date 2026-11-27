@@ -117,6 +117,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **表单字段设计器（P5-S1）** | field_meta JSONB（formula/visible_when/auto_fetch ③⁺ 全链设计定稿）+ 十一种字段类型（B1-6 file 第 11 类型） + 字段影响分析 + B1-7 语义收口（锁死守卫/禁链式） | ✅ 2026-10-22~26（五批+B1-7）。公式同名绕过与求值输入隔离作为 C1 移交 Phase 6，保留 P1 复核优先级。 | `internal/service/ticket/` `migrations/000051/000052`；[Phase6 件 26](../phase6/06-ticket-completeness.md#327-件-26-公式引用校验与提交重算) |
 | **消息通知一期（P5-S6）** | DomainEvent 事件面（进程内 HookRegistry+Drain 闭闸）+ ChannelSender 端口（UIP 两态桩）+ 模板/rules 路由/message_log 死信 + 用户偏好 + human_key 编号 | ✅ 既有能力已交付；2026-11-08 RR-DOC-01：UI14事件选项/跨仓集合守卫及A.9登记已原gate复验 | `internal/pkg/domainevent/` `internal/pkg/channelsender/` `migrations/000053–000061`；[06号A.9](../phase5/06-s6-message-notification.md) |
 | **站内消息中心（P5-S6 二期）** | notifications 表族 + inbox 双域订阅 + 读面三端点（自服务）+ 消息中心双 tab 页 + unread 并入角标 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/inbox_service.go` `migrations/000072` |
+| **复核消息与模拟 HTTP 投递（第 15 项）** | 复核入箱与应发同事务、当前资格查询、合成模板预览和原投递回执 | 已通过本地候选隔离验收，模拟外送默认关闭 | `internal/app/riskworkflow/notification.go` `internal/service/message_delivery.go`；[验收记录](reports/phase6-step15-notifications-2026-11-27.md) |
 | **流程图设计器（P5-S2）** | LogicFlow 画布/JSON 双模式 + mapper 往返幂等（21 测）+ lint 三规则 + 在途告警（纯前端零迁移） | ✅ 2026-10-24；2026-11-18编辑会话与撤销隔离本地通过 | zhuzhao-ui（02 号附录 A） |
 | **工单协作与提醒（P5-S10）** | 抄送（L2 特例通道——可见不可改）/标签（entity_type 泛型）/角标（计算器注册制）/节点超时+催办/Excel 导出（BK-21 同源三件套） | ✅ 2026-10-24（五批全清；🔵 待走查） | `internal/service/ticket/` `migrations/000062-000065` |
 | **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/jobs/` `migrations/000066` |
@@ -191,7 +192,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 
 <a id="4-数据库迁移地图82-对"></a>
 
-## 4. 数据库迁移地图（98 对）
+## 4. 数据库迁移地图（100 对）
 
 | 迁移 | 用途 | 阶段 |
 |------|------|------|
@@ -292,6 +293,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000099 | 两条改权操作的事务回执、不可变审计事实和补送租约 | 第 10 项候选，存在审计或回执时保留迁移 |
 | 000100 | 模拟员工明确离职的来源标记，约束本地启用 | 第 10 项候选，沿用 C05 投影 |
 | 000101 | 工单与清单任务原号回执、派发意图、清单事件收件及运行授权 | B3 第 12–14 项候选，部署开关默认关闭 |
+| 000102 | 复核消息原事实关联、模拟渠道绑定、投递、尝试和提供方事件；模板预览按钮路径 | 第 15 项本地候选；有投递或复核历史时保留该迁移 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 

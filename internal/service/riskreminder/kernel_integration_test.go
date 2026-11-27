@@ -88,7 +88,7 @@ type fixture struct {
 func resetReminderState(t *testing.T) {
 	t.Helper()
 	_, err := testPool.Exec(context.Background(), `
-		TRUNCATE riskreminder_intents, riskreminder_assignments, notifications RESTART IDENTITY`)
+		TRUNCATE riskreminder_intents, riskreminder_assignments, notification_review_notices, notifications RESTART IDENTITY`)
 	if err != nil {
 		t.Fatalf("truncate: %v", err)
 	}

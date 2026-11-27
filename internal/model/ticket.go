@@ -177,6 +177,7 @@ type AssignmentRule struct {
 // NotificationRow 站内通知行（S6 二期 B6-7——事件快照读过即完；title/link
 // 入站即渲染，读面零渲染逻辑）。
 type NotificationRow struct {
+	DeliveryID  string     `json:"delivery_id,omitempty"`
 	ID          int64      `json:"id,string"`
 	RecipientID int64      `json:"recipient_id,string"`
 	BizType     string     `json:"biz_type"`

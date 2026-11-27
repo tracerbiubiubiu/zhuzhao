@@ -8,6 +8,7 @@
 - [Phase 6 剩余开发顺序与验收](intranet-uaa-release-schedule.md#剩余开发顺序与验收)从人工整改第 6 项列到第 22 项的外部离线演练。[原工单需求 26 件](../phase6/06-ticket-completeness.md#26件当前对账2026-11-14)和[全站前端验收](../phase6/frontend-page-family-detail.md)逐项给出场景和判据。
 - [第 11 项合成参考应用实施与验收](phase6-step11-reference-app-plan.md)记录 B1 查询、隔离验收及兼容基线。
 - [第 11–14 项复验修复计划](phase6-b3-b1-repair-plan.md)记录原号对账、在途排空、发布校验和参考查询的修复与复验范围。
+- [第 15 项消息实施与验收](phase6-step15-notifications-plan.md)记录既有消息复验、整改复核提醒及模拟 HTTP 投递。
 - [入网、首发和待拍板](intranet-uaa-release-schedule.md#进内网后按什么顺序做)说明外部用 mock 验收所有公司内网依赖、离线演练后最后入网、以本地账号密码启用的顺序。[所有者议程](owner-decision-agenda.md#场景怎么选谁先准备)列出对应的选项和准备责任。原[机器排程](execution-schedule.md)供工日和依赖复算，首次进入和启用看当前排期。
 - [开工计划](phase6-b2-kickoff-plan.md#本批实施与验收安排)列出获准在独立测试环境实施的九项工作，以及第 3、5、9 项的验收。实际开工时间随实施登记。真实试用单独报批，由所有者确认环境、人员、数据和停止办法。各模块还缺什么见[设计审查](../review/reports/phase6-detailed-design-audit-2026-11-20.md)。
 

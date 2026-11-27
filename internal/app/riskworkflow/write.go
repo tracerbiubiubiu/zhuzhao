@@ -28,9 +28,10 @@ const (
 // acceptance, new uploads and alternative rule profiles stay closed.
 // All three collaborators MUST own the same fact pool.
 type Service struct {
-	pool     *pgxpool.Pool
-	tickets  *ticket.Service
-	evidence *storageservice.BoundTicketEvidenceValidator
+	pool                 *pgxpool.Pool
+	tickets              *ticket.Service
+	evidence             *storageservice.BoundTicketEvidenceValidator
+	reviewNoticeRecorder ReviewNoticeRecorder
 }
 
 func NewService(pool *pgxpool.Pool, tickets *ticket.Service, evidence *storageservice.BoundTicketEvidenceValidator) *Service {
@@ -65,6 +66,19 @@ func (s *Service) Finish(ctx context.Context, c FinishCommand) (riskremediation.
 		}
 	}
 	return s.command(ctx, c.ActorID, finishPath, input, func(ctx context.Context, tx pgx.Tx, callbacks riskremediation.Callbacks) (riskremediation.Result, error) {
+		if s.reviewNoticeRecorder != nil {
+			apply := callbacks.ApplyTicket
+			callbacks.ApplyTicket = func(ctx context.Context, tx pgx.Tx, effect riskremediation.TicketEffect) (int64, error) {
+				revision, err := apply(ctx, tx, effect)
+				if err != nil {
+					return 0, err
+				}
+				if err := s.recordReviewNotices(ctx, tx, c.OperationID, revision, effect); err != nil {
+					return 0, err
+				}
+				return revision, nil
+			}
+		}
 		return riskremediation.New(s.pool, callbacks).FinishTx(ctx, tx, riskremediation.FinishCommand{Command: c.Command, Items: c.Items})
 	})
 }

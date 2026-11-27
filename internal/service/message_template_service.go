@@ -102,3 +102,34 @@ func (s *MessageTemplateService) Update(ctx context.Context, t *model.MessageTem
 func (s *MessageTemplateService) Delete(ctx context.Context, code string) error {
 	return s.repo.Delete(ctx, code)
 }
+
+// PreviewMessageTemplate uses only synthetic values and has no persistence or channel dependency.
+func PreviewMessageTemplate(code, channel, subject, body string) (string, string, error) {
+	if len(subject) == 0 || len(subject) > 255 || len(body) == 0 || len(body) > 8192 {
+		return "", "", errcode.ErrInvalidParams
+	}
+	if err := validateChannel(channel); err != nil {
+		return "", "", err
+	}
+	if err := validatePlaceholders(subject, body); err != nil {
+		return "", "", err
+	}
+	vars := map[string]any{"ticket": map[string]any{"status": "pending_verify"}}
+	if code != repository.ReviewNoticeTemplate {
+		for _, variable := range msgrender.BuiltinVariables() {
+			section, field, _ := strings.Cut(variable.Path, ".")
+			fields, _ := vars[section].(map[string]any)
+			if fields == nil {
+				fields = make(map[string]any)
+				vars[section] = fields
+			}
+			fields[field] = "示例" + variable.Description
+		}
+	}
+	s := msgrender.RenderQuadrantEscaped(subject, vars, channel)
+	b := msgrender.RenderQuadrantEscaped(body, vars, channel)
+	if s.Err != nil || b.Err != nil || code == repository.ReviewNoticeTemplate && (len(s.Warnings) != 0 || len(b.Warnings) != 0) {
+		return "", "", errcode.ErrInvalidParams
+	}
+	return s.Text, b.Text, nil
+}

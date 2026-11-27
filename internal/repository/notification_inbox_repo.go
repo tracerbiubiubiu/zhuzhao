@@ -64,21 +64,23 @@ func (r *NotificationInboxRepo) InsertTx(ctx context.Context, tx pgx.Tx, n *mode
 
 // Inbox 收件箱分页（倒序；unread 过滤可选）。
 func (r *NotificationInboxRepo) Inbox(ctx context.Context, recipientID int64, unreadOnly bool, page, pageSize int) ([]*model.NotificationRow, int64, error) {
-	where := `WHERE recipient_id = $1`
-	args := []any{recipientID}
+	db := IAMDB(ctx, r.db)
+	where := `WHERE recipient_id = $1` + reviewNoticeWhere("$2")
+	args := []any{recipientID, reviewNoticeIDs(ctx)}
 	if unreadOnly {
 		where += ` AND read_at IS NULL`
 	}
 	var total int64
-	if err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM notifications `+where, args...).Scan(&total); err != nil {
+	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM notifications `+where, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	listArgs := append(append([]any{}, args...), pageSize, (page-1)*pageSize)
-	rows, err := r.db.Query(ctx, `
+	rows, err := db.Query(ctx, `
 		SELECT id, recipient_id, biz_type, biz_id, COALESCE(title, ''), COALESCE(link, ''), created_at, read_at,
 		       CASE WHEN biz_type = 'ticket' THEN `+riskTicketNotificationSQL+` ELSE false END AS restricted,
 		       EXISTS (SELECT 1 FROM riskreminder_intents i
-			       WHERE i.ticket_id = notice.ticket_id AND i.notification_id = notice.id) AS accept_timeout
+			       WHERE i.ticket_id = notice.ticket_id AND i.notification_id = notice.id) AS accept_timeout,
+		   (SELECT COALESCE(r.delivery_id,'') FROM notification_review_notices r WHERE r.notification_id=notice.id) AS review_delivery
 		FROM (SELECT notifications.*, biz_id AS ticket_id FROM notifications `+where+`
 		      ORDER BY id DESC LIMIT $`+strconv.Itoa(len(args)+1)+` OFFSET $`+strconv.Itoa(len(args)+2)+`) notice
 		ORDER BY id DESC`, listArgs...)
@@ -89,10 +91,14 @@ func (r *NotificationInboxRepo) Inbox(ctx context.Context, recipientID int64, un
 	list, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.NotificationRow, error) {
 		var n model.NotificationRow
 		var restricted, acceptTimeout bool
-		if err := row.Scan(&n.ID, &n.RecipientID, &n.BizType, &n.BizID, &n.Title, &n.Link, &n.CreatedAt, &n.ReadAt, &restricted, &acceptTimeout); err != nil {
+		var reviewDelivery *string
+		if err := row.Scan(&n.ID, &n.RecipientID, &n.BizType, &n.BizID, &n.Title, &n.Link, &n.CreatedAt, &n.ReadAt, &restricted, &acceptTimeout, &reviewDelivery); err != nil {
 			return nil, err
 		}
-		if restricted {
+		if reviewDelivery != nil {
+			n.DeliveryID = *reviewDelivery
+		}
+		if restricted && reviewDelivery == nil {
 			n.Title = NeutralTicketNotificationTitle
 			if acceptTimeout {
 				n.Title = "工单超时未接单"
@@ -106,17 +112,19 @@ func (r *NotificationInboxRepo) Inbox(ctx context.Context, recipientID int64, un
 
 // MarkRead 单条已读（recipient 归属校验——非本人 404 同形）。
 func (r *NotificationInboxRepo) MarkRead(ctx context.Context, id, recipientID int64) error {
-	ct, err := r.db.Exec(ctx,
-		`UPDATE notifications SET read_at = NOW() WHERE id = $1 AND recipient_id = $2 AND read_at IS NULL`,
-		id, recipientID)
+	db := IAMDB(ctx, r.db)
+	ct, err := db.Exec(ctx,
+		`UPDATE notifications SET read_at = NOW() WHERE id = $1 AND recipient_id = $2 AND read_at IS NULL`+reviewNoticeWhere("$3"),
+		id, recipientID, reviewNoticeIDs(ctx))
 	if err != nil {
 		return err
 	}
 	if ct.RowsAffected() == 0 {
 		// 已读/不存在——幂等语义返回 nil（读面操作无副作用差异）
 		var exists bool
-		if err := r.db.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM notifications WHERE id = $1 AND recipient_id = $2)`, id, recipientID).Scan(&exists); err != nil {
+		if err := db.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM notifications WHERE id = $1 AND recipient_id = $2`+reviewNoticeWhere("$3")+`)`,
+			id, recipientID, reviewNoticeIDs(ctx)).Scan(&exists); err != nil {
 			return err
 		}
 		if !exists {
@@ -128,8 +136,9 @@ func (r *NotificationInboxRepo) MarkRead(ctx context.Context, id, recipientID in
 
 // MarkAllRead 全部已读（批量——A.8.5 第一档）。
 func (r *NotificationInboxRepo) MarkAllRead(ctx context.Context, recipientID int64) (int64, error) {
-	ct, err := r.db.Exec(ctx,
-		`UPDATE notifications SET read_at = NOW() WHERE recipient_id = $1 AND read_at IS NULL`, recipientID)
+	ct, err := IAMDB(ctx, r.db).Exec(ctx,
+		`UPDATE notifications SET read_at = NOW() WHERE recipient_id = $1 AND read_at IS NULL`+reviewNoticeWhere("$2"),
+		recipientID, reviewNoticeIDs(ctx))
 	if err != nil {
 		return 0, err
 	}
@@ -139,8 +148,8 @@ func (r *NotificationInboxRepo) MarkAllRead(ctx context.Context, recipientID int
 // UnreadCount 未读数（badges sections.unread 数据源）。
 func (r *NotificationInboxRepo) UnreadCount(ctx context.Context, recipientID int64) (int64, error) {
 	var n int64
-	err := r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM notifications WHERE recipient_id = $1 AND read_at IS NULL`, recipientID).Scan(&n)
+	err := IAMDB(ctx, r.db).QueryRow(ctx,
+		`SELECT COUNT(*) FROM notifications WHERE recipient_id = $1 AND read_at IS NULL`+reviewNoticeWhere("$2"), recipientID, reviewNoticeIDs(ctx)).Scan(&n)
 	return n, err
 }
 
@@ -152,4 +161,62 @@ func (r *NotificationInboxRepo) CleanupExpired(ctx context.Context, retentionDay
 		return 0, err
 	}
 	return ct.RowsAffected(), nil
+}
+
+type reviewNoticeVisibilityKey struct{}
+
+func reviewNoticeIDs(ctx context.Context) []int64 {
+	ids, _ := ctx.Value(reviewNoticeVisibilityKey{}).([]int64)
+	if ids == nil {
+		return []int64{}
+	}
+	return ids
+}
+
+// ReviewNoticeVisibility applies the current review grant before filtering or
+// paginating any managed inbox rows. Legacy rows keep the original policy.
+func (r *NotificationInboxRepo) ReviewNoticeVisibility(ctx context.Context, recipient int64,
+	check func(context.Context, pgx.Tx, MessageDeliverySource) (bool, string, error),
+	run func(context.Context) error,
+) error {
+	if check == nil {
+		return run(ctx)
+	}
+	return WithIAMCommandGuard(ctx, r.db, func(ctx context.Context, tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT r.notification_id,r.ticket_id,r.ticket_revision,r.operation_id
+			FROM notification_review_notices r JOIN tickets t ON t.id=r.ticket_id
+			WHERE r.recipient_id=$1 AND r.notification_id IS NOT NULL AND t.status='pending_verify' ORDER BY r.ticket_id,r.ticket_revision`, recipient)
+		if err != nil {
+			return err
+		}
+		type candidate struct {
+			ID int64
+			MessageDeliverySource
+		}
+		candidates, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (candidate, error) {
+			var c candidate
+			c.RecipientID = recipient
+			err := row.Scan(&c.ID, &c.TicketID, &c.TicketRevision, &c.OperationID)
+			return c, err
+		})
+		if err != nil {
+			return err
+		}
+		var allowed []int64
+		for _, candidate := range candidates {
+			ok, _, err := check(ctx, tx, candidate.MessageDeliverySource)
+			if err != nil {
+				return err
+			}
+			if ok {
+				allowed = append(allowed, candidate.ID)
+			}
+		}
+		return run(context.WithValue(ctx, reviewNoticeVisibilityKey{}, allowed))
+	})
+}
+
+func reviewNoticeWhere(arg string) string {
+	return ` AND (id=ANY(` + arg + `::bigint[]) OR NOT EXISTS
+		(SELECT 1 FROM notification_review_notices r WHERE r.notification_id=notifications.id))`
 }

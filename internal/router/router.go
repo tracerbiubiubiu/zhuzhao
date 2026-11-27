@@ -51,6 +51,7 @@ type Deps struct {
 
 	// S6 B6-6 消息管理（log 查看 + rules CRUD）
 	MessageAdminHandler     *handler.MessageAdminHandler
+	MessageDeliveryHandler  *handler.MessageDeliveryHandler
 	NotificationPrefHandler *handler.NotificationPrefHandler
 
 	// S10 B10-3 角标聚合（登录态自服务——sections 开放 map）
@@ -163,6 +164,9 @@ func New(deps Deps) *gin.Engine {
 	// 健康检查
 	// P4-8 指标端点（根级非 /api/v1——catalog 天然豁免；内网暴露面）
 	r.GET("/metrics", middleware.RenderMetrics)
+	if deps.MessageDeliveryHandler != nil && deps.MessageDeliveryHandler.CallbackEnabled() {
+		r.POST("/internal/messages/receipts", deps.MessageDeliveryHandler.ProviderReceipt)
+	}
 	r.GET("/health/live", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -277,6 +281,7 @@ func New(deps Deps) *gin.Engine {
 				// S6 二期 B6-7 站内消息中心（G-23 实施 000076：严格自数据——服务端限 recipient=self、
 				// 非本人 404，与 /badges 同性质；铃铛对全员渲染，路由由 ui 常量路由兜底，不再走菜单 L1）
 				selfService.GET("/notifications/inbox", deps.InboxHandler.Inbox)
+				selfService.GET("/notifications/delivery", deps.MessageDeliveryHandler.Receipt)
 				selfService.POST("/notifications/read", deps.InboxHandler.MarkRead)
 				selfService.POST("/notifications/read-all", deps.InboxHandler.MarkAllRead)
 
@@ -555,6 +560,7 @@ func New(deps Deps) *gin.Engine {
 					ticketMeta.GET("/message-templates", deps.MessageTemplateHandler.List)
 					ticketMeta.POST("/message-templates", deps.MessageTemplateHandler.Create)
 					ticketMeta.POST("/message-templates/update", deps.MessageTemplateHandler.Update)
+					ticketMeta.POST("/message-templates/preview", deps.MessageTemplateHandler.Preview)
 					ticketMeta.POST("/message-templates/delete", deps.MessageTemplateHandler.Delete)
 
 					// S6 B6-3 增强批：用户通知偏好自服务（登录态——非管理面）
