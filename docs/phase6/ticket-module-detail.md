@@ -78,6 +78,8 @@ B2 首批验 D01–D04 的实际启用部分，用两条合成风险验证办理
 
 ## 2. 准确输入输出与权限
 
+第 17 项第一批的存量类型保持 `inherit`。新建类型可在 `POST /api/v1/ticket-types` 声明 `read_policy` 和 `read_role_codes`，缺省为 `participants_only`。限制范围的类型由全局管理员管理持久抄送。行级策略由列表、详情、导出及 `GET /api/v1/tickets/stats` 共用。统计另验 `ticket:stats`，按 `status`、`priority` 或 `type_code` 返回计数、在办数、超期数和比率。零在办样本返回空比率。 [冻结口径](../planning/phase6-step17-ticket-implementation-plan.md#开工冻结)
+
 ### 2.1 类型、实例与版本
 
 所有 ID 在 JSON 中为十进制字符串，时间采用带时区的 RFC3339。新请求与响应（DTO）中的 `revision`、`draft_revision`、`definition_version` 和 `authorization_epoch` 均为规范十进制字符串，服务端按有界非负整数解析，前端不用 JS number 运算。现有 `version` 的 number 类型只在明确的旧接口兼容层保留，新响应不能让同一字段有时为 number、有时为 string。`draft_revision` 用于检查管理草稿是否被并发修改（CAS）；`definition_version/hash` 标识发布内容；`revision` 是工单业务写入的序号；`authorization_epoch` 只用于授权失效与诊断，四者不能混用。请求不能自行指定可信操作者或 `created_by`。
@@ -193,6 +195,10 @@ D05 继续[配置晋级提案](../proposal/config-promotion.md)：包仅含已�
 ## 4. 工单常见业务与异常出口
 
 ### 4.1 主责、接单、管理与时间
+
+**第 17 项第一批命令。** `POST /api/v1/tickets/transfer` 接收 `id`、`to_user_id`、`expected_revision` 和可选 `comment`。`POST /api/v1/tickets/withdraw` 接收 `id`、`expected_revision` 和可选 `comment`。两条命令使用 `Idempotency-Key`，返回原 `id`、`assigned_to`、`revision` 和 `status`。`GET /api/v1/tickets/:id/actions` 提供当前修订、转办/撤回资格及按绑定规则要求的必填说明。`GET /api/v1/tickets/people` 的 `purpose=transfer` 与提交共用目标当前直属组织资格、详情及转换入口授权。新写入口各自绑定按钮。转办改变主责，保留节点、定义、时间、SLA 和原提醒事实。重放复核当前入口和可见范围，再读回原提交结果。转办后失去最后一条读取来源时，原处理人的重放随当前范围返回 404。
+
+撤回须由发起人本人在已绑定规则允许的 `open` 状态下执行。新建记录的撤回资格在首次分派或离开 `open` 后永久失效。存量工单缺少可信资格时只按现有动作办理。发布图中的 `cancelled` 是发起人专用撤回终态，使用唯一的 `open` 入边并且没有出边。旧图仍可读取，`cancelled` 转换须满足受控撤回合同。风险在办单按风险领域职责办理。 [首批冻结与验收](../planning/phase6-step17-ticket-implementation-plan.md#开工冻结)
 
 唯一 `assigned_to` 继续单值；多人协作/CC/复核分别建职责。未分派必须显示当前管理组织及“待分派”，不随机给无资格的人。共享任务的未来 E03 默认合格池轮询，特定类型认领用单赢家 CAS；资格变化重新筛候选，空池 hold。受限票不因进入候选池向全池开放，须显式获准类型队列摘要，否则仅当前可见者可认领。参考[JSM 队列分派](https://support.atlassian.com/jira-service-management-cloud/docs/assign-requests-from-your-queue/)的分派视图，首版复用现固定规则；不为“随机分人”引入优化调度器。
 

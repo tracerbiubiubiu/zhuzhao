@@ -4685,7 +4685,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "assign|cc|create-supervisor|rule-target",
+                        "description": "assign|transfer|cc|create-supervisor|rule-target",
                         "name": "purpose",
                         "in": "query",
                         "required": true
@@ -4699,7 +4699,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Required for assign/cc",
+                        "description": "Required for assign/transfer/cc",
                         "name": "ticket_id",
                         "in": "query"
                     },
@@ -4804,6 +4804,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tickets/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "工单统计",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "标签",
+                        "name": "tag",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "status",
+                            "priority",
+                            "type_code"
+                        ],
+                        "type": "string",
+                        "description": "分组维度，默认 status",
+                        "name": "group_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "工单类型",
+                        "name": "type_code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "工单状态",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "状态集合，逗号分隔，与status互斥（例assigned,in_progress）",
+                        "name": "statuses",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "排除状态集合，逗号分隔，与status/statuses互斥",
+                        "name": "exclude_statuses",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "优先级（1紧急/2高/3中/4低）",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）",
+                        "name": "assignee",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建人过滤，仅支持 me（当前用户，「我发起的」）",
+                        "name": "created_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期起（YYYY-MM-DD，UTC 切日，含当日）",
+                        "name": "created_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "创建日期止（YYYY-MM-DD，UTC 切日，含当日）",
+                        "name": "created_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tickets/tags": {
             "post": {
                 "consumes": [
@@ -4865,6 +4975,58 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/transfer": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "转办工单",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "幂等键",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "转办请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTransferRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -4938,6 +5100,58 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/withdraw": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ticket"
+                ],
+                "summary": "撤回工单",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "幂等键",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "撤回请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketWithdrawRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -6327,6 +6541,15 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "maxLength": 100
+                },
+                "read_policy": {
+                    "type": "string"
+                },
+                "read_role_codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "states": {
                     "type": "array",
@@ -7848,11 +8071,22 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction"
                     }
                 },
+                "capabilities": {
+                    "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingCapabilities"
+                },
                 "fields": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField"
                     }
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "ticket_id": {
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },
@@ -8068,6 +8302,79 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingCapabilities": {
+            "type": "object",
+            "properties": {
+                "transfer": {
+                    "type": "boolean"
+                },
+                "withdraw": {
+                    "type": "boolean"
+                },
+                "withdraw_comment_required": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult": {
+            "type": "object",
+            "properties": {
+                "assigned_to": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "0"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "revision": {
+                    "type": "string",
+                    "example": "0"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStats": {
+            "type": "object",
+            "properties": {
+                "as_of": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStatsItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStatsItem": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "in_progress_count": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "overdue_count": {
+                    "type": "integer"
+                },
+                "overdue_rate": {
+                    "type": "number",
+                    "x-nullable": true
+                }
+            }
+        },
         "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTaskRun": {
             "type": "object",
             "properties": {
@@ -8104,6 +8411,28 @@ const docTemplate = `{
                 "ticket_revision": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTransferRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id",
+                "to_user_id"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "to_user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -8161,6 +8490,24 @@ const docTemplate = `{
                 "validate_regex": {
                     "type": "string",
                     "maxLength": 200
+                }
+            }
+        },
+        "github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketWithdrawRequest": {
+            "type": "object",
+            "required": [
+                "expected_revision",
+                "id"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "expected_revision": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },
