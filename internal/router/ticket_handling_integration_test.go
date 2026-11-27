@@ -56,7 +56,7 @@ func TestTicketHandlingHTTP(t *testing.T) {
 	svc := ticket.NewTicketService(db, repo, repository.NewOrgRepo(db), reg, roles, service.NewOrgDelegationService(db), nil, nil, nil)
 	audit := peopleAudit{}
 	f.engine = router.New(router.Deps{DBPool: db, JWTManager: f.tokens, AuditService: audit, RedisClient: startStubRedis(t), Enforcer: e, RoleFetcher: roles, Registry: reg, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), TicketHandler: handler.NewTicketHandler(svc, audit, nil), TicketPeopleHandler: handler.NewTicketPeopleHandler(ticket.NewPeopleService(svc, e, repository.NewTicketPeopleRepo(db)))})
-	f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta) VALUES('handling','handling','["open","assigned","closed","cancelled"]','{"open":["assigned","cancelled","closed"],"assigned":["open","closed"],"cancelled":[]}','{"open>cancelled":{"roles":["creator"]}}')`)
+	f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta,read_policy) VALUES('handling','handling','["open","assigned","closed","cancelled"]','{"open":["assigned","cancelled","closed"],"assigned":["open","closed"],"cancelled":[]}','{"open>cancelled":{"roles":["creator"]}}','inherit')`)
 	typ, err := repo.GetTicketType(ctx, "handling")
 	require.NoError(t, err)
 	_, _, err = svc.PublishTicketType(ctx, typ, creator)
@@ -89,7 +89,7 @@ func TestTicketHandlingHTTP(t *testing.T) {
 		require.Equal(t, 1, count)
 	})
 	t.Run("withdrawal exposes pinned mandatory comment only to eligible creator", func(t *testing.T) {
-		f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta) SELECT 'handling_note','handling note',states,transitions,jsonb_set(transition_meta,'{open>cancelled,comment_required}','true') FROM ticket_types WHERE code='handling'`)
+		f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta,read_policy) SELECT 'handling_note','handling note',states,transitions,jsonb_set(transition_meta,'{open>cancelled,comment_required}','true'),'inherit' FROM ticket_types WHERE code='handling'`)
 		note, err := repo.GetTicketType(ctx, "handling_note")
 		require.NoError(t, err)
 		_, _, err = svc.PublishTicketType(ctx, note, creator)
@@ -103,6 +103,18 @@ func TestTicketHandlingHTTP(t *testing.T) {
 		body["comment"] = "required note"
 		submit(t, creator, "withdraw", "note-withdraw", body, 200)
 		require.False(t, caps(t, row.ID, creator)["withdraw_comment_required"])
+	})
+	t.Run("default read policy denies unrelated colleague action projection", func(t *testing.T) {
+		f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta)
+			SELECT 'handling_restricted','handling restricted',states,transitions,transition_meta FROM ticket_types WHERE code='handling'`)
+		restricted, err := repo.GetTicketType(ctx, "handling_restricted")
+		require.NoError(t, err)
+		_, _, err = svc.PublishTicketType(ctx, restricted, creator)
+		require.NoError(t, err)
+		row, err := svc.Create(ctx, &model.CreateTicketRequest{TypeCode: "handling_restricted", Title: "restricted lifecycle", OrgID: org}, creator)
+		require.NoError(t, err)
+		require.True(t, caps(t, row.ID, creator)["withdraw"])
+		f.request(t, assignee, "GET", fmt.Sprintf("/api/v1/tickets/%d/actions", row.ID), "", nil, 404)
 	})
 	t.Run("former assignment permanently disqualifies reopened ticket", func(t *testing.T) {
 		row := create(t)

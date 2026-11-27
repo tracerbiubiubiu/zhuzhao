@@ -17,45 +17,57 @@ func TestTicketHandlingMigrationReservesCancelled(t *testing.T) {
 	ctx := context.Background()
 	up, err := os.ReadFile("../../migrations/000106_ticket_handling.up.sql")
 	require.NoError(t, err)
-	for _, tc := range []struct {
-		name, seed string
-		blocked    bool
-	}{
-		{"draft state", `INSERT INTO ticket_types VALUES ('["open","cancelled","assigned","closed"]','{"open":["cancelled"],"cancelled":["open"]}','{}')`, true},
-		{"draft edge destination", `INSERT INTO ticket_types VALUES ('[]','{"open":["cancelled"]}','{}')`, true},
-		{"published historical source", `INSERT INTO ticket_type_definitions VALUES ('{"type":{"states":["open","assigned","closed","cancelled"],"transitions":{"cancelled":["open"]}}}')`, true},
-		{"instance", `INSERT INTO tickets VALUES ('cancelled',NULL)`, true},
-		{"ordinary label", `INSERT INTO ticket_types VALUES ('["open","closed"]','{"open":["closed"]}','{"open>closed":{"label":"cancelled"}}')`, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			tx, err := testPool.Begin(ctx)
-			require.NoError(t, err)
-			defer tx.Rollback(ctx)
-			_, err = tx.Exec(ctx, `CREATE SCHEMA handling_preflight; SET LOCAL search_path=handling_preflight,pg_catalog;
+	down, err := os.ReadFile("../../migrations/000106_ticket_handling.down.sql")
+	require.NoError(t, err)
+	for _, direction := range []string{"up", "down"} {
+		for _, tc := range []struct {
+			name, seed string
+			blocked    bool
+		}{
+			{"draft state", `INSERT INTO ticket_types VALUES ('["open","cancelled","assigned","closed"]','{"open":["cancelled"],"cancelled":["open"]}','{}')`, true},
+			{"draft edge destination", `INSERT INTO ticket_types VALUES ('[]','{"open":["cancelled"]}','{}')`, true},
+			{"published historical source", `INSERT INTO ticket_type_definitions VALUES ('{"type":{"states":["open","assigned","closed","cancelled"],"transitions":{"cancelled":["open"]}}}')`, true},
+			{"published creator withdrawal", `INSERT INTO ticket_type_definitions VALUES ('{"type":{"states":["open","assigned","closed","cancelled"],"transitions":{"open":["assigned","closed","cancelled"]},"transition_meta":{"open>cancelled":{"roles":["creator"]}}}}')`, true},
+			{"instance", `INSERT INTO tickets(status,assigned_to) VALUES ('cancelled',NULL)`, true},
+			{"ordinary label", `INSERT INTO ticket_types VALUES ('["open","closed"]','{"open":["closed"]}','{"open>closed":{"label":"cancelled"}}')`, false},
+		} {
+			t.Run(direction+"/"+tc.name, func(t *testing.T) {
+				tx, err := testPool.Begin(ctx)
+				require.NoError(t, err)
+				defer tx.Rollback(ctx)
+				_, err = tx.Exec(ctx, `CREATE SCHEMA handling_preflight; SET LOCAL search_path=handling_preflight,pg_catalog;
     CREATE TABLE ticket_types(states jsonb,transitions jsonb,transition_meta jsonb);
     CREATE TABLE ticket_type_definitions(snapshot jsonb);
     CREATE TABLE tickets(status text,assigned_to bigint);
     CREATE TABLE menus (LIKE public.menus); CREATE TABLE menu_apis (LIKE public.menu_apis);
     CREATE TABLE roles (LIKE public.roles); CREATE TABLE role_menus (LIKE public.role_menus);
     CREATE TABLE casbin_rule (LIKE public.casbin_rule)`)
-			require.NoError(t, err)
-			_, err = tx.Exec(ctx, tc.seed)
-			require.NoError(t, err)
-			_, err = tx.Exec(ctx, "SAVEPOINT migration_start")
-			require.NoError(t, err)
-			_, err = tx.Exec(ctx, string(up))
-			if tc.blocked {
-				require.ErrorContains(t, err, "legacy cancelled")
-				_, err = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT migration_start")
 				require.NoError(t, err)
-			} else {
+				migration, reason := up, "legacy cancelled"
+				if direction == "down" {
+					_, err = tx.Exec(ctx, string(up))
+					require.NoError(t, err)
+					migration, reason = down, "retain cancelled"
+				}
+				_, err = tx.Exec(ctx, tc.seed)
 				require.NoError(t, err)
-			}
-			var installed, eligibility bool
-			require.NoError(t, tx.QueryRow(ctx, `SELECT to_regclass('handling_preflight.ticket_handling_receipts') IS NOT NULL, EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='tickets'::regclass AND attname='withdrawal_eligible' AND NOT attisdropped)`).Scan(&installed, &eligibility))
-			require.Equal(t, !tc.blocked, installed)
-			require.Equal(t, !tc.blocked, eligibility)
-		})
+				_, err = tx.Exec(ctx, "SAVEPOINT migration_start")
+				require.NoError(t, err)
+				_, err = tx.Exec(ctx, string(migration))
+				if tc.blocked {
+					require.ErrorContains(t, err, reason)
+					_, err = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT migration_start")
+					require.NoError(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+				var installed, eligibility bool
+				require.NoError(t, tx.QueryRow(ctx, `SELECT to_regclass('handling_preflight.ticket_handling_receipts') IS NOT NULL, EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid='tickets'::regclass AND attname='withdrawal_eligible' AND NOT attisdropped)`).Scan(&installed, &eligibility))
+				expectInstalled := direction == "up" && !tc.blocked || direction == "down" && tc.blocked
+				require.Equal(t, expectInstalled, installed)
+				require.Equal(t, expectInstalled, eligibility)
+			})
+		}
 	}
 }
 
