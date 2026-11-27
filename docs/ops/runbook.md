@@ -281,7 +281,9 @@ P1 补修候选启用 `000095` 和 `000096` 后，须与同批 Core 一起启动
 
 使用原 Taskrunner 和 ActiveList 的连接、签名与订阅配置。停止原 Core 实例，再启动 `b3.enabled=false`、`b3.drain=true` 的同批 Core。排空只处理 Core 已接收的任务，不发送新任务或新写。需要停止源变更时，先按同批 ActiveList 工作规程停止相应生产者。尚未获首个收件确认的事实保留在 ActiveList，在恢复接入后按原游标补投。
 
-原工单查看已有运行及其状态。按原操作核对 `command_receipts` 的 `pending`、`remote_started` 和原因。未发送工作收束为 `held/integration_draining`。已可能发送的更新只查原效果回执，查不到或当前资格不足时保留 `document_outcome_unconfirmed`。按原号核查依赖恢复及权限，通过受控对账收口。没有 `pending` 后可将两个开关都置为 false 再重启。仍有待处理记录时 Core 取得单例所有权后拒启，运维恢复排空配置并继续核对。保留迁移 `000101` 与终态历史。
+原工单查看已有运行及其状态。按原操作核对 `command_receipts` 的 `pending`、`remote_started` 和原因。未发送工作收束为 `held/integration_draining`。已可能发送的更新只查原效果回执，查不到或当前资格不足时保留 `document_outcome_unconfirmed`。按原号核查依赖恢复及权限。原授权若已撤销，按事故处置流程核对原命令与清单事实。当前合成配置采用单一获准的 Core 到 Taskrunner 发送方。改变签名 AK 前处理原归因下的在途任务。
+
+完整停用前分别确认 Core 没有 `pending`，ActiveList 已将 Core 接收过的源事实的原 ACK 入账，以及 Taskrunner 侧已记账或已登记异常供运维处理。检查 ActiveList 的 `stage_commit_ref` 和 `ack_cursor`。Core 业务终态与队列记账可能分开到达，排空应保留到外侧确认完成。两个开关都置为 false 再重启时，若 Core 仍有待处理记录，会在取得单例所有权后拒启。恢复排空配置并继续核对，保留迁移 `000101` 与终态历史。
 
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
