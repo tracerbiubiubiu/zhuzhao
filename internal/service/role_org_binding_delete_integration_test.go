@@ -48,7 +48,7 @@ func zzRolesGuardReset(t *testing.T) {
 // LoadPolicy（nil adapter 会 panic，沿用 iam_guard_transaction 集成测试先例）。
 func zzRolesGuardRBAC(t *testing.T) *service.RBACService {
 	t.Helper()
-	enforcer, cleanup, err := casbinpkg.New(config.CasbinConfig{Model: "../../configs/casbin_model.conf"}, testPool)
+	enforcer, _, cleanup, err := casbinpkg.New(config.CasbinConfig{Model: "../../configs/casbin_model.conf"}, testPool)
 	require.NoError(t, err)
 	t.Cleanup(cleanup)
 	return service.NewRBACService(

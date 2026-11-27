@@ -127,7 +127,7 @@ func TestIAMGuard_RealAdapterReloadWithSingleConnectionPool(t *testing.T) {
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	require.NoError(t, err)
 	defer pool.Close()
-	enforcer, cleanup, err := casbinpkg.New(config.CasbinConfig{Model: "../../configs/casbin_model.conf"}, pool)
+	enforcer, _, cleanup, err := casbinpkg.New(config.CasbinConfig{Model: "../../configs/casbin_model.conf"}, pool)
 	require.NoError(t, err)
 	defer cleanup()
 	svc := service.NewRBACService(repository.NewRoleRepo(pool), repository.NewUserRepo(pool), repository.NewMenuRepo(pool), enforcer)

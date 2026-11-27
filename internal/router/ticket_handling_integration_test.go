@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/casbin/casbin/v3"
 	"github.com/stretchr/testify/require"
 	jwtpkg "github.com/tracerbiubiubiu/zhuzhao-utils/jwt"
+	casbinpkg "github.com/tracerbiubiubiu/zhuzhao/internal/casbin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/handler"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/resource"
@@ -29,7 +31,10 @@ func TestTicketHandlingHTTP(t *testing.T) {
 	ctx := context.Background()
 	db, _, err := testutil.SetupPostgresShared()
 	require.NoError(t, err)
-	e := newRouterTestEnforcer(t)
+	m, definition, err := casbinpkg.LoadModel("../../configs/casbin_model.conf")
+	require.NoError(t, err)
+	e, err := casbin.NewSyncedEnforcer(m)
+	require.NoError(t, err)
 	f := &definitionHTTPFixture{db: db, tokens: jwtpkg.NewManager(jwtpkg.Config{Secret: "handling-test-identity-012345678912345", AccessTTL: time.Minute})}
 	f.exec(t, "INSERT INTO roles(code,name,priority) VALUES('handling','handling',60)")
 	for path, method := range map[string]string{"/tickets/:id": "GET", "/tickets/transfer": "POST", "/tickets/withdraw": "POST", "/tickets/:id/actions": "GET", "/tickets/transition": "POST", "/tickets/assign": "POST"} {
@@ -55,7 +60,7 @@ func TestTicketHandlingHTTP(t *testing.T) {
 	repo := repository.NewTicketRepo(db)
 	svc := ticket.NewTicketService(db, repo, repository.NewOrgRepo(db), reg, roles, service.NewOrgDelegationService(db), nil, nil, nil)
 	audit := peopleAudit{}
-	f.engine = router.New(router.Deps{DBPool: db, JWTManager: f.tokens, AuditService: audit, RedisClient: startStubRedis(t), Enforcer: e, RoleFetcher: roles, Registry: reg, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), TicketHandler: handler.NewTicketHandler(svc, audit, nil), TicketPeopleHandler: handler.NewTicketPeopleHandler(ticket.NewPeopleService(svc, e, repository.NewTicketPeopleRepo(db)))})
+	f.engine = router.New(router.Deps{DBPool: db, JWTManager: f.tokens, AuditService: audit, RedisClient: startStubRedis(t), Enforcer: e, CasbinModel: definition, RoleFetcher: roles, Registry: reg, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), TicketHandler: handler.NewTicketHandler(svc, audit, nil), TicketPeopleHandler: handler.NewTicketPeopleHandler(ticket.NewPeopleService(svc, e, repository.NewTicketPeopleRepo(db)))})
 	f.exec(t, `INSERT INTO ticket_types(code,name,states,transitions,transition_meta,read_policy) VALUES('handling','handling','["open","assigned","closed","cancelled"]','{"open":["assigned","cancelled","closed"],"assigned":["open","closed"],"cancelled":[]}','{"open>cancelled":{"roles":["creator"]}}','inherit')`)
 	typ, err := repo.GetTicketType(ctx, "handling")
 	require.NoError(t, err)
@@ -198,6 +203,14 @@ func TestTicketHandlingHTTP(t *testing.T) {
 			submit(t, assignee, "transfer", "target-check", body, 400)
 		}
 		body["to_user_id"] = fmt.Sprint(successor)
+		for _, grant := range grants {
+			// Leave the projection in memory unchanged. Both the picker and
+			// transfer submission must use the current database policy.
+			f.exec(t, "DELETE FROM casbin_rule WHERE ptype='p' AND v0=$1 AND v1=$2 AND v2=$3", "role::"+grant.code, grant.path, grant.method)
+			require.NotContains(t, f.request(t, assignee, "GET", query, "", nil, 200).Body.String(), "eligible_successor")
+			submit(t, assignee, "transfer", "target-check", body, 400)
+			f.exec(t, "INSERT INTO casbin_rule(ptype,v0,v1,v2) VALUES('p',$1,$2,$3)", "role::"+grant.code, grant.path, grant.method)
+		}
 		f.exec(t, "UPDATE organizations SET status=0 WHERE id=$1", sourceOrg)
 		require.NotContains(t, f.request(t, assignee, "GET", query, "", nil, 200).Body.String(), "eligible_successor")
 		submit(t, assignee, "transfer", "target-check", body, 400)
