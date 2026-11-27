@@ -503,6 +503,7 @@ func New(deps Deps) *gin.Engine {
 				tickets := biz.Group("/tickets")
 				{
 					tickets.GET("", deps.TicketHandler.List)
+					tickets.GET("/stats", deps.TicketHandler.Stats)
 					tickets.POST("", deps.TicketHandler.Create)
 					tickets.GET("/:id", deps.TicketHandler.Get)
 					tickets.POST("/update", deps.TicketHandler.Update)

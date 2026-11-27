@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -49,10 +50,12 @@ func (s *Service) RelationCandidates(ctx context.Context, sourceID, actor int64,
 		}
 		filter := resource.Filter{Where: "tickets.id <> $1", Args: []any{sourceID}}
 		if !HasRole(roles, "admin") && !HasRole(roles, "superadmin") {
-			// Both branches grant visibility and update (Resource.canOperate).
-			// Assignee, read scope and CC alone deliberately do not enter this filter.
-			filter.Where = "tickets.id <> $2 AND (tickets.created_by = $1 OR " + delegatedVisibilitySQL + ")"
-			filter.Args = []any{actor, sourceID}
+			filter, err = s.resolveListFilter(ctx, actor)
+			if err != nil {
+				return err
+			}
+			filter.Args = append(filter.Args, sourceID)
+			filter.Where += fmt.Sprintf(" AND tickets.id <> $%d AND (tickets.created_by=$1 OR ", len(filter.Args)) + delegatedVisibilitySQL + ")"
 		}
 		candidates, err = s.ticketRepo.SearchRelationCandidates(ctx, filter, keyword)
 		return err

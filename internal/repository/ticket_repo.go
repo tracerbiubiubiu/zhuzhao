@@ -88,6 +88,24 @@ func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, erro
 	return ticket, nil
 }
 
+// GetVisibleByID applies the caller's complete row predicate before materializing a ticket.
+func (r *TicketRepo) GetVisibleByID(ctx context.Context, id int64, filter resource.Filter) (*model.Ticket, error) {
+	if filter.Where == "" && !filter.Unscoped {
+		return nil, fmt.Errorf("ticket detail: missing scope filter")
+	}
+	args := append(append([]any{}, filter.Args...), id)
+	where := fmt.Sprintf("tickets.id=$%d", len(args))
+	if filter.Where != "" {
+		where += " AND (" + filter.Where + ")"
+	}
+	ticket, err := r.queryOne(ctx, `SELECT`+ticketSelectColumns+` FROM tickets WHERE `+where, args...)
+	if err != nil {
+		return nil, err
+	}
+	enrichUserNames(ctx, IAMDB(ctx, r.db), []*model.Ticket{ticket})
+	return ticket, nil
+}
+
 // GetByIDForUpdateTx 在评论写事务内锁定工单并取一致快照，锁持有至提交。
 // 不限制状态：公开评论沿用允许回复已关闭工单的合同。不从池中取第二个连接。
 func (r *TicketRepo) GetByIDForUpdateTx(ctx context.Context, exec rowExec, id int64) (*model.Ticket, error) {
@@ -110,8 +128,7 @@ func (r *TicketRepo) EnrichSnapshotUserNamesTx(ctx context.Context, tx pgx.Tx, t
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
 func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.TicketListQuery) ([]*model.Ticket, int64, error) {
 	// IW4 fail-closed 哨兵：无谓词且未显式豁免 = 漏接 L2 scope 过滤，拒绝而非静默全量。
-	// 合法「全量」仅两种——Service.List 的 admin bypass / GetFilter 的 ticket_scope=all，
-	// 二者都必须显式携带 Unscoped（见 00 检查单 §2.3 IW4）。
+	// 全局管理员显式 Unscoped。普通 all-scope 仍须执行类型策略。
 	if filter.Where == "" && !filter.Unscoped {
 		return nil, 0, fmt.Errorf("ticket list: missing scope filter (obtain via registry.GetFilter, or set resource.Filter.Unscoped explicitly)")
 	}
@@ -635,10 +652,10 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes
 		FROM ticket_types WHERE code = $1`, code).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion,
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -653,7 +670,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -662,7 +679,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy); err != nil {
 			return nil, err
 		}
 		return &t, nil
@@ -913,14 +930,19 @@ func containsOr(s string) bool {
 
 // CreateTicketType 新建工单类型（states/transitions 由 service 层给默认值或已校验 JSON）
 func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) error {
-	const q = `
-		INSERT INTO ticket_types (code, name, description, states, transitions, default_sla_hours, is_active)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7)
-		RETURNING id, created_at, version`
-	err := r.db.QueryRow(ctx, q,
-		t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive,
-	).Scan(&t.ID, &t.CreatedAt, &t.Version)
+	// Lock the approved active roles as part of the inserting statement. Delete
+	// holds the same rows FOR UPDATE before checking live policy references.
+	const q = `WITH approved AS MATERIALIZED (
+        SELECT code FROM roles WHERE code=ANY($9::text[]) AND status=1 AND deleted_at IS NULL ORDER BY id FOR SHARE
+    ) INSERT INTO ticket_types (code,name,description,states,transitions,default_sla_hours,is_active,read_policy,read_role_codes)
+    SELECT $1,$2,NULLIF($3,''),$4,$5,$6,$7,COALESCE(NULLIF($8,''),'participants_only'),COALESCE($9,'{}'::text[])
+    WHERE (SELECT count(*) FROM approved)=COALESCE(cardinality($9),0)
+    RETURNING id,created_at,version,read_policy,read_role_codes`
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q, t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive, t.ReadPolicy, t.ReadRoleCodes).Scan(&t.ID, &t.CreatedAt, &t.Version, &t.ReadPolicy, &t.ReadRoleCodes)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "指定角色须存在、启用且不重复")
+		}
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
 		}
@@ -956,11 +978,11 @@ func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *st
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version`
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion)
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
@@ -1198,7 +1220,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -1207,7 +1229,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes); err != nil {
 			return nil, err
 		}
 		return &t, nil

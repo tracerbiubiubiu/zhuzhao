@@ -70,3 +70,11 @@ func TestTicketList_ExcludedStatusesParsing(t *testing.T) {
 		t.Fatalf("excluded-state/assignee query lost: ok=%v query=%+v", ok, q)
 	}
 }
+
+func TestTicketReadFiltersRejectReversedDates(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/api/v1/tickets/export?created_from=2026-08-02&created_to=2026-08-01", nil)
+	if _, ok := parseListQuery(c); ok {
+		t.Fatal("reversed date range accepted in shared filters")
+	}
+}

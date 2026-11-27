@@ -82,7 +82,7 @@ func checkMembershipTicketAccess(t *testing.T, env *dEnv, expected bool) {
 	require.NoError(t, err)
 	var id int64
 	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,priority,status,created_by,org_id,org_path) SELECT 'incident','membership regression',3,'open',$1,id,path FROM organizations WHERE id=$2 RETURNING id`, env.mem1, env.vgID).Scan(&id))
-	r := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+	r := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 	for _, action := range []string{"read", "update", "delete"} {
 		ok, e := r.Authorize(ctx, resource.AuthorizeRequest{UserID: env.admin, Roles: []string{"operator"}, ResourceID: fmt.Sprint(id), Action: action})
 		require.NoError(t, e)

@@ -47,7 +47,7 @@ func TestTicketRelationCandidatesMatchBothUpdatePermissions(t *testing.T) {
 	}
 	_, err = testPool.Exec(ctx, `INSERT INTO user_orgs(user_id,org_id,org_member_role) VALUES($1,$2,'admin')`, actor, delegatedOrg)
 	require.NoError(t, err)
-	_, err = testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES($1::text,$1::text)`, code)
+	_, err = testPool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy) VALUES($1::text,$1::text,'inherit')`, code)
 	require.NoError(t, err)
 	definition := publishC04FixtureDefinition(t, ctx, code, actor, nil)
 	insert := func(creator, orgID int64, assignee *int64) int64 {
@@ -62,6 +62,14 @@ func TestTicketRelationCandidatesMatchBothUpdatePermissions(t *testing.T) {
 	delegated := insert(other, delegatedOrg, nil)
 	readOnly := insert(other, ordinaryOrg, &actor)
 	hidden := insert(other, ordinaryOrg, nil)
+	// A delegated administrator can update inherited tickets, but cannot discover
+	// an unrelated restricted ticket in this same organization.
+	restricted := code + "r"
+	_, err = testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES($1::text,$1::text)`, restricted)
+	require.NoError(t, err)
+	_, err = testPool.Exec(ctx, `INSERT INTO tickets(type_code,title,created_by,org_id,org_path)
+        SELECT $1,$2,$3,id,path FROM organizations WHERE id=$4`, restricted, keyword, other, delegatedOrg)
+	require.NoError(t, err)
 	for range 21 {
 		insert(other, ordinaryOrg, &actor)
 	}

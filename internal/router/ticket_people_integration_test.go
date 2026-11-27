@@ -43,9 +43,8 @@ func (r *peopleSearchSpy) SearchEnabled(ctx context.Context, q string, org int64
 }
 
 func TestTicketPeopleHTTP_ContextGateAndProjection(t *testing.T) {
-	pool, cleanup, err := testutil.SetupPostgresShared()
+	pool, _, err := testutil.SetupPostgresShared()
 	require.NoError(t, err)
-	t.Cleanup(cleanup)
 	ctx := context.Background()
 	uid := func(name string, status int) int64 {
 		var id int64

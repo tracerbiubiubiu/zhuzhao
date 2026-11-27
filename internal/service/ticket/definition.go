@@ -69,6 +69,8 @@ func (s *Service) PublishTicketType(ctx context.Context, expected *model.TicketT
 		}
 		// Runtime identity, live activation and draft revision are not rule content.
 		snap := *draft
+		snap.ReadPolicy = ""
+		snap.ReadRoleCodes = nil
 		snap.ID = 0
 		snap.Version = 0
 		snap.IsActive = false

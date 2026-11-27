@@ -55,7 +55,7 @@ func TestIAMGuard_OldOwnerCannotDelegateThroughReusedPath(t *testing.T) {
 	inherited, err := env.deleg.IsAncestorOwner(ctx, env.owner, child, path)
 	require.NoError(t, err)
 	assert.False(t, inherited, "historical same-path owner is not an ancestor by identity")
-	gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+	gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 	assert.Zero(t, identityFilterCount(t, gate, env.owner, newTicket))
 	require.Equal(t, 1, identityFilterCount(t, gate, env.owner, oldTicket), "BK20 actual old org_id delegation remains")
 	for _, tc := range []struct {
@@ -125,7 +125,7 @@ func TestIAMGuard_LivePathScopeCannotReadOrAssignHistoricalIdentity(t *testing.T
 			_, err = testPool.Exec(ctx, `INSERT INTO user_orgs(user_id,org_id,ticket_scope) VALUES($1,$2,$3)`, env.mem2, current, ticketScope)
 			require.NoError(t, err)
 			oldTicket, newTicket := identityTicket(t, old, env.mem1), identityTicket(t, current, env.mem1)
-			gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+			gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 			assert.Zero(t, identityFilterCount(t, gate, env.mem2, oldTicket), "same path is only a candidate; org_id ancestry must agree")
 			actions := []string{"read"}
 			if kind == "group" {
@@ -166,7 +166,7 @@ func TestIAMGuard_IndependentRootSourceKeepsPausedAndHistoricalTargets(t *testin
 			}
 			require.NoError(t, err)
 			ticketID := identityTicket(t, env.vgID, env.mem1)
-			gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+			gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 			require.Equal(t, 1, identityFilterCount(t, gate, env.mem2, ticketID), "independent root source remains qualified")
 			for _, action := range []string{"read", "assign"} {
 				ok, err := gate.Authorize(ctx, resource.AuthorizeRequest{UserID: env.mem2, Roles: []string{"viewer"}, ResourceID: fmt.Sprint(ticketID), Action: action})
@@ -189,7 +189,7 @@ func TestIAMGuard_ArchiveOwnerUsesIdentityAfterRecreatedOrganizationMoves(t *tes
 	current := identityRecreate(t, env.pID, false)
 	destination := iambOrg(t, "identity_move_"+uniqueSuffix())
 	require.NoError(t, grantOrgService(t).Move(ctx, &model.MoveOrgRequest{ID: current, NewParentID: &destination}))
-	gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+	gate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 	require.Equal(t, 1, identityFilterCount(t, gate, env.owner, ticketID), "BK20 list uses the original actual org identity")
 	ok, err := gate.Authorize(ctx, resource.AuthorizeRequest{UserID: env.owner, Roles: []string{"viewer"}, ResourceID: fmt.Sprint(ticketID), Action: "read"})
 	require.NoError(t, err)

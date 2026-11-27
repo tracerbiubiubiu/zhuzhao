@@ -70,6 +70,8 @@ type TagRow struct {
 
 // TicketType 工单类型配置
 type TicketType struct {
+	ReadPolicy              string          `json:"read_policy,omitempty"`
+	ReadRoleCodes           []string        `json:"read_role_codes,omitempty"`
 	CurrentPublishedVersion *int64          `json:"current_published_version,string" db:"current_published_version"`
 	ID                      int64           `json:"id,string" db:"id"`
 	Code                    string          `json:"code" db:"code"`

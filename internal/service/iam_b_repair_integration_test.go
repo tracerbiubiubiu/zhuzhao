@@ -182,7 +182,7 @@ func TestIAMB_DelegatePauseKeepsBusinessAndArchivePaths(t *testing.T) {
 	require.NoError(t, err)
 	var ticketID int64
 	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,priority,status,created_by,org_id,org_path) SELECT 'iamb_type','合成停用测试',3,'closed',$1,id,path FROM organizations WHERE id=$2 RETURNING id`, env.mem1, env.vgID).Scan(&ticketID))
-	resourceGate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+	resourceGate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 	_, err = testPool.Exec(ctx, `UPDATE organizations SET deleted_at=NOW() WHERE id=$1`, env.vgID)
 	require.NoError(t, err)
 	ok, err := resourceGate.Authorize(ctx, resource.AuthorizeRequest{UserID: env.admin, Roles: []string{"viewer"}, ResourceID: fmt.Sprint(ticketID), Action: "read"})

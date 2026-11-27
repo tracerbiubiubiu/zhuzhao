@@ -456,6 +456,7 @@ func (s *Service) previewDefinitionSnapshot(ctx context.Context, tx pgx.Tx, draf
 		return "", err
 	}
 	snap := *draft
+	snap.ReadPolicy, snap.ReadRoleCodes = "", nil
 	snap.ID, snap.Version, snap.IsActive, snap.CurrentPublishedVersion, snap.CreatedAt = 0, 0, false, nil, time.Time{}
 	raw, err := json.Marshal(model.TicketDefinitionSnapshot{Type: snap, Fields: snapshotFields})
 	if err != nil {
