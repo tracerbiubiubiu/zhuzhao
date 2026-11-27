@@ -18,7 +18,7 @@ import (
 func identityTicket(t *testing.T, orgID, creator int64) int64 {
 	t.Helper()
 	ctx := context.Background()
-	_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES('iam_identity','Synthetic identity') ON CONFLICT DO NOTHING`)
+	_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy) VALUES('iam_identity','Synthetic identity','inherit') ON CONFLICT DO NOTHING`)
 	require.NoError(t, err)
 	var id int64
 	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,status,created_by,org_id,org_path) SELECT 'iam_identity','Synthetic identity','closed',$1,id,path FROM organizations WHERE id=$2 RETURNING id`, creator, orgID).Scan(&id))
@@ -30,7 +30,7 @@ func identityFilterCount(t *testing.T, gate *ticketservice.Resource, userID, tic
 	f, err := gate.GetFilter(ctx, userID, "list")
 	require.NoError(t, err)
 	var count int
-	require.NoError(t, testPool.QueryRow(ctx, "SELECT count(*) FROM tickets WHERE ("+f.Where+") AND id=$3", append(f.Args, ticketID)...).Scan(&count))
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM tickets WHERE (%s) AND id=$%d", f.Where, len(f.Args)+1), append(f.Args, ticketID)...).Scan(&count))
 	return count
 }
 func identityRecreate(t *testing.T, old int64, virtual bool) int64 {

@@ -82,7 +82,7 @@ func newCreateC04InDB(t *testing.T, db *pgxpool.Pool, prepare func(*createC04Fix
 	}{
 		{`INSERT INTO user_roles(user_id,role_id)VALUES($1,$2)`, []any{f.actor, f.role}},
 		{`INSERT INTO user_orgs(user_id,org_id)VALUES($1,$2)`, []any{f.actor, f.org}},
-		{`INSERT INTO ticket_types(code,name)VALUES($1::text,$1::text)`, []any{f.code}},
+		{`INSERT INTO ticket_types(code,name,read_policy)VALUES($1::text,$1::text,'inherit')`, []any{f.code}},
 		{`INSERT INTO ticket_templates(code,name,type_code,default_priority,default_fields,org_id,org_path,created_by)VALUES($1::text,$1::text,$1::text,2,'{"description":"template description"}',$2,$1::text::ltree,$3)`, []any{f.code, f.org, f.actor}},
 		{`INSERT INTO ticket_type_fields(type_code,field_key,field_label,field_type,field_meta)VALUES($1,'source','source','input','{}'),($1,'result','result','input','{"fetch":{"source":{"type":"internal_db"},"trigger_by":"source","mapping":{"value":"result"}}}')`, []any{f.code}},
 		{`INSERT INTO casbin_rule(ptype,v0,v1,v2)VALUES('p',$1,'/api/v1/tickets','POST')`, []any{"role::" + f.code}},
