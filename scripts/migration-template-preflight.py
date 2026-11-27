@@ -30,6 +30,9 @@ POLICIES = {
          ["ticket_action_notify"], [("ticket", "ticket.action_notify", "ticket_action_notify")]),
     80: ("000080_storage_usage_alert_seed.down.sql", "6fe0fb231bbe820d97d7c2bf88225deb1b5239eceb333b103f533c8f3cb07934",
          ["ops_storage_usage_alert"], [("ops", "ops.storage_usage_high", None)]),
+    # 102 removes no rules and deletes its untouched seed only if unreferenced.
+    102: ("000102_review_notification_delivery.down.sql", "a30bfab5bc57935d48227108a4378cccecd809904d79d2b9a230ab7156cbe2e1",
+          [], []),
 }
 
 
@@ -177,6 +180,11 @@ def inspect(snapshot, target, files):
                       "templates_to_remove": codes, "rules_matching_down_delete": removed,
                       "surviving_references": blockers})
     blocked = [step["migration"] for step in steps if step["surviving_references"]]
+    warnings = []
+    if target <= 74:
+        warnings.append("Target <=74 also requires compatible code rollback; see runbook section 6")
+    if target < 102 <= current:
+        warnings.append("Migration 102 separately requires empty notification review and delivery tables; see runbook section 6.7")
     return {"status": "BLOCKED_TEMPLATE_REFERENCES" if blocked else "NO_TEMPLATE_REFERENCE_BLOCKERS",
             "scope": "message-template foreign-key references only; not approval of an entire rollback",
             "current_version": current, "target_version": target, "dirty": False,
@@ -184,7 +192,7 @@ def inspect(snapshot, target, files):
             "first_blocking_migration": blocked[0] if blocked else None,
             "requires_code_rollback": target <= 74,
             "incoming_foreign_keys": fks, "steps": steps,
-            "warnings": (["Target <=74 also requires compatible code rollback; see runbook section 6"] if target <= 74 else []),
+            "warnings": warnings,
             "operator_actions": [
                 "Review every rule matching a historical down DELETE; matching a seed key does not prove it was not customized.",
                 "Review template customizations separately; this check does not certify that deleting seed templates is acceptable.",

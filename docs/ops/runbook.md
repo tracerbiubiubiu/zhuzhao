@@ -224,7 +224,7 @@ python3 scripts/migration-template-preflight.py --target-version 78
 
 工具不取本地默认DSN、不接收argv口令；URI须显式包含用户、单TCP host与数据库，仅允许sslmode/connect_timeout参数，清除继承PG*覆盖。返回0仅表示所选窗口没有存活模板外键引用阻断，**不是整个回滚许可**；1表示存在阻断引用，须由所有者决定保留模板或重新绑定定制规则后重查；2表示未证实（dirty、权限/连接错误、范围缺失、未知FK、历史SQL漂移等），不得当作通过。
 
-支持clean current到本地已有且>=61、低于current的target；跨过000061外键/000060版本列边界显式拒绝。五类seed-down按真实DELETE谓词顺序模拟，79带template_code限定；整份已核down文件SHA变化、新增未建模消息迁移或入站FK变化均须先重新核验策略。工具仅执行一个REPEATABLE READ READ ONLY事务并ROLLBACK，不执行migrate/down/force或业务写入；快照不排斥后续写入，实际回滚须协调维护窗口并紧邻down重跑。模板正文删除影响另行审阅。
+支持clean current到本地已有且>=61、低于current的target；跨过000061外键/000060版本列边界显式拒绝。五类旧seed-down按真实DELETE谓词顺序模拟，79带template_code限定。000102保留仍被引用的模拟模板，由[复核消息回退步骤](#67-复核消息切换与回退)另查新业务事实。整份已核down文件SHA变化、新增未建模消息迁移或入站FK变化均须先重新核验策略。工具仅执行一个REPEATABLE READ READ ONLY事务并ROLLBACK，不执行migrate/down/force或业务写入；快照不排斥后续写入，实际回滚须协调维护窗口并紧邻down重跑。模板正文删除影响另行审阅。
 
 target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码回退耦合。失败down后先核实际数据及dirty检查点，禁止仅凭目标号force。脚本回归入口为`python3 scripts/test-migration-template-preflight.py`；真实PG与项目门禁证据在对应分批审计报告中单列，不能用只读预检代替回滚演练。
 
