@@ -170,6 +170,16 @@ get订阅动作采用专用target_from_event=true：只固定已登记的AL类�
 
 ## 6. 消息：公共HTTP能力与一条私有映射
 
+### 第 15 项本地候选
+
+整改提交复测在原事务写入复核站内记录。模拟渠道启用时，同事务保存逐收件人的投递和原操作关联。待处理、普通抄送与首次接单超时沿现有入口验收。复核消息进入收件箱、总数、未读角标及标读前均核当前资格；投递状态查询要求原收件人仍可读原票及关联风险，支持复核完成后按原 ID 对账。 [实施与验收范围](../planning/phase6-step15-notifications-plan.md)
+
+`POST /api/v1/message-templates/preview` 使用合成变量渲染草稿，由通知配置按钮权限控制。`GET /api/v1/notifications/delivery?delivery_id=…` 读取当前收件人原投递元数据。复核外送沿 `/me/notification-optouts` 的 `ticket.review_requested` 和域级退订检查。历史 `message_log` 的 `sent` 继续表达旧渠道语义。
+
+模拟 profile 有固定地址、出站和回调各自的签名身份。Core 认定受理、送达及明确拒收前校验回执绑定；超时、中断或无有效回执按原 ID 核对。送达必须有提供方回执引用。模板渲染、冻结载荷、投递状态和提供方事件各按本地事务落库。外送失败与未知状态保留原工单事实。真实渠道验收在获准窗口执行。
+
+本地合成运行以独占环境配置 `MESSAGE_HTTP_MOCK_ORIGIN`、`MESSAGE_HTTP_MOCK_PROFILE`、`MESSAGE_HTTP_MOCK_AK/SK` 和 `MESSAGE_HTTP_MOCK_CALLBACK_AK/SK`。同一 profile 的目标及签名身份受存储绑定约束，可以轮换同身份的密钥。关闭本地 mock 后仍可读取已保存的本地回执。用原绑定启用渠道时可继续核对。迁移 000102 发现复核或投递历史时拒绝降级，应保留记录表与状态。
+
 ### 6.1 应发、收件人及状态
 
 业务事务写事实及消息意图，消息用例按固定规则/模板版本生成逐收件人的应发项；业务提交成功与发送成功分开。R01源失败则本批要求不可丢的业务命令失败；提交后提供方失联只影响消息状态，不回滚已完成工单/风险事实。原best_effort Hook只服务未迁移低一致性通知，不能同时执行本次durable消费者。

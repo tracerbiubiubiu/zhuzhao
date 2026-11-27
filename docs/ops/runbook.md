@@ -224,7 +224,7 @@ python3 scripts/migration-template-preflight.py --target-version 78
 
 工具不取本地默认DSN、不接收argv口令；URI须显式包含用户、单TCP host与数据库，仅允许sslmode/connect_timeout参数，清除继承PG*覆盖。返回0仅表示所选窗口没有存活模板外键引用阻断，**不是整个回滚许可**；1表示存在阻断引用，须由所有者决定保留模板或重新绑定定制规则后重查；2表示未证实（dirty、权限/连接错误、范围缺失、未知FK、历史SQL漂移等），不得当作通过。
 
-支持clean current到本地已有且>=61、低于current的target；跨过000061外键/000060版本列边界显式拒绝。五类seed-down按真实DELETE谓词顺序模拟，79带template_code限定；整份已核down文件SHA变化、新增未建模消息迁移或入站FK变化均须先重新核验策略。工具仅执行一个REPEATABLE READ READ ONLY事务并ROLLBACK，不执行migrate/down/force或业务写入；快照不排斥后续写入，实际回滚须协调维护窗口并紧邻down重跑。模板正文删除影响另行审阅。
+支持clean current到本地已有且>=61、低于current的target；跨过000061外键/000060版本列边界显式拒绝。五类旧seed-down按真实DELETE谓词顺序模拟，79带template_code限定。000102保留仍被引用的模拟模板，由[复核消息回退步骤](#67-复核消息切换与回退)另查新业务事实。整份已核down文件SHA变化、新增未建模消息迁移或入站FK变化均须先重新核验策略。工具仅执行一个REPEATABLE READ READ ONLY事务并ROLLBACK，不执行migrate/down/force或业务写入；快照不排斥后续写入，实际回滚须协调维护窗口并紧邻down重跑。模板正文删除影响另行审阅。
 
 target<=74时输出`requires_code_rollback=true`，仍须遵守本节B案代码回退耦合。失败down后先核实际数据及dirty检查点，禁止仅凭目标号force。脚本回归入口为`python3 scripts/test-migration-template-preflight.py`；真实PG与项目门禁证据在对应分批审计报告中单列，不能用只读预检代替回滚演练。
 
@@ -285,6 +285,14 @@ P1 补修候选启用 `000095` 和 `000096` 后，须与同批 Core 一起启动
 
 完整停用前分别确认 Core 没有 `pending`，ActiveList 已将 Core 接收过的源事实的原 ACK 入账，以及 Taskrunner 侧已记账或已登记异常供运维处理。检查 ActiveList 的 `stage_commit_ref` 和 `ack_cursor`。Core 业务终态与队列记账可能分开到达，排空应保留到外侧确认完成。两个开关都置为 false 再重启时，若 Core 仍有待处理记录，会在取得单例所有权后拒启。恢复排空配置并继续核对，保留迁移 `000101` 与终态历史。
 
+### 6.7 复核消息切换与回退
+
+进入维护窗口后先收口流量，核对 v101 备份并停止全部旧 Core，再应用 `000102`。先启动同批 Core，查权限目录、就绪和站内消息，再切换同批 UI。迁移新增了模板预览的权限目录，旧 Core 再启动会拒绝该目录。已运行的旧进程必须在迁移前停止，旧版收件箱缺少复核消息的当前资格投影。
+
+模拟外送默认关闭。启用前在当前数据库只读确认 `ticket_review_http_mock` 行的 `review_http_mock_seed` 和 `enabled` 均为真，渠道为 `webhook`，业务域为 `ticket`。同名的既有模板保留原归属。未通过预检时保持模拟外送关闭。已启用环境遇到模板缺失、未绑定或停用时，原复核和站内提醒照常保存，该次外送记为失败并可按原号查看。
+
+回退时先停止新 Core。仅当复核关联和投递记录都为空时，按迁移脚本回到 v101，再启动匹配的旧 Core 与 UI。已产生任一事实时保留 `000102` 和原记录，按影响关闭模拟外送，使用支持 v102 的制品前修并查原投递号。已停止自动核查的受理或未知回执仍可读，也可接收对应的迟到证据。
+
 ## 7. 多会话协作与验收环境纪律（2026-10-26 立约）
 
 2026-11-17 pass8补修产品交接（已无运行资源占用）：主仓#15与UI#9已按已验head合main，合并树等于验证候选；本批完整门禁/运行专项及独审见[补修记录](../review/reports/audit-pass8-followup-2026-11-17.md)。owner=`zz-pass8-followup-20261117`的8容器、7卷、3网络和16个临时镜像标签已精确回收，宿主任务进程零残留，受保护容器/卷/网络身份不变；原开发服务及活跃UI目录未切换。状态文档由root唯一集成，最终main CI、工作树/分支及封存逐项收据归材料ID`maintenance/audit-pass8-followup-20261117/`，以准确Git与sealed-index为准，不凭本行清理其它会话资源。
@@ -309,6 +317,7 @@ P1 补修候选启用 `000095` 和 `000096` 后，须与同批 Core 一起启动
   | Phase 6 第 12–14 项 | [B3 实施与验收计划](../planning/phase6-steps12-14-b3-plan.md)。接续复验使用独立 `codex/phase6-b3-verified` 四仓工作树，主会话统一核对路径和编号。 | [固定候选验收](../review/reports/phase6-b3-steps12-14-validation-2026-11-26.md)，版本以 Git 为准。 | 2026-11-26 |
   | Phase 6 第 11–14 项集成 | 主会话负责四仓主线集成与显式路径提交。独立复核覆盖参考查询准入、任务身份与回执、清单变更、浏览器和组合启动配置。 | 四仓准确提交与检查以 PR、主线 CI 及隔离验收为准。启用范围沿用各项实施计划。 | 2026-11-27 |
   | Phase 6 第 11–14 项复验修复 | 独立树实施原号对账、排空、发布校验与 B1 错误分类。主会话管理固定候选和独占栈，各改动由另一助手复核。 | [修复计划与验收范围](../planning/phase6-b3-b1-repair-plan.md)。候选供审阅。 | 2026-11-27 |
+  | Phase 6 第 15 项消息 | [实施与验收计划](../planning/phase6-step15-notifications-plan.md)。主会话负责 Core 与 UI 集成，源事务、签名 HTTP、故障回执和浏览器由不同助手验收或复核。 | [隔离验收记录](../review/reports/phase6-step15-notifications-2026-11-27.md)，本地候选通过门禁及 B2 专用浏览器 8 条，C04 补跑通过。 | 2026-11-27 |
   | Phase 6 第 10 项 | [实施与验收计划](../planning/phase6-step10-delivery-plan.md)。主会话负责集成与路径提交，目录、改权审计、入口和浏览器证据分人复验。 | 固定候选、隔离证据和远端门禁以 Git 与验收收据为准。 | 2026-11-26 |
   | Phase 6 第 11 项 | [合成参考应用实施与验收](../planning/phase6-step11-reference-app-plan.md)。分支 `codex/phase6-step11-b1`，本批独占运行资源，主会话负责集成。 | 仅本地候选。跨会话合流时核对共享状态文档。 | 2026-11-26 |
   | 公司仅 SSO、本地授权规划同步 | 主会话整合[接入计划](../planning/uaa-sso-local-authorization-plan.md)、阶段交接与机器排程；具名助手分工评审和独立树编辑。 | 文档候选由主会话交付；版本状态以 Git 为准。 | 2026-11-26 |

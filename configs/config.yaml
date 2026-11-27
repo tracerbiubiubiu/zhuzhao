@@ -78,6 +78,8 @@ audit:
 #（env NOTIFICATION_UIP_ENDPOINT）；dev 空值=两态桩开发态；契约到手填值切生产态
 #（字面值——viper 不支持 ${} 插值）
 notification:
+  # 公共模拟渠道默认关闭。完整配置由 MESSAGE_HTTP_MOCK_* 环境变量注入。
+  http_mock: {}
   uip:
     endpoint: ""
   volume_warn_per_hour: 500      # 小时发送量 WARN 阈值（C-16 观测批）：0=关；批量导入轰炸的仪表面信号

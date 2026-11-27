@@ -1002,6 +1002,48 @@
                 "responses": {}
             }
         },
+        "/api/v1/message-templates/preview": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "message"
+                ],
+                "summary": "预览消息模板",
+                "parameters": [
+                    {
+                        "description": "模板草稿",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.MessageTemplatePreviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.MessageTemplatePreview"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/message-templates/update": {
             "post": {
                 "produces": [
@@ -1111,6 +1153,43 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/delivery": {
+            "get": {
+                "tags": [
+                    "notification"
+                ],
+                "summary": "查询本人的原投递状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "原投递 ID",
+                        "name": "delivery_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_handler.messageDeliveryResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -8587,6 +8666,56 @@
                 "ticket_id": {
                     "type": "string",
                     "example": "0"
+                }
+            }
+        },
+        "internal_handler.MessageTemplatePreview": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.MessageTemplatePreviewRequest": {
+            "type": "object",
+            "required": [
+                "body",
+                "channel",
+                "subject"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.messageDeliveryResponse": {
+            "type": "object",
+            "properties": {
+                "delivery_id": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -20,6 +21,7 @@ import (
 
 // InboxService 站内消息中心。
 type InboxService struct {
+	reviewCheck   func(context.Context, pgx.Tx, repository.MessageDeliverySource) (bool, string, error)
 	repo          *repository.NotificationInboxRepo
 	eventReg      *domainevent.HookRegistry
 	retentionDays int
@@ -47,6 +49,11 @@ func (s *InboxService) SetEventRegistry(reg *domainevent.HookRegistry) *InboxSer
 		reg.Subscribe(domainevent.BizOps, "inbox.ops", s)
 	}
 	return s
+}
+
+// SetReviewNoticeCheck installs the current access policy for managed review notices.
+func (s *InboxService) SetReviewNoticeCheck(check func(context.Context, pgx.Tx, repository.MessageDeliverySource) (bool, string, error)) {
+	s.reviewCheck = check
 }
 
 // seedTemplates B6-7 入站渲染摘要（biz_type+action → title 模板；06 号 A.8.5
@@ -172,22 +179,43 @@ func inboxLink(ev domainevent.DomainEvent) string {
 
 // Inbox 收件箱分页。
 func (s *InboxService) Inbox(ctx context.Context, recipientID int64, unreadOnly bool, page, pageSize int) ([]*model.NotificationRow, int64, error) {
-	return s.repo.Inbox(ctx, recipientID, unreadOnly, page, pageSize)
+	var rows []*model.NotificationRow
+	var total int64
+	err := s.repo.ReviewNoticeVisibility(ctx, recipientID, s.reviewCheck, func(ctx context.Context) error {
+		var err error
+		rows, total, err = s.repo.Inbox(ctx, recipientID, unreadOnly, page, pageSize)
+		return err
+	})
+	return rows, total, err
 }
 
 // MarkRead 单条已读。
 func (s *InboxService) MarkRead(ctx context.Context, id, recipientID int64) error {
-	return s.repo.MarkRead(ctx, id, recipientID)
+	return s.repo.ReviewNoticeVisibility(ctx, recipientID, s.reviewCheck, func(ctx context.Context) error {
+		return s.repo.MarkRead(ctx, id, recipientID)
+	})
 }
 
 // MarkAllRead 全部已读。
 func (s *InboxService) MarkAllRead(ctx context.Context, recipientID int64) (int64, error) {
-	return s.repo.MarkAllRead(ctx, recipientID)
+	var count int64
+	err := s.repo.ReviewNoticeVisibility(ctx, recipientID, s.reviewCheck, func(ctx context.Context) error {
+		var err error
+		count, err = s.repo.MarkAllRead(ctx, recipientID)
+		return err
+	})
+	return count, err
 }
 
 // UnreadCount 未读数（badges sections.unread）。
 func (s *InboxService) UnreadCount(ctx context.Context, recipientID int64) (int64, error) {
-	return s.repo.UnreadCount(ctx, recipientID)
+	var count int64
+	err := s.repo.ReviewNoticeVisibility(ctx, recipientID, s.reviewCheck, func(ctx context.Context) error {
+		var err error
+		count, err = s.repo.UnreadCount(ctx, recipientID)
+		return err
+	})
+	return count, err
 }
 
 // CleanupExpired 保留策略（骑 CronScheduler——Reentrant 幂等）。

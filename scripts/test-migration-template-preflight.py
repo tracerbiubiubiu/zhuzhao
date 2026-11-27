@@ -145,6 +145,22 @@ print(os.environ["MOCK_SNAPSHOT"])
         snapshot["checkpoint"][0].update(version=future_version + 1, dirty=False)
         self.run_check(snapshot, target=LATEST_LOCAL_VERSION, code=2)
 
+    def test_102_retains_referenced_mock_seed_and_checks_script_digest(self):
+        snapshot = fresh()
+        snapshot["checkpoint"][0]["version"] = 102
+        snapshot["rules"].append(rule(20, "ticket.transitioned", "ticket_review_http_mock", enabled=False))
+        out = self.run_check(snapshot, target=101)
+        step, = out["steps"]
+        self.assertEqual(step["migration"], 102)
+        self.assertEqual(step["rules_matching_down_delete"], [])
+        self.assertEqual(step["surviving_references"], [])
+        self.assertTrue(any("notification" in warning for warning in out["warnings"]))
+
+        path = self.root / "migrations/000102_review_notification_delivery.down.sql"
+        path.write_bytes(path.read_bytes() + b"\n-- changed checked down\n")
+        out = self.run_check(snapshot, target=101, code=2)
+        self.assertIn("checked down migration 102 changed", out["error"])
+
     def test_source_drift_unknown_related_down_and_range_gap_fail_closed(self):
         path = self.root / "migrations/000079_action_notify_seed.down.sql"
         original = path.read_bytes()

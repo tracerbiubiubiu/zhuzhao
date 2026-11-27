@@ -4,6 +4,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/msgrender"
+	"net/http"
 
 	"github.com/tracerbiubiubiu/zhuzhao-utils/response"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -130,4 +131,38 @@ func (h *MessageTemplateHandler) Variables(c *gin.Context) {
 	// 内置变量（通知链每次必供——四象限 fail 档锚点）
 	vars := BuiltinTemplateVars()
 	response.OK(c, vars)
+}
+
+type MessageTemplatePreviewRequest struct {
+	Code    string `json:"code"`
+	Channel string `json:"channel" binding:"required"`
+	Subject string `json:"subject" binding:"required"`
+	Body    string `json:"body" binding:"required"`
+}
+
+type MessageTemplatePreview struct {
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
+// Preview evaluates the draft against synthetic values.
+// @Summary  预览消息模板
+// @Tags     message
+// @Accept   json
+// @Param    request body MessageTemplatePreviewRequest true "模板草稿"
+// @Success  200 {object} response.Response{data=MessageTemplatePreview}
+// @Router   /api/v1/message-templates/preview [post]
+func (h *MessageTemplateHandler) Preview(c *gin.Context) {
+	var req MessageTemplatePreviewRequest
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32<<10)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "模板预览参数错误")
+		return
+	}
+	subject, body, err := service.PreviewMessageTemplate(req.Code, req.Channel, req.Subject, req.Body)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, MessageTemplatePreview{Subject: subject, Body: body})
 }

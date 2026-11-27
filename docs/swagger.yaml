@@ -2061,6 +2061,39 @@ definitions:
     - object_key
     - ticket_id
     type: object
+  internal_handler.MessageTemplatePreview:
+    properties:
+      body:
+        type: string
+      subject:
+        type: string
+    type: object
+  internal_handler.MessageTemplatePreviewRequest:
+    properties:
+      body:
+        type: string
+      channel:
+        type: string
+      code:
+        type: string
+      subject:
+        type: string
+    required:
+    - body
+    - channel
+    - subject
+    type: object
+  internal_handler.messageDeliveryResponse:
+    properties:
+      delivery_id:
+        type: string
+      reason:
+        type: string
+      state:
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_handler.notificationIDReq:
     properties:
       id:
@@ -3118,6 +3151,30 @@ paths:
       summary: 删除消息模板
       tags:
       - message
+  /api/v1/message-templates/preview:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模板草稿
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.MessageTemplatePreviewRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.MessageTemplatePreview'
+              type: object
+      summary: 预览消息模板
+      tags:
+      - message
   /api/v1/message-templates/update:
     post:
       produces:
@@ -3188,6 +3245,27 @@ paths:
       summary: 删除通知配置（body 携带 code——zhuzhao 风格）
       tags:
       - notifications
+  /api/v1/notifications/delivery:
+    get:
+      parameters:
+      - description: 原投递 ID
+        in: query
+        name: delivery_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_handler.messageDeliveryResponse'
+              type: object
+      summary: 查询本人的原投递状态
+      tags:
+      - notification
   /api/v1/notifications/inbox:
     get:
       parameters:

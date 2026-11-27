@@ -59,7 +59,8 @@ type Config struct {
 
 // NotificationConfig phase5 S6 通知渠道配置（06 号 §3）。
 type NotificationConfig struct {
-	UIP UIPConfig `mapstructure:"uip"`
+	UIP      UIPConfig             `mapstructure:"uip"`
+	HTTPMock MessageHTTPMockConfig `mapstructure:"http_mock"`
 	// VolumeWarnPerHour 小时发送量 WARN 阈值（C-16——2026-10-27 观测批；批量导入
 	// 场景投递全成功零死信，死信告警抓不住「成功的骚扰」）。0=关（默认代码态；
 	// configs/config.yaml 随批给 500）；超限仅 WARN 日志不走 S6 通知闭环——
@@ -329,6 +330,12 @@ func Load(path string) (*Config, error) {
 
 	// 环境变量绑定（AutomaticEnv 对 nested key 不自动映射，需显式 BindEnv）
 	viper.BindEnv("server.mode", "APP_SERVER_MODE")
+	viper.BindEnv("notification.http_mock.origin", "MESSAGE_HTTP_MOCK_ORIGIN")
+	viper.BindEnv("notification.http_mock.profile", "MESSAGE_HTTP_MOCK_PROFILE")
+	viper.BindEnv("notification.http_mock.ak", "MESSAGE_HTTP_MOCK_AK")
+	viper.BindEnv("notification.http_mock.sk", "MESSAGE_HTTP_MOCK_SK")
+	viper.BindEnv("notification.http_mock.callback_ak", "MESSAGE_HTTP_MOCK_CALLBACK_AK")
+	viper.BindEnv("notification.http_mock.callback_sk", "MESSAGE_HTTP_MOCK_CALLBACK_SK")
 	viper.BindEnv("server.port", "APP_PORT") // 端口分配表 33334 第二实例机制(APP_PORT=33334 make dev)
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("database.password", "DB_PASSWORD")

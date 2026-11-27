@@ -16,11 +16,12 @@ import (
 
 type riskWorkflowPorts struct {
 	*riskworkflow.ReceiptService
-	pool       *pgxpool.Pool
-	tickets    *ticket.Service
-	storage    *pkgstorage.ConfigStore
-	enabled    bool
-	assignment *riskworkflow.AssignmentService
+	pool         *pgxpool.Pool
+	tickets      *ticket.Service
+	storage      *pkgstorage.ConfigStore
+	enabled      bool
+	assignment   *riskworkflow.AssignmentService
+	reviewNotice riskworkflow.ReviewNoticeRecorder
 }
 
 func (s riskWorkflowPorts) Current(ctx context.Context, actor, ticketID int64) (model.RiskWorkflowContext, error) {
@@ -49,7 +50,7 @@ func (s riskWorkflowPorts) writes() (*riskworkflow.Service, error) {
 		return nil, errcode.ErrServiceUnavailable
 	}
 	evidence := storageservice.NewBoundTicketEvidenceValidator(s.pool, cfg.Bucket)
-	return riskworkflow.NewService(s.pool, s.tickets, evidence), nil
+	return riskworkflow.NewService(s.pool, s.tickets, evidence).SetReviewNoticeRecorder(s.reviewNotice), nil
 }
 
 func (s riskWorkflowPorts) Finish(ctx context.Context, cmd riskremediation.FinishCommand, ticketInput ticket.RiskWorkflowTicketInput) (riskremediation.Result, error) {
