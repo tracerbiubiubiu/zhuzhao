@@ -18,7 +18,7 @@ type TicketHandlingCapabilities struct {
 
 type TicketHandlingResult struct {
 	ID         int64  `json:"id,string"`
-	AssignedTo *int64 `json:"assigned_to,string"`
+	AssignedTo *int64 `json:"assigned_to,string" extensions:"x-nullable"`
 	Revision   int64  `json:"revision,string"`
 	Status     string `json:"status"`
 }

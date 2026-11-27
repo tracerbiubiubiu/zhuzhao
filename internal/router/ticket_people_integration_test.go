@@ -69,7 +69,7 @@ func TestTicketPeopleHTTP_ContextGateAndProjection(t *testing.T) {
 	foreign := org("f3_foreign", "f3foreign", nil)
 	_, err = pool.Exec(ctx, `INSERT INTO user_orgs(user_id,org_id,ticket_scope) VALUES($1,$3,'group'),($2,$3,'assigned')`, actor, wanted, group)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES('f3_type','synthetic')`)
+	_, err = pool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy) VALUES('f3_type','synthetic','inherit')`)
 	require.NoError(t, err)
 	tk := func(orgID, creator int64) int64 {
 		var id int64
@@ -135,6 +135,19 @@ func TestTicketPeopleHTTP_ContextGateAndProjection(t *testing.T) {
 		require.Equal(t, 200, w.Code, w.Body.String())
 		assert.Contains(t, w.Body.String(), "needle_active")
 		assertDenied(t, actor, query("assign", visible), 403)
+	})
+	t.Run("cc-search-requires-restricted-type-cc-management", func(t *testing.T) {
+		_, err := pool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy) VALUES('f3_cc_restricted','synthetic','participants_only')`)
+		require.NoError(t, err)
+		var id int64
+		require.NoError(t, pool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,created_by,org_id,org_path)
+			SELECT 'f3_cc_restricted','synthetic',$2,id,path FROM organizations WHERE id=$1 RETURNING id`, group, actor).Scan(&id))
+		assertDenied(t, actor, query("cc", id), http.StatusForbidden)
+		roles.roles[actor] = []string{"admin"}
+		defer func() { roles.roles[actor] = []string{"f3_writer"} }()
+		w := do(r, m, actor, http.MethodGet, query("cc", id))
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		assert.Contains(t, w.Body.String(), "needle_active")
 	})
 	t.Run("creation-requires-current-org-and-type", func(t *testing.T) {
 		path := fmt.Sprintf("/api/v1/tickets/people?purpose=create-supervisor&org_id=%d&type_code=f3_type&q=needle", group)

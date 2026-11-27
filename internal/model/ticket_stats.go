@@ -13,5 +13,5 @@ type TicketStatsItem struct {
 	Count           int64    `json:"count"`
 	InProgressCount int64    `json:"in_progress_count"`
 	OverdueCount    int64    `json:"overdue_count"`
-	OverdueRate     *float64 `json:"overdue_rate"`
+	OverdueRate     *float64 `json:"overdue_rate" extensions:"x-nullable"`
 }

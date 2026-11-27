@@ -116,6 +116,11 @@ func (s *PeopleService) Search(ctx context.Context, q model.TicketPeopleQuery, a
 		if q.Purpose == "assign" && (tk.Status == StatusClosed || tk.Status == StatusCancelled) {
 			return nil, errcode.ErrTicketAlreadyClosed
 		}
+		if q.Purpose == "cc" {
+			if err := s.ticket.authorizeCCManagement(ctx, q.TicketID, actor); err != nil {
+				return nil, err
+			}
+		}
 	}
 	if q.Purpose == "create-supervisor" {
 		// Reuse the current Create port: same-branch membership or its exact global org:member exemption.
