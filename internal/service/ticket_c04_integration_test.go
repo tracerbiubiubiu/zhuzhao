@@ -65,7 +65,7 @@ func TestC04_HTTPFreshAuthorization(t *testing.T) {
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO users(username,password)VALUES($1,'fixture')RETURNING id`, code+"_other").Scan(&other))
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO roles(code,name,priority)VALUES($1::text,$1::text,50)RETURNING id`, code).Scan(&role))
 				require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO organizations(code,name,path,ticket_visibility)VALUES($1::text,$1::text,$1::text::ltree,'project_isolated')RETURNING id`, code).Scan(&org))
-				_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name)VALUES($1::text,$1::text)`, code)
+				_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy)VALUES($1::text,$1::text,'inherit')`, code)
 				require.NoError(t, err)
 				_, err = testPool.Exec(ctx, `INSERT INTO user_roles(user_id,role_id)VALUES($1,$2)`, actor, role)
 				require.NoError(t, err)

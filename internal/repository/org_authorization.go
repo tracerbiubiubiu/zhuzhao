@@ -56,18 +56,21 @@ func orgSourceEnabledSQL(alias string, live bool) string {
 // EffectiveRoleCTE is the single source for live direct/org/parent projections.
 // $1 is the target user. Disabled/deleted parents terminate their own path, while
 // independently seeded roles continue to contribute through UNION semantics.
-func EffectiveRoleCTE() string {
+func EffectiveRoleCTE() string { return effectiveRoleCTEFor("$1") }
+
+// userSQL is a trusted query alias or bind position, never request data.
+func effectiveRoleCTEFor(userSQL string) string {
 	return `WITH RECURSIVE seeds AS (
   SELECT ur.role_id AS id FROM user_roles ur
   JOIN roles direct_role ON direct_role.id=ur.role_id AND direct_role.deleted_at IS NULL AND direct_role.status=1
-  WHERE ur.user_id=$1
+  WHERE ur.user_id=` + userSQL + `
   UNION
   SELECT grants.role_id FROM org_roles grants
   JOIN user_orgs membership ON membership.org_id=grants.org_id
    AND (membership.expires_at IS NULL OR membership.expires_at>NOW())
   JOIN organizations source_org ON source_org.id=membership.org_id
   JOIN roles org_role ON org_role.id=grants.role_id AND org_role.deleted_at IS NULL AND org_role.status=1
-  WHERE membership.user_id=$1 AND ` + OrgSourceActiveSQL("source_org") + `
+  WHERE membership.user_id=` + userSQL + ` AND ` + OrgSourceActiveSQL("source_org") + `
  ), expanded AS (
   SELECT id FROM seeds
   UNION

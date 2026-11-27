@@ -188,6 +188,7 @@ func (s *Service) lockPreparedCreateTx(ctx context.Context, tx pgx.Tx, p *prepar
 	}
 	ticket.OrgPath = org.Path
 	if ordinary {
+		ticket.WithdrawalEligible = true
 		if err := s.authorizeCreateOrg(ctx, p.actor, p.req.OrgID); err != nil {
 			return nil, err
 		}

@@ -80,6 +80,9 @@ func (s *TimeoutScanner) Handle(ctx context.Context, _ json.RawMessage) error {
 			continue
 		}
 		for state, m := range metas {
+			if state == StatusCancelled {
+				continue
+			}
 			if m.TimeoutMinutes != nil && *m.TimeoutMinutes > 0 {
 				n, err := s.scanState(ctx, rule, state, *m.TimeoutMinutes, m.Escalation)
 				if err != nil {

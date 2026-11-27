@@ -274,6 +274,13 @@ func (r *RoleRepo) Delete(ctx context.Context, id int64, roleCode string) error 
 		return fmt.Errorf("lock role for delete: %w", err)
 	}
 
+	var typeReference bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM ticket_types WHERE $1 = ANY(read_role_codes))`, roleCode).Scan(&typeReference); err != nil {
+		return fmt.Errorf("check ticket type role references: %w", err)
+	}
+	if typeReference {
+		return errcode.New(errcode.ErrRoleInUse.Code, "该角色仍被工单类型查看范围引用，无法删除")
+	}
 	// BindOrgRole shares this role lock. A binding committed first blocks
 	// retirement; a binding attempted after retirement sees a deleted role.
 	var liveOrgBinding bool

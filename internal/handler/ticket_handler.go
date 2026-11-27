@@ -149,6 +149,10 @@ func parseListQuery(c *gin.Context) (model.TicketListQuery, bool) {
 		next := t.AddDate(0, 0, 1)
 		q.CreatedToAt = &next
 	}
+	if q.CreatedFromAt != nil && q.CreatedToAt != nil && !q.CreatedFromAt.Before(*q.CreatedToAt) {
+		response.BadRequest(c, "created_from 不能晚于 created_to")
+		return q, false
+	}
 	return q, true
 }
 
@@ -172,16 +176,44 @@ func (h *TicketHandler) List(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if q.CreatedFromAt != nil && q.CreatedToAt != nil && !q.CreatedFromAt.Before(*q.CreatedToAt) {
-		response.BadRequest(c, "created_from 不能晚于 created_to")
-		return
-	}
 	resp, err := h.ticketService.List(c.Request.Context(), q, c.GetInt64("userID"))
 	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
 	response.OK(c, resp)
+}
+
+// Stats groups tickets after applying the caller's read scope and list filters.
+//
+//	@Summary 工单统计
+//	@Tags ticket
+//	@Produce json
+//	@Param tag query string false "标签"
+//	@Param group_by query string false "分组维度，默认 status" Enums(status,priority,type_code)
+//	@Param		type_code		query	string	false	"工单类型"
+//	@Param		status			query	string	false	"工单状态"
+//	@Param		statuses		query	string	false	"状态集合，逗号分隔，与status互斥（例assigned,in_progress）"
+//	@Param		exclude_statuses	query	string	false	"排除状态集合，逗号分隔，与status/statuses互斥"
+//	@Param		priority		query	int		false	"优先级（1紧急/2高/3中/4低）"
+//	@Param		assignee		query	string	false	"处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）"
+//	@Param		created_by		query	string	false	"创建人过滤，仅支持 me（当前用户，「我发起的」）"
+//	@Param		keyword			query	string	false	"标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）"
+//	@Param		created_from	query	string	false	"创建日期起（YYYY-MM-DD，UTC 切日，含当日）"
+//	@Param		created_to		query	string	false	"创建日期止（YYYY-MM-DD，UTC 切日，含当日）"
+//	@Success 200 {object} response.Response{data=model.TicketStats}
+//	@Router /api/v1/tickets/stats [get]
+func (h *TicketHandler) Stats(c *gin.Context) {
+	q, ok := parseListQuery(c)
+	if !ok {
+		return
+	}
+	result, err := h.ticketService.Stats(c.Request.Context(), q, c.GetInt64("userID"), c.DefaultQuery("group_by", "status"))
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.OK(c, result)
 }
 
 // Create POST /api/v1/tickets

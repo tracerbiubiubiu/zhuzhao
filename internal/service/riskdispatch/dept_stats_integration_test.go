@@ -38,22 +38,6 @@ func (a dsGetFilterAdapter) VisibleTicketsWhere(ctx context.Context, actorID int
 	return f.Where, f.Args, f.Unscoped, nil
 }
 
-// dsTicketRepo GetFilter 路径不消费 repo/cc/delegation；给拒绝桩（非放行），
-// MatchesLiveOrgPaths 用真实 SQL 保持 livePathMatch 同语义。
-type dsTicketRepo struct{ pool *pgxpool.Pool }
-
-func (r dsTicketRepo) GetByID(context.Context, int64) (*model.Ticket, error) {
-	return nil, errcode.ErrTicketNotFound
-}
-
-func (r dsTicketRepo) MatchesLiveOrgPaths(ctx context.Context, orgID int64, paths []string) (bool, error) {
-	var ok bool
-	err := r.pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM organizations o WHERE o.id = $1 AND o.path::text = ANY($2)
-		 AND `+repository.OrgSourceActiveSQL("o")+`)`, orgID, paths).Scan(&ok)
-	return ok, err
-}
-
 type dsDenyDelegation struct{}
 
 func (dsDenyDelegation) IsOrgAdminOrOwner(context.Context, int64, int64) (bool, error) {
@@ -66,14 +50,10 @@ func (dsDenyDelegation) HasOrgManagePermission(context.Context, int64) (bool, er
 	return false, nil
 }
 
-type dsDenyCC struct{}
-
-func (dsDenyCC) IsCC(context.Context, int64, int64) (bool, error) { return false, nil }
-
 // newDeptStatsReader 真实装配：生产 ResolveScope + 生产 GetFilter SQL。
 func newDeptStatsReader(pool *pgxpool.Pool) *DeptStats {
-	res := ticket.NewResource(dsTicketRepo{pool: pool}, ticket.NewPgxScopeResolver(pool),
-		dsDenyDelegation{}, dsDenyCC{})
+	res := ticket.NewResource(repository.NewTicketRepo(pool), ticket.NewPgxScopeResolver(pool),
+		dsDenyDelegation{})
 	return NewDeptStats(dsGetFilterAdapter{res: res})
 }
 
@@ -120,7 +100,7 @@ func newDeptStatsFixture(t *testing.T, db *pgxpool.Pool, tag string) dsFixture {
 		INSERT INTO risk_families (fingerprint_scope, canonical_key_hash) VALUES ($1, $2) RETURNING id
 	`, "ds_"+tag, tag).Scan(&f.familyID))
 	execMustNoError(t, db, ctx, `
-		INSERT INTO ticket_types (code, name) VALUES ($1, $2) ON CONFLICT DO NOTHING
+		INSERT INTO ticket_types (code, name, read_policy) VALUES ($1, $2, 'inherit') ON CONFLICT DO NOTHING
 	`, f.typeCode, "DS type "+tag)
 
 	newUser := func(name, real string) int64 {
@@ -321,7 +301,7 @@ func TestDeptStats_CurrentTodoFollowsTransferredDept(t *testing.T) {
 	f := newDeptStatsFixture(t, db, "transfer_"+uuid.NewString()[:8])
 	event, directRole := seedDeptStatsPrimaryTransfer(t, db, f)
 	tickets := repository.NewTicketRepo(db)
-	resource := ticket.NewResource(tickets, ticket.NewPgxScopeResolver(db), dsDenyDelegation{}, dsDenyCC{})
+	resource := ticket.NewResource(tickets, ticket.NewPgxScopeResolver(db), dsDenyDelegation{})
 	stats := NewDeptStats(dsGetFilterAdapter{res: resource})
 
 	ticketID := f.insertTicket(t, db, "T-201 漏洞整改")

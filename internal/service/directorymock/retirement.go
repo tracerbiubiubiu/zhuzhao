@@ -175,7 +175,7 @@ func retirementSnapshotSQL() string {
 	), in_flight_tickets AS (
 		SELECT t.id, t.org_id, t.org_path::text AS org_path, t.assigned_to, t.status, t.revision
 		FROM tickets t JOIN source_orgs o ON t.org_id=o.id
-		WHERE t.status NOT IN ('closed','rejected')
+		WHERE t.status NOT IN ('closed','rejected','cancelled')
 	), in_flight_risks AS (
 		SELECT r.id, r.org_id, r.affected_org_id, r.owner_user_id, r.status, r.revision
 		FROM risk_items r

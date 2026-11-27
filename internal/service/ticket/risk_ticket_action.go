@@ -82,6 +82,10 @@ func (s *Service) rejectRiskLifecycleCommandTx(ctx context.Context, tx pgx.Tx, a
 	if !riskLifecycleAction(action) {
 		return nil
 	}
+	return s.requireOrdinaryTicketsTx(ctx, tx, ticketIDs...)
+}
+
+func (s *Service) requireOrdinaryTicketsTx(ctx context.Context, tx pgx.Tx, ticketIDs ...int64) error {
 	for _, ticketID := range ticketIDs {
 		binding, err := s.ticketRepo.ReadActiveRiskTicketBindingTx(ctx, tx, ticketID)
 		if err != nil {

@@ -140,7 +140,7 @@ func NewTicketService(
 	}
 	// 自注册 TicketResource（§2.5 Wire 自注册）；2b 策略 B 透明读 + 2c 组织委托
 	// + S10 B10-1 抄送特例支（读可见集）
-	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation, ccRepo))
+	registry.Register(NewResource(s.ticketRepo, NewPgxScopeResolver(db), delegation))
 	return s
 }
 
@@ -273,10 +273,15 @@ func (s *Service) authorizeCreateOrg(ctx context.Context, actor, orgID int64) er
 
 // Get 获取工单详情（含 L2 可见性校验）
 func (s *Service) Get(ctx context.Context, id int64, actorUserID int64) (*model.Ticket, error) {
+	// Preserve the resource decision audit; fetch only a row that remains visible.
 	if err := s.authorizeCheck(ctx, actorUserID, "read", strconv.FormatInt(id, 10)); err != nil {
 		return nil, err
 	}
-	ticket, err := s.ticketRepo.GetByID(ctx, id)
+	filter, err := s.resolveListFilter(ctx, actorUserID)
+	if err != nil {
+		return nil, err
+	}
+	ticket, err := s.ticketRepo.GetVisibleByID(ctx, id, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +460,7 @@ func (s *Service) updateCommand(ctx context.Context, tx pgx.Tx, req *model.Updat
 	if err != nil {
 		return nil, err
 	}
-	if ticket.Status == StatusClosed {
+	if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
 	// patch 语义：仅校验显式传入的 priority（W4 十六批 Med——写侧改字段级 COALESCE，
@@ -560,7 +565,7 @@ func (s *Service) Close(ctx context.Context, req *model.CloseTicketRequest, acto
 		if err != nil {
 			return err
 		}
-		if ticket.Status == StatusClosed {
+		if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 			return errcode.ErrTicketAlreadyClosed
 		}
 		sm, err := FromTicketType(ttype)
@@ -718,7 +723,7 @@ func (s *Service) assignWithGuard(ctx context.Context, req *model.AssignTicketRe
 			return err
 		}
 		// closed 工单不可分派（与 Update 的 90004 对齐；消除 read-then-assign 窗口）
-		if ticket.Status == StatusClosed {
+		if ticket.Status == StatusClosed || ticket.Status == StatusCancelled {
 			return errcode.ErrTicketAlreadyClosed
 		}
 		// 幽灵分派校验（2026-10-29）：目标用户/催办上级须存在且启用——原实现直写

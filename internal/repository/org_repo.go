@@ -486,7 +486,7 @@ func (r *OrgRepo) Delete(ctx context.Context, id int64) error {
 			(SELECT COUNT(*) FROM org_roles obr
 				JOIN roles r ON r.id = obr.role_id AND r.deleted_at IS NULL
 				WHERE obr.org_id = $1),
-			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status <> 'closed')`,
+			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status NOT IN ('closed','cancelled'))`,
 		id).Scan(&children, &members, &roleBindings, &openTickets); err != nil {
 		return fmt.Errorf("check org delete guards: %w", err)
 	}
@@ -903,7 +903,7 @@ func (r *OrgRepo) DeleteVgWithOwnerCleanup(ctx context.Context, id int64) error 
 				INNER JOIN organizations o ON o.id = uo.org_id
 				INNER JOIN users u ON u.id = uo.user_id
 				WHERE uo.org_id = $1 AND o.deleted_at IS NULL AND u.deleted_at IS NULL),
-			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status <> 'closed')`,
+			(SELECT COUNT(*) FROM tickets WHERE org_id = $1 AND status NOT IN ('closed','cancelled'))`,
 		id).Scan(&children, &members, &openTickets); err != nil {
 		return fmt.Errorf("check org delete guards: %w", err)
 	}

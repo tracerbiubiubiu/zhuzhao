@@ -94,6 +94,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
 | **工单** | CRUD、状态机（open/assigned/in_progress/pending_verify/closed/rejected）、分派、评论/备注、关联、类型/模板、可见性；**W4 随批件（2026-09-29）**：`assignee=me` 列表筛选（P1-c，工作台待办/已办数据源）+ 列表/详情姓名回填 `created_by_name`/`assignee_name`（03 S9，处理人列 N+1 消除；**2026-10-13 升结构化**：新增 `created_by_no/assignee_no` 工号消歧字段 + 评论作者同款回填，前端 UserNameText「人名(工号)」——见 03 S9/S10 契约增补）+ Update 字段级 COALESCE（十六批 Med，nil 不覆盖） | ✅ Phase 2 | `internal/service/ticket/service.go` `state_machine.go` |
 | **工单规则及证据转换** | 草稿与已发布规则分离。建单绑定版本，办理按绑定规则。可信旧票可补绑，规则不明时保留受权查看。证据字段、附件、状态、节点时间、业务历史和回执同事务写入，提交时复核权限。 | 第 4–5 项已合入主线并通过[隔离联合验收](reports/phase6-b2-stage5-acceptance-2026-11-22.md)。逐资产复测、局部返工、关单和历史附件保留有[本轮隔离证据](reports/phase6-b2-stage9-validation-2026-11-23.md)。 | `internal/service/ticket/definition_publication.go` 的 `ExecuteTicketDefinitionPublication` 与 `evidence_transition.go` 的 `applyEvidenceTransitionTx` |
+| **工单办理与配置晋级（第 17 项）** | 第一批为转办、撤回和列表、详情、统计与导出一致的读取范围。第二批为配置晋级、同名状态最小迁版和自动选路暂停。 | 第一批固定本地候选通过独立复核、Core 40 包集成及四档验收、UI 56 条标准和 B2 9 条专项浏览器。第二批按原计划。 | [两批实施与验收计划](../planning/phase6-step17-ticket-implementation-plan.md) · [第一批验收](reports/phase6-step17-batch1-validation-2026-11-28.md) |
 | **风险登记、个人派单和逐资产办理** | 人工与受控来源登记；核实责任后按漏洞和具名责任人派单；分派部门与现势部门分别读回；逐资产证据、复测、风险接受及接单提醒。 | 第 6、7 项五条浏览器用例通过独立复跑。第 8 项在隔离候选完成浏览器、真实附件、丢响应、重启及提醒读回专项。第 9 项隔离签收范围见[验证记录](reports/phase6-b2-stage9-validation-2026-11-23.md)。后续推送候选收紧当前派单授权与钉版校验，保护已引用证据和审计正文。P1 本地候选增加人工核实依据、明确失败组的新预览、证据下载授权、复测继任及接受到期接续。所有者于 2026-11-25 确认签收 Core `d9240575` 与 UI `7253992c` 的固定本地隔离组合。 [固定候选签收证据](reports/phase6-b2-candidate-signoff-2026-11-25.md) | `internal/service/risk`、`riskdispatch`、`riskremediation`、`riskreminder`；迁移 `000089`–`000092`、`000095`–`000096` |
 | **工单模板/关联** | ticket_templates（org_path ltree）、ticket_relations | ✅ Phase 2a（迁移 000015/000016）；11 月 19 日补双端关联读范围，11 月 20 日补有双端写权限的关联候选 | `migrations/000015*` `000016*`，`internal/repository/ticket_repo.go` 的 `ListRelations` |
 | **基础设施** | Wire DI、配置、30秒SIGTERM排空与晚完成判定日志收尾、健康检查、迁移；检测失锁后取消/拒绝受理，判定日志保留持久队列并防旧批次确认；维护启动校验与应急CLI隔离、固定后台能力/离线摘要 | ✅ Phase 1；pass8当前出口本地验证通过，HA后继；资格探测退出根因仍待运行诊断 | `internal/app/`、`internal/pkg/audit/`、`internal/pkg/singleton/`、`internal/config/`、`cmd/maintenance-definition-digest/` |
@@ -297,6 +298,8 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | 000102 | 复核消息原事实关联、模拟渠道绑定、投递、尝试和提供方事件，含模拟模板种子归属与预览权限 | 第 15 项候选，已验隔离往返和模板依赖预检，有投递或复核历史时保留迁移并前修 |
 | 000103 | 签名风险接入批次、钉版输入、原批和逐项结果，新增已应用观察的风险索引 | 第 16 项，存在接入回执时保留迁移 |
 | 000104 | 风险误报限期抑制、授权读取和按钮目录 | 第 16 项，存在处置或抑制历史时保留迁移 |
+| 000105 | 工单类型查看策略、指定角色、统计 API 授权 | 存量类型继承原范围，受限类型存在时阻断降级 |
+| 000106 | 撤回资格、转办/撤回操作回执及按钮授权 | 已有 `cancelled` 规则或实例冲突时阻断迁移，有回执时也阻断降级 |
 
 > **编号规则**：A2（2026-08-31）规定先启动的候选占用编号。新迁移从 `000089` 起核对实际占用和本表。 [候选验证记录](reports/phase6-b2-stage5-acceptance-2026-11-22.md) · [编号演进历史](archive/project-control-history-2026-11-08.md#迁移编号演进原文)
 

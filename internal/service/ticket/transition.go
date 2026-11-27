@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
@@ -60,6 +61,12 @@ func ValidateTransitionMeta(states []string, transitions map[string][]string, ra
 }
 
 func validateTransitionEdges(states []string, transitions map[string][]string, raw json.RawMessage, validateActions func([]json.RawMessage) error) error {
+	if slices.Contains(states, StatusCancelled) {
+		rule, err := withdrawalRule(raw, transitions)
+		if err != nil || rule == nil {
+			return errcode.New(errcode.ErrInvalidParams.Code, "cancelled 须为仅由 open 进入的撤回终态，撤回边仅允许 creator，且不接收采集字段和后置动作")
+		}
+	}
 	if len(raw) == 0 {
 		return nil
 	}
@@ -248,6 +255,9 @@ func AvailableTransitionsFor(ctx context.Context, t *model.Ticket, transitions m
 	}
 	out := make([]string, 0, len(tos))
 	for _, to := range tos {
+		if reservedHandlingEdge(t.Status, to) {
+			continue
+		}
 		tm, err := parseTransitionMeta(metaRaw, t.Status, to)
 		if err != nil {
 			continue // 坏数据跳过（保存期有校验——此处防御手工改库）

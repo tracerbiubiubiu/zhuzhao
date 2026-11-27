@@ -19,9 +19,9 @@ func NewTicketPeopleHandler(service *ticketservice.PeopleService) *TicketPeopleH
 // @Summary Context-bound ticket people search (2–50 characters, maximum 20 results)
 // @Tags ticket
 // @Produce json
-// @Param purpose query string true "assign|cc|create-supervisor|rule-target"
+// @Param purpose query string true "assign|transfer|cc|create-supervisor|rule-target"
 // @Param q query string true "2–50 characters"
-// @Param ticket_id query string false "Required for assign/cc"
+// @Param ticket_id query string false "Required for assign/transfer/cc"
 // @Param org_id query string false "Required for create-supervisor/rule-target"
 // @Param type_code query string false "Required for create-supervisor"
 // @Security BearerAuth

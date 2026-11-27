@@ -66,7 +66,10 @@ func (tr *createC04Trace) TraceQueryStart(ctx context.Context, conn *pgx.Conn, d
 
 func newCreateC04(t *testing.T, prepare func(*createC04Fixture)) *createC04Fixture {
 	t.Helper()
-	return newCreateC04InDB(t, testPool, prepare)
+	f := newCreateC04InDB(t, testPool, prepare)
+	_, err := testPool.Exec(context.Background(), `UPDATE ticket_types SET read_policy='inherit' WHERE code=$1`, f.code)
+	require.NoError(t, err)
+	return f
 }
 
 func newCreateC04InDB(t *testing.T, db *pgxpool.Pool, prepare func(*createC04Fixture)) *createC04Fixture {

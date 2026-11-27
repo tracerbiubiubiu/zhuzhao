@@ -63,7 +63,7 @@ func (s *BadgeService) Sections(ctx context.Context, userID int64) map[string]in
 func (s *BadgeService) todoCount(ctx context.Context, userID int64) (int64, error) {
 	var n int64
 	err := s.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM tickets WHERE assigned_to = $1 AND status NOT IN ('closed', 'rejected')`,
+		`SELECT COUNT(*) FROM tickets WHERE assigned_to = $1 AND status NOT IN ('closed', 'rejected','cancelled')`,
 		userID).Scan(&n)
 	return n, err
 }

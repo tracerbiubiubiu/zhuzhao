@@ -120,7 +120,15 @@ check "ticket 页面 GET(11)" "11" "$MA_GET"
 MA_BTN=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
   INNER JOIN menus m ON m.id = ma.menu_id
   WHERE m.parent_id = (SELECT id FROM menus WHERE code='ticket_list') AND ma.api_method != 'GET'")
-check "ticket 按钮写(8)" "8" "$MA_BTN"
+check "ticket 按钮写(10)" "10" "$MA_BTN"
+MA_HANDLING=$(psql_q "SELECT COUNT(*) FROM menu_apis ma
+  JOIN menus m ON m.id=ma.menu_id JOIN role_menus rm ON rm.menu_id=m.id JOIN roles r ON r.id=rm.role_id
+  WHERE m.menu_type=3 AND m.deleted_at IS NULL AND r.code IN ('admin','superadmin') AND r.deleted_at IS NULL
+    AND (m.code, ma.api_path, ma.api_method) IN (
+      ('ticket_transfer_btn','/api/v1/tickets/transfer','POST'),
+      ('ticket_withdraw_btn','/api/v1/tickets/withdraw','POST'),
+      ('ticket_stats_btn','/api/v1/tickets/stats','GET'))")
+check "ticket 转办、撤回与统计独立按钮绑定" "6" "$MA_HANDLING"
 
 # 2a: admin/superadmin 获得 11 个 ticket 菜单的 role_menus 绑定
 RM=$(psql_q "SELECT COUNT(DISTINCT rm.menu_id) FROM role_menus rm

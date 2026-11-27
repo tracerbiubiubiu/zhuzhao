@@ -16,6 +16,9 @@ type TicketAvailableAction struct {
 }
 
 type TicketActionList struct {
-	Actions []TicketAvailableAction    `json:"actions"`
-	Fields  []PublishedTicketFormField `json:"fields"`
+	TicketID     int64                       `json:"ticket_id,string"`
+	Revision     int64                       `json:"revision,string"`
+	Capabilities *TicketHandlingCapabilities `json:"capabilities,omitempty"`
+	Actions      []TicketAvailableAction     `json:"actions"`
+	Fields       []PublishedTicketFormField  `json:"fields"`
 }

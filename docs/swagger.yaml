@@ -307,6 +307,12 @@ definitions:
       name:
         maxLength: 100
         type: string
+      read_policy:
+        type: string
+      read_role_codes:
+        items:
+          type: string
+        type: array
       states:
         items:
           type: integer
@@ -1379,10 +1385,18 @@ definitions:
         items:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAvailableAction'
         type: array
+      capabilities:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingCapabilities'
       fields:
         items:
           $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.PublishedTicketFormField'
         type: array
+      revision:
+        example: "0"
+        type: string
+      ticket_id:
+        example: "0"
+        type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketAttachmentView:
     properties:
@@ -1528,6 +1542,55 @@ definitions:
       message:
         type: string
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingCapabilities:
+    properties:
+      transfer:
+        type: boolean
+      withdraw:
+        type: boolean
+      withdraw_comment_required:
+        type: boolean
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult:
+    properties:
+      assigned_to:
+        example: "0"
+        type: string
+        x-nullable: true
+      id:
+        example: "0"
+        type: string
+      revision:
+        example: "0"
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStats:
+    properties:
+      as_of:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStatsItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStatsItem:
+    properties:
+      count:
+        type: integer
+      in_progress_count:
+        type: integer
+      key:
+        type: string
+      overdue_count:
+        type: integer
+      overdue_rate:
+        type: number
+        x-nullable: true
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTaskRun:
     properties:
       action:
@@ -1553,6 +1616,21 @@ definitions:
       ticket_revision:
         example: "0"
         type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTransferRequest:
+    properties:
+      comment:
+        type: string
+      expected_revision:
+        type: string
+      id:
+        type: string
+      to_user_id:
+        type: string
+    required:
+    - expected_revision
+    - id
+    - to_user_id
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTypeFieldInput:
     properties:
@@ -1596,6 +1674,18 @@ definitions:
     - field_key
     - field_label
     - field_type
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketWithdrawRequest:
+    properties:
+      comment:
+        type: string
+      expected_revision:
+        type: string
+      id:
+        type: string
+    required:
+    - expected_revision
+    - id
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.TransitionTicketRequest:
     properties:
@@ -5684,7 +5774,7 @@ paths:
   /api/v1/tickets/people:
     get:
       parameters:
-      - description: assign|cc|create-supervisor|rule-target
+      - description: assign|transfer|cc|create-supervisor|rule-target
         in: query
         name: purpose
         required: true
@@ -5694,7 +5784,7 @@ paths:
         name: q
         required: true
         type: string
-      - description: Required for assign/cc
+      - description: Required for assign/transfer/cc
         in: query
         name: ticket_id
         type: string
@@ -5765,6 +5855,76 @@ paths:
       summary: richtext 字段服务端渲染（消毒 SSOT）
       tags:
       - ticket
+  /api/v1/tickets/stats:
+    get:
+      parameters:
+      - description: 标签
+        in: query
+        name: tag
+        type: string
+      - description: 分组维度，默认 status
+        enum:
+        - status
+        - priority
+        - type_code
+        in: query
+        name: group_by
+        type: string
+      - description: 工单类型
+        in: query
+        name: type_code
+        type: string
+      - description: 工单状态
+        in: query
+        name: status
+        type: string
+      - description: 状态集合，逗号分隔，与status互斥（例assigned,in_progress）
+        in: query
+        name: statuses
+        type: string
+      - description: 排除状态集合，逗号分隔，与status/statuses互斥
+        in: query
+        name: exclude_statuses
+        type: string
+      - description: 优先级（1紧急/2高/3中/4低）
+        in: query
+        name: priority
+        type: integer
+      - description: 处理人过滤，仅支持 me（当前用户——工作台待办/已办卡数据源）
+        in: query
+        name: assignee
+        type: string
+      - description: 创建人过滤，仅支持 me（当前用户，「我发起的」）
+        in: query
+        name: created_by
+        type: string
+      - description: 标题关键字（子串匹配；纯数字时同时精确匹配工单 ID）
+        in: query
+        name: keyword
+        type: string
+      - description: 创建日期起（YYYY-MM-DD，UTC 切日，含当日）
+        in: query
+        name: created_from
+        type: string
+      - description: 创建日期止（YYYY-MM-DD，UTC 切日，含当日）
+        in: query
+        name: created_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketStats'
+              type: object
+      summary: 工单统计
+      tags:
+      - ticket
   /api/v1/tickets/tags:
     post:
       consumes:
@@ -5805,6 +5965,37 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 移除工单标签
+      tags:
+      - ticket
+  /api/v1/tickets/transfer:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 幂等键
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      - description: 转办请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketTransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult'
+              type: object
+      summary: 转办工单
       tags:
       - ticket
   /api/v1/tickets/transition:
@@ -5853,6 +6044,37 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 更新工单
+      tags:
+      - ticket
+  /api/v1/tickets/withdraw:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 幂等键
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      - description: 撤回请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketWithdrawRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.TicketHandlingResult'
+              type: object
+      summary: 撤回工单
       tags:
       - ticket
   /api/v1/user/menus:

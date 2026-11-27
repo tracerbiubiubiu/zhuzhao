@@ -503,12 +503,15 @@ func New(deps Deps) *gin.Engine {
 				tickets := biz.Group("/tickets")
 				{
 					tickets.GET("", deps.TicketHandler.List)
+					tickets.GET("/stats", deps.TicketHandler.Stats)
 					tickets.POST("", deps.TicketHandler.Create)
 					tickets.GET("/:id", deps.TicketHandler.Get)
 					tickets.POST("/update", deps.TicketHandler.Update)
 					tickets.POST("/close", deps.TicketHandler.Close)
 					// S3a B3-1：统一转换执行端点 + 可用转换查询（L1=ticket:read 码受众
 					// 与既有操作同面——condition 细粒度在服务端 checkCondition 判）
+					tickets.POST("/transfer", deps.TicketHandler.Transfer)
+					tickets.POST("/withdraw", deps.TicketHandler.Withdraw)
 					tickets.POST("/transition", deps.TicketHandler.Transition)
 					tickets.GET("/:id/transitions/available", deps.TicketHandler.ListAvailableTransitions)
 					tickets.GET("/:id/actions", deps.TicketHandler.AvailableActions)

@@ -19,7 +19,7 @@ const (
 type ResolvedScope struct {
 	AnchorPaths []string // 策略 B 实体透明读锚点（最近实体祖先，受 ticket_visibility 门控）
 	ScopePaths  []string // ticket_scope=group 的成员组织子树路径（主管扩展，不受 visibility 门控）
-	AllScope    bool     // 任一成员 ticket_scope=all → 列表全量、全部工单可见
+	AllScope    bool     // 任一成员 ticket_scope=all → 对 inherit 类型全量可见
 }
 
 // ReadPaths L2 可见路径集 = 透明锚点 ∪ group 作用域子树

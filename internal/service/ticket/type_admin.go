@@ -59,7 +59,18 @@ func (s *Service) CreateTicketType(ctx context.Context, req *model.CreateTicketT
 	if req.IsActive != nil {
 		isActive = *req.IsActive
 	}
+	policy := req.ReadPolicy
+	if policy == "" {
+		policy = "participants_only"
+	}
+	if policy != "participants_only" && policy != "inherit" && policy != "role_restricted" {
+		return nil, errcode.ErrInvalidParams
+	}
+	if (policy == "role_restricted") != (len(req.ReadRoleCodes) > 0) {
+		return nil, errcode.ErrInvalidParams
+	}
 	t := &model.TicketType{
+		ReadPolicy: policy, ReadRoleCodes: req.ReadRoleCodes,
 		Code: req.Code, Name: req.Name, Description: req.Description,
 		States: states, Transitions: transitions, IsActive: isActive,
 	}

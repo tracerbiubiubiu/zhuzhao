@@ -38,7 +38,7 @@ const ticketSelectColumns = `
 	ELSE COALESCE(description, '') END AS description, priority, status,
 	created_by, assigned_to, org_id, org_path::text, custom_data, sla_due_at,
 	status_changed_at, escalation_supervisor_id, created_at, updated_at,
-	COALESCE(human_key, '') AS human_key, definition_version, revision`
+	COALESCE(human_key, '') AS human_key, definition_version, revision, withdrawal_eligible`
 
 // TicketRepo 工单数据访问
 type TicketRepo struct {
@@ -58,12 +58,12 @@ func (r *TicketRepo) Create(ctx context.Context, t *model.Ticket) error {
 // CreateTx 事务内创建工单
 func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket) error {
 	const q = `
-		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id, definition_version)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11, $12)
+		INSERT INTO tickets (type_code, title, description, priority, status, created_by, assigned_to, org_id, org_path, custom_data, status_changed_at, escalation_supervisor_id, definition_version, withdrawal_eligible)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9::ltree, $10, NOW(), $11, $12, $13)
 		RETURNING id, created_at, updated_at, status_changed_at, revision`
 	err := exec.QueryRow(ctx, q,
 		t.TypeCode, t.Title, t.Description, t.Priority, t.Status,
-		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor, t.DefinitionVersion,
+		t.CreatedBy, t.AssignedTo, t.OrgID, t.OrgPath, t.CustomData, t.EscalationSupervisor, t.DefinitionVersion, t.WithdrawalEligible,
 	).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt, &t.StatusChangedAt, &t.Revision)
 	if err != nil {
 		if ec := mapUniqueViolation(err); ec != nil {
@@ -81,6 +81,24 @@ func (r *TicketRepo) CreateTx(ctx context.Context, exec rowExec, t *model.Ticket
 func (r *TicketRepo) GetByID(ctx context.Context, id int64) (*model.Ticket, error) {
 	const q = `SELECT` + ticketSelectColumns + ` FROM tickets WHERE id = $1`
 	ticket, err := r.queryOne(ctx, q, id)
+	if err != nil {
+		return nil, err
+	}
+	enrichUserNames(ctx, IAMDB(ctx, r.db), []*model.Ticket{ticket})
+	return ticket, nil
+}
+
+// GetVisibleByID applies the caller's complete row predicate before materializing a ticket.
+func (r *TicketRepo) GetVisibleByID(ctx context.Context, id int64, filter resource.Filter) (*model.Ticket, error) {
+	if filter.Where == "" && !filter.Unscoped {
+		return nil, fmt.Errorf("ticket detail: missing scope filter")
+	}
+	args := append(append([]any{}, filter.Args...), id)
+	where := fmt.Sprintf("tickets.id=$%d", len(args))
+	if filter.Where != "" {
+		where += " AND (" + filter.Where + ")"
+	}
+	ticket, err := r.queryOne(ctx, `SELECT`+ticketSelectColumns+` FROM tickets WHERE `+where, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +128,7 @@ func (r *TicketRepo) EnrichSnapshotUserNamesTx(ctx context.Context, tx pgx.Tx, t
 // List 分页查询工单列表（拼接 GetFilter 行级过滤）
 func (r *TicketRepo) List(ctx context.Context, filter resource.Filter, q model.TicketListQuery) ([]*model.Ticket, int64, error) {
 	// IW4 fail-closed 哨兵：无谓词且未显式豁免 = 漏接 L2 scope 过滤，拒绝而非静默全量。
-	// 合法「全量」仅两种——Service.List 的 admin bypass / GetFilter 的 ticket_scope=all，
-	// 二者都必须显式携带 Unscoped（见 00 检查单 §2.3 IW4）。
+	// 全局管理员显式 Unscoped。普通 all-scope 仍须执行类型策略。
 	if filter.Where == "" && !filter.Unscoped {
 		return nil, 0, fmt.Errorf("ticket list: missing scope filter (obtain via registry.GetFilter, or set resource.Filter.Unscoped explicitly)")
 	}
@@ -360,7 +377,7 @@ func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[stri
 		FROM ticket_type_fields f
 		LEFT JOIN tickets t
 			ON t.type_code = f.type_code
-			AND t.status NOT IN ('closed', 'rejected')
+			AND t.status NOT IN ('closed', 'rejected','cancelled')
 			AND t.custom_data ? f.field_key
 		WHERE f.type_code = $1
 		GROUP BY f.field_key`, typeCode)
@@ -388,7 +405,7 @@ func (r *TicketRepo) FieldImpact(ctx context.Context, typeCode string) (map[stri
 func (r *TicketRepo) LockCustomDataTx(ctx context.Context, exec rowExec, ticketID int64) ([]byte, error) {
 	var cd []byte
 	err := exec.QueryRow(ctx,
-		`SELECT custom_data FROM tickets WHERE id=$1 AND status <> 'closed' FOR UPDATE`, ticketID).Scan(&cd)
+		`SELECT custom_data FROM tickets WHERE id=$1 AND status NOT IN ('closed','cancelled') FOR UPDATE`, ticketID).Scan(&cd)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errcode.ErrTicketAlreadyClosed
 	}
@@ -415,7 +432,7 @@ func (r *TicketRepo) UpdateTx(ctx context.Context, exec rowExec, id int64, title
 			priority = COALESCE($4, priority),
 			custom_data = COALESCE($5::jsonb, custom_data),
 			updated_at = NOW()
-		WHERE id = $1 AND status <> 'closed'
+		WHERE id = $1 AND status NOT IN ('closed','cancelled')
 		RETURNING` + ticketSelectColumns
 	ticket, err := scanTicketRow(exec.QueryRow(ctx, q, id, title, description, priority, customData))
 	if err != nil {
@@ -438,7 +455,7 @@ func (r *TicketRepo) resolveClosedOrMissing(ctx context.Context, exec rowExec, i
 	if err != nil {
 		return fmt.Errorf("resolve ticket state: %w", err)
 	}
-	if status == "closed" {
+	if status == "closed" || status == "cancelled" {
 		return errcode.ErrTicketAlreadyClosed
 	}
 	// 状态被并发迁移为其他值：以冲突语义拒绝（调用方重读后重试）
@@ -473,7 +490,7 @@ func (r *TicketRepo) UpdateStatusTx(ctx context.Context, exec rowExec, id int64,
 // 不可被分派/改派，消除并发 Close 后换处理人的窗口）
 func (r *TicketRepo) UpdateAssignedToTx(ctx context.Context, exec rowExec, id int64, assignedTo *int64) error {
 	tag, err := exec.Exec(ctx,
-		`UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1 AND status <> 'closed'`,
+		`UPDATE tickets SET assigned_to = $2, updated_at = NOW() WHERE id = $1 AND status NOT IN ('closed','cancelled')`,
 		id, assignedTo)
 	if err != nil {
 		return fmt.Errorf("update assigned_to: %w", err)
@@ -635,10 +652,10 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 	var t model.TicketType
 	err := IAMDB(ctx, r.db).QueryRow(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes
 		FROM ticket_types WHERE code = $1`, code).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion,
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -653,7 +670,7 @@ func (r *TicketRepo) GetTicketType(ctx context.Context, code string) (*model.Tic
 func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy
 		FROM ticket_types WHERE is_active = true ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types: %w", err)
@@ -662,7 +679,7 @@ func (r *TicketRepo) ListTicketTypes(ctx context.Context) ([]*model.TicketType, 
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy); err != nil {
 			return nil, err
 		}
 		return &t, nil
@@ -876,7 +893,7 @@ func scanTicketRow(row pgx.Row) (*model.Ticket, error) {
 		&t.ID, &t.TypeCode, &t.Title, &t.Description, &t.Priority, &t.Status,
 		&t.CreatedBy, &t.AssignedTo, &t.OrgID, &t.OrgPath, &t.CustomData, &t.SLADueAt,
 		&t.StatusChangedAt, &t.EscalationSupervisor, &t.CreatedAt, &t.UpdatedAt,
-		&t.HumanKey, &t.DefinitionVersion, &t.Revision, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
+		&t.HumanKey, &t.DefinitionVersion, &t.Revision, &t.WithdrawalEligible, // P1-A 修复（2026-11-01 审计）：列建而未读——详情/列表/导出/事件曾全程无编号
 	)
 	if err != nil {
 		return nil, err
@@ -913,14 +930,19 @@ func containsOr(s string) bool {
 
 // CreateTicketType 新建工单类型（states/transitions 由 service 层给默认值或已校验 JSON）
 func (r *TicketRepo) CreateTicketType(ctx context.Context, t *model.TicketType) error {
-	const q = `
-		INSERT INTO ticket_types (code, name, description, states, transitions, default_sla_hours, is_active)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7)
-		RETURNING id, created_at, version`
-	err := r.db.QueryRow(ctx, q,
-		t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive,
-	).Scan(&t.ID, &t.CreatedAt, &t.Version)
+	// Lock the approved active roles as part of the inserting statement. Delete
+	// holds the same rows FOR UPDATE before checking live policy references.
+	const q = `WITH approved AS MATERIALIZED (
+        SELECT code FROM roles WHERE code=ANY($9::text[]) AND status=1 AND deleted_at IS NULL ORDER BY id FOR SHARE
+    ) INSERT INTO ticket_types (code,name,description,states,transitions,default_sla_hours,is_active,read_policy,read_role_codes)
+    SELECT $1,$2,NULLIF($3,''),$4,$5,$6,$7,COALESCE(NULLIF($8,''),'participants_only'),COALESCE($9,'{}'::text[])
+    WHERE (SELECT count(*) FROM approved)=COALESCE(cardinality($9),0)
+    RETURNING id,created_at,version,read_policy,read_role_codes`
+	err := IAMDB(ctx, r.db).QueryRow(ctx, q, t.Code, t.Name, t.Description, t.States, t.Transitions, t.DefaultSLAHours, t.IsActive, t.ReadPolicy, t.ReadRoleCodes).Scan(&t.ID, &t.CreatedAt, &t.Version, &t.ReadPolicy, &t.ReadRoleCodes)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errcode.New(errcode.ErrInvalidParams.Code, "指定角色须存在、启用且不重复")
+		}
 		if ec := mapUniqueViolation(err); ec != nil {
 			return ec
 		}
@@ -956,11 +978,11 @@ func (r *TicketRepo) UpdateTicketType(ctx context.Context, code string, name *st
 	}
 	q += `
 		RETURNING id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version`
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes`
 	var t model.TicketType
 	err := r.db.QueryRow(ctx, q, args...).Scan(
 		&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion)
+		&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 0 行 = 类型不存在 或 version 不匹配；给最精确的语义码。
@@ -1198,7 +1220,7 @@ func (r *TicketRepo) ListTicketTypeFieldsAll(ctx context.Context, typeCode strin
 func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketType, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, code, name, COALESCE(description, ''), states, transitions,
-			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version
+			COALESCE(transition_meta, '{}'::jsonb), default_sla_hours, has_custom_fields, is_active, version, created_at, current_published_version, read_policy, read_role_codes
 		FROM ticket_types ORDER BY id ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("list ticket types admin: %w", err)
@@ -1207,7 +1229,7 @@ func (r *TicketRepo) ListTicketTypesAdmin(ctx context.Context) ([]*model.TicketT
 	types, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.TicketType, error) {
 		var t model.TicketType
 		if err := row.Scan(&t.ID, &t.Code, &t.Name, &t.Description, &t.States, &t.Transitions, &t.TransitionMeta,
-			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion); err != nil {
+			&t.DefaultSLAHours, &t.HasCustomFields, &t.IsActive, &t.Version, &t.CreatedAt, &t.CurrentPublishedVersion, &t.ReadPolicy, &t.ReadRoleCodes); err != nil {
 			return nil, err
 		}
 		return &t, nil

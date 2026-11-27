@@ -35,9 +35,8 @@ import (
 // （ticket 资源 GetFilter 同源）。组合根用 GetFilter 薄适配（测试含参考形状），
 // 本包不 import ticket——沿 TicketCreator 端口同款域边界。
 //
-// 合同：返回以**未别名 tickets 表**为行源的布尔谓词，且只允许 $1（主体 ID）与
-// $2（ltree 路径数组）两个参数位（GetFilter 现行形状）；unscoped=true 为显式豁免
-// （scope=all / admin bypass），此时谓词与参数均不消费。适配器不得改写参数序。
+// 谓词以未别名 tickets 为行源，使用适配器返回的绑定参数顺序。
+// 全局管理员的显式豁免不消费行谓词，其余主体均须执行类型可见性。
 type TicketVisibilityFilter interface {
 	VisibleTicketsWhere(ctx context.Context, actorID int64) (where string, args []any, unscoped bool, err error)
 }
@@ -143,7 +142,7 @@ func (s *DeptStats) assemble(ctx context.Context, actorID int64, template string
 	}
 	slot := ""
 	if unscoped {
-		// 显式豁免（scope=all / admin bypass）：不再行级过滤；参数随谓词一并弃用。
+		// 显式豁免（全局管理员）：不再行级过滤；参数随谓词一并弃用。
 		args = nil
 	} else {
 		if strings.TrimSpace(where) == "" {
@@ -160,7 +159,7 @@ func (s *DeptStats) assemble(ctx context.Context, actorID int64, template string
 }
 
 // deptTodoSQLTemplate 当前待办聚合：在办组 × 可见票 × 现势主部门。
-// 可见性片段引用 tickets 未别名列与 $1/$2——本模板不得引入其他参数位。
+// 可见性片段引用 tickets 未别名列与适配器绑定参数——本模板不得引入其他参数位。
 const deptTodoSQLTemplate = `
 SELECT COALESCE(cur.org_id, 0)     AS dept_id,
        COALESCE(cur.org_name, '')  AS dept_name,

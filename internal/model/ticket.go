@@ -7,6 +7,7 @@ import (
 
 // Ticket 工单主表模型
 type Ticket struct {
+	WithdrawalEligible   bool                 `json:"-" db:"withdrawal_eligible"`
 	TaskRuns             []TicketTaskRun      `json:"task_runs,omitempty" db:"-"`
 	Revision             int64                `json:"revision,string" db:"revision"`
 	DefinitionRef        *TicketDefinitionRef `json:"definition_ref" db:"-"`
@@ -70,6 +71,8 @@ type TagRow struct {
 
 // TicketType 工单类型配置
 type TicketType struct {
+	ReadPolicy              string          `json:"read_policy,omitempty"`
+	ReadRoleCodes           []string        `json:"read_role_codes,omitempty"`
 	CurrentPublishedVersion *int64          `json:"current_published_version,string" db:"current_published_version"`
 	ID                      int64           `json:"id,string" db:"id"`
 	Code                    string          `json:"code" db:"code"`

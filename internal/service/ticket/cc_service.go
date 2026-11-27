@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/model"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/domainevent"
+	"github.com/tracerbiubiubiu/zhuzhao/internal/pkg/errcode"
 	"github.com/tracerbiubiubiu/zhuzhao/internal/repository"
 )
 
@@ -39,6 +40,9 @@ func (s *Service) addCC(ctx context.Context, req *model.AddTicketCCRequest, acto
 			action = "update"
 		}
 		if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
+			return err
+		}
+		if err := s.authorizeCCManagement(ctx, req.TicketID, actorUserID); err != nil {
 			return err
 		}
 		var err error
@@ -87,12 +91,37 @@ func (s *Service) RemoveCC(ctx context.Context, req *model.RemoveTicketCCRequest
 		if err := s.authorizeCheck(ctx, actorUserID, action, strconv.FormatInt(req.TicketID, 10)); err != nil {
 			return err
 		}
+		if req.UserID != actorUserID {
+			if err := s.authorizeCCManagement(ctx, req.TicketID, actorUserID); err != nil {
+				return err
+			}
+		}
 		if err := s.requireTicketDefinition(ctx, req.TicketID); err != nil {
 			return err
 		}
 		_, err := s.ccRepo.Remove(ctx, req.TicketID, req.UserID)
 		return err
 	}, req.TicketID)
+}
+
+// Restricted types allow only a global administrator to grant durable CC access.
+func (s *Service) authorizeCCManagement(ctx context.Context, ticketID, actor int64) error {
+	var policy string
+	err := repository.IAMDB(ctx, s.db).QueryRow(ctx, `SELECT tt.read_policy FROM ticket_types tt JOIN tickets t ON tt.code=t.type_code WHERE t.id=$1`, ticketID).Scan(&policy)
+	if err != nil {
+		return err
+	}
+	if policy == "inherit" {
+		return nil
+	}
+	roles, err := s.getRoles(ctx, actor)
+	if err != nil {
+		return err
+	}
+	if !HasRole(roles, "admin") && !HasRole(roles, "superadmin") {
+		return errcode.ErrNoPermission
+	}
+	return nil
 }
 
 // ListCC 抄送列表（读可见面——非可见用户 404 同形）。

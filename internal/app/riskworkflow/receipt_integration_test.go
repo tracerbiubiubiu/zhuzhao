@@ -68,7 +68,7 @@ func newPreparedReceiptFixture(t *testing.T, prepareType func(*receiptFixture, s
 	_, err := workflowPool.Exec(ctx, `INSERT INTO user_roles(user_id,role_id) VALUES($1,$2)`, f.actor, role)
 	require.NoError(t, err)
 	code := "wf" + suffix
-	_, err = f.tickets.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "Synthetic remediation receipt"})
+	_, err = f.tickets.CreateTicketType(ctx, &model.CreateTicketTypeRequest{Code: code, Name: "Synthetic remediation receipt", ReadPolicy: "inherit"})
 	require.NoError(t, err)
 	if prepareType != nil {
 		prepareType(f, code)

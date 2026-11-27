@@ -178,11 +178,11 @@ func TestIAMB_DelegatePauseKeepsBusinessAndArchivePaths(t *testing.T) {
 	resetRBACTables(t)
 	env := setupDelegation(t)
 	ctx := trustedIAMTestContext()
-	_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name) VALUES('iamb_type','合成类型') ON CONFLICT DO NOTHING`)
+	_, err := testPool.Exec(ctx, `INSERT INTO ticket_types(code,name,read_policy) VALUES('iamb_type','合成类型','inherit') ON CONFLICT DO NOTHING`)
 	require.NoError(t, err)
 	var ticketID int64
 	require.NoError(t, testPool.QueryRow(ctx, `INSERT INTO tickets(type_code,title,priority,status,created_by,org_id,org_path) SELECT 'iamb_type','合成停用测试',3,'closed',$1,id,path FROM organizations WHERE id=$2 RETURNING id`, env.mem1, env.vgID).Scan(&ticketID))
-	resourceGate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg, nil)
+	resourceGate := ticketservice.NewResource(repository.NewTicketRepo(testPool), ticketservice.NewPgxScopeResolver(testPool), env.deleg)
 	_, err = testPool.Exec(ctx, `UPDATE organizations SET deleted_at=NOW() WHERE id=$1`, env.vgID)
 	require.NoError(t, err)
 	ok, err := resourceGate.Authorize(ctx, resource.AuthorizeRequest{UserID: env.admin, Roles: []string{"viewer"}, ResourceID: fmt.Sprint(ticketID), Action: "read"})
@@ -196,7 +196,7 @@ func TestIAMB_DelegatePauseKeepsBusinessAndArchivePaths(t *testing.T) {
 	filter, err := resourceGate.GetFilter(ctx, env.admin, "list")
 	require.NoError(t, err)
 	var count int
-	require.NoError(t, testPool.QueryRow(ctx, "SELECT count(*) FROM tickets WHERE ("+filter.Where+") AND id=$3", append(filter.Args, ticketID)...).Scan(&count))
+	require.NoError(t, testPool.QueryRow(ctx, fmt.Sprintf("SELECT count(*) FROM tickets WHERE (%s) AND id=$%d", filter.Where, len(filter.Args)+1), append(filter.Args, ticketID)...).Scan(&count))
 	assert.Zero(t, count, "list/total/export filter must match detail")
 	ok, err = resourceGate.Authorize(ctx, resource.AuthorizeRequest{UserID: env.mem1, Roles: []string{"viewer"}, ResourceID: fmt.Sprint(ticketID), Action: "read"})
 	require.NoError(t, err)

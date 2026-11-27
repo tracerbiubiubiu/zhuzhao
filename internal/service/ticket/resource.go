@@ -14,7 +14,7 @@ import (
 
 // ticketRepo 资源层需要的工单仓储接口（解耦 resource 与具体 repo）
 type ticketRepo interface {
-	GetByID(ctx context.Context, id int64) (*model.Ticket, error)
+	GetVisibleByID(ctx context.Context, id int64, filter resource.Filter) (*model.Ticket, error)
 	MatchesLiveOrgPaths(ctx context.Context, orgID int64, paths []string) (bool, error)
 }
 
@@ -34,13 +34,6 @@ type OrgDelegationChecker interface {
 	HasOrgManagePermission(ctx context.Context, userID int64) (bool, error)
 }
 
-// CCChecker 抄送关系判定（S10 B10-1——实现于 repository.TicketCCRepo）。
-// L2 特例通道（拍板点 1 预确认「抄送即可见」）：**只进读可见集**，不进操作授权集
-// （10 号附录 A.2 语义分层——抄送人能看不能改，Jira watcher 同语义）。
-type CCChecker interface {
-	IsCC(ctx context.Context, ticketID, userID int64) (bool, error)
-}
-
 // Resource 工单资源，实现 resource.Resource 接口。
 // 2b（09-ticket §5.2）：策略 B——L2 读 = 属主 ∨ 实体锚点透明读；
 // 2c（04 §4.2）：L3 写加组织委托（org admin/owner + ancestor owner）；
@@ -49,12 +42,11 @@ type Resource struct {
 	repo       ticketRepo
 	resolver   ScopeResolver
 	delegation OrgDelegationChecker
-	cc         CCChecker
 }
 
 // NewResource 创建工单资源实例（由 NewTicketService 调用，注册到 Registry）
-func NewResource(repo ticketRepo, resolver ScopeResolver, delegation OrgDelegationChecker, cc CCChecker) *Resource {
-	return &Resource{repo: repo, resolver: resolver, delegation: delegation, cc: cc}
+func NewResource(repo ticketRepo, resolver ScopeResolver, delegation OrgDelegationChecker) *Resource {
+	return &Resource{repo: repo, resolver: resolver, delegation: delegation}
 }
 
 // Code 返回资源编码
@@ -65,7 +57,7 @@ func (r *Resource) Name() string { return "工单 (Ticket)" }
 
 // Actions 返回工单资源支持的动作
 func (r *Resource) Actions() []string {
-	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note", "transition"}
+	return []string{"list", "create", "read", "update", "delete", "assign", "close", "comment", "note", "transition", "transfer", "withdraw"}
 }
 
 // Authorize 资源级鉴权（L2 可见性 → L3 属主 + canOperate）
@@ -88,59 +80,16 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 		return false, errcode.ErrInvalidParams
 	}
 
-	ticket, err := r.repo.GetByID(ctx, ticketID)
-	if err != nil {
-		// 工单不存在 → (false, nil)，Service 层转 404
-		if errors.Is(err, errcode.ErrTicketNotFound) {
-			return false, nil
-		}
-		// 其他 DB 错误 → 原样上抛，Service 层转 500
-		return false, err
-	}
-
-	// 一次解析用户 scope（透明锚点 / scope 子树 / 全量），L2 与 L3 共用
 	scope, err := r.resolver.ResolveScope(ctx, req.UserID)
 	if err != nil {
-		// 解析器 DB 错误上抛（Q3：→ 500/503），不与 404 混淆
 		return false, err
 	}
-
-	// L2 可见性（策略 B ∪ scope 扩展）：属主 ∨ 全量 ∨ 路径命中 ∨ 组织委托。
-	// 委托轴（BK-13）：project_isolated 强隔离下锚点消失，org admin/owner 与
-	// ancestor owner 若不在 L2 放行，则 L3 委托永远走不到（Authorize 先 L2 后 L3），
-	// D7–D9 语义失效——故委托命中同样视为可见；透明读下该分支为冗余超集，仅多两次
-	// 索引查询且只发生在 404 路径上。
-	visible := isOwner(req.UserID, ticket) || scope.AllScope
-	if !visible {
-		visible, err = r.livePathMatch(ctx, ticket, scope.ReadPaths())
-		if err != nil {
-			return false, err
-		}
+	ticket, err := r.repo.GetVisibleByID(ctx, ticketID, ticketReadFilter(req.UserID, scope))
+	if errors.Is(err, errcode.ErrTicketNotFound) {
+		return false, nil
 	}
-	if !visible {
-		del, err := r.delegation.IsOrgAdminOrOwner(ctx, req.UserID, ticket.OrgID)
-		if err != nil {
-			return false, err
-		}
-		if !del {
-			del, err = r.delegation.IsAncestorOwner(ctx, req.UserID, ticket.OrgID, ticket.OrgPath)
-			if err != nil {
-				return false, err
-			}
-		}
-		visible = del
-	}
-	// S10 B10-1 抄送特例支（只扩可见集，不进 canOperate——cc 用户后续动作
-	// 走 403 errDenied 而非 404，A.7「能看不能改」断言锚点）
-	if !visible && r.cc != nil {
-		ccVisible, err := r.cc.IsCC(ctx, ticketID, req.UserID)
-		if err != nil {
-			return false, err
-		}
-		visible = ccVisible
-	}
-	if !visible {
-		return false, nil // 不可见 → Service 层转 404
+	if err != nil {
+		return false, err
 	}
 
 	// L3 canOperate（动作权，读写分离；2c 含组织委托）
@@ -154,36 +103,29 @@ func (r *Resource) Authorize(ctx context.Context, req resource.AuthorizeRequest)
 	return true, nil
 }
 
-// isOwner 属主判定：创建人或处理人
-func isOwner(userID int64, ticket *model.Ticket) bool {
-	if ticket.CreatedBy == userID {
-		return true
-	}
-	return ticket.AssignedTo != nil && *ticket.AssignedTo == userID
-}
-
-// GetFilter 列表行级过滤（2b 策略 B，09-ticket §5.2）：
-// 属主（created_by/assigned_to）∨ 实体锚点透明读（org_path <@ ANY 锚点）
-// ∨ 组织委托（BK-13 委托轴，与 org_delegation 判定同语义）
-// ∨ 抄送（S10 B10-1 特例支——ccVisibilitySQL）。
-// 锚点为空（用户无组织归属）时锚点支恒假，退化为属主 ∪ 委托 ∪ 抄送语义。
+// GetFilter supplies the same type policy and scope as single-ticket authorization.
 func (r *Resource) GetFilter(ctx context.Context, userID int64, _ string) (resource.Filter, error) {
 	scope, err := r.resolver.ResolveScope(ctx, userID)
 	if err != nil {
 		return resource.Filter{}, err
 	}
-	// ticket_scope=all：列表全量（rbac-inheritance §4），仍受 L1 路由级 Casbin 约束；
-	// 显式豁免（IW4——零值 Filter{} 已被 repo 哨兵拒绝）
-	if scope.AllScope {
-		return resource.Filter{Unscoped: true}, nil
-	}
-	paths := scope.ReadPaths()
-	return resource.Filter{
-		Where: `(created_by = $1 OR assigned_to = $1 OR (org_path <@ ANY($2::ltree[]) AND ` + repository.LiveOrgPathAnchorSQL("tickets.org_id", "$2") + `) OR ` +
-			delegatedVisibilitySQL + ` OR ` + ccVisibilitySQL + `)`,
-		Args: []interface{}{userID, paths},
-	}, nil
+	return ticketReadFilter(userID, scope), nil
 }
+
+func ticketReadFilter(userID int64, scope *ResolvedScope) resource.Filter {
+	return resource.Filter{Where: ticketReadSQL, Args: []any{userID, scope.ReadPaths(), scope.AllScope}}
+}
+
+// Only active approved role codes and explicit CC (never a free-form user field)
+// can extend restricted reads beyond the ordinary ticket owners.
+var ticketReadSQL = `(tickets.created_by=$1 OR tickets.assigned_to=$1 OR ` + ccVisibilitySQL + ` OR EXISTS (
+    SELECT 1 FROM ticket_types policy WHERE policy.code=tickets.type_code AND (
+        (policy.read_policy='inherit' AND ($3::boolean OR
+            (tickets.org_path <@ ANY($2::ltree[]) AND ` + repository.LiveOrgPathAnchorSQL("tickets.org_id", "$2") + `) OR ` + delegatedVisibilitySQL + `))
+        OR (policy.read_policy='role_restricted' AND policy.read_role_codes && ARRAY(
+            ` + repository.EffectiveRoleCTE() + `SELECT code::text FROM roles WHERE id IN (SELECT id FROM expanded)
+        ))
+    )))`
 
 // ccVisibilitySQL S10 B10-1 抄送特例支（拍板点 1 预确认「抄送即可见」）：
 // cc 关系并入**读可见集**（列表/导出/关联查询全路径自动生效——GetFilter 本体增强
@@ -199,7 +141,7 @@ const ccVisibilitySQL = `EXISTS (
 // 命中索引：organizations PK、user_orgs PK (user_id, org_id)、organizations.path GIN。
 var delegatedVisibilitySQL = `EXISTS (
 	SELECT 1 FROM organizations o
-	WHERE o.id = org_id AND (` + repository.OrgDelegationActiveSQL("o") + `)
+	WHERE o.id = tickets.org_id AND (` + repository.OrgDelegationActiveSQL("o") + `)
 	  AND (
 	       $1 = ANY(o.owner_user_ids)
 	    OR EXISTS (SELECT 1 FROM user_orgs du
@@ -267,7 +209,12 @@ func (r *Resource) canOperate(ctx context.Context, scope *ResolvedScope, userID 
 			return true, nil
 		}
 		needDelegation = true
-	case "assign":
+	case "withdraw":
+		return isCreator, nil
+	case "assign", "transfer":
+		if action == "transfer" && isAssignee {
+			return true, nil
+		}
 		// 2b 主管（scope group/all 且工单在其子树）；2c + org admin·owner
 		if scope.AllScope {
 			return true, nil

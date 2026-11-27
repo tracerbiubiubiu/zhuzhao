@@ -136,12 +136,14 @@ type TicketListQuery struct {
 
 // CreateTicketTypeRequest 新建工单类型（states/transitions 缺省 6 态默认图）
 type CreateTicketTypeRequest struct {
-	Code        string          `json:"code" binding:"required,max=50"`
-	Name        string          `json:"name" binding:"required,max=100"`
-	Description string          `json:"description"`
-	States      json.RawMessage `json:"states"`
-	Transitions json.RawMessage `json:"transitions"`
-	IsActive    *bool           `json:"is_active"`
+	ReadPolicy    string          `json:"read_policy"`
+	ReadRoleCodes []string        `json:"read_role_codes"`
+	Code          string          `json:"code" binding:"required,max=50"`
+	Name          string          `json:"name" binding:"required,max=100"`
+	Description   string          `json:"description"`
+	States        json.RawMessage `json:"states"`
+	Transitions   json.RawMessage `json:"transitions"`
+	IsActive      *bool           `json:"is_active"`
 }
 
 // UpdateTicketTypeRequest 更新工单类型（patch：nil 保持；code 不可改）

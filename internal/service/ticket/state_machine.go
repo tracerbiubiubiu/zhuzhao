@@ -15,6 +15,7 @@ const (
 	StatusInProgress    = "in_progress"
 	StatusPendingVerify = "pending_verify"
 	StatusClosed        = "closed"
+	StatusCancelled     = "cancelled"
 	StatusRejected      = "rejected"
 
 	EventCreated       = "created"
