@@ -256,37 +256,47 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 	}
 	item.IngestID = row.IngestID
 	// ④ 不可判定 → held（缺失/映射/范围分别可区别；零业务效果）。
-	hold := func(reason string) (model.RiskReportItem, error) {
-		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", "held", nil, reason); err != nil {
+	deferObservation := func(result, reason string) (model.RiskReportItem, error) {
+		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", result, nil, reason); err != nil {
 			return item, err
 		}
-		item.Result, item.Processing, item.SafeReason = "held", "held", reason
+		item.Result, item.Processing, item.SafeReason = result, "held", reason
 		return item, nil
 	}
 	if src.Ordered && seq == nil {
-		return hold("missing_sequence")
+		return deferObservation("held", "missing_sequence")
 	}
 	if o.MappingRef != src.MappingRef {
-		return hold("mapping_not_approved")
+		return deferObservation("held", "mapping_not_approved")
 	}
 	if src.DefaultOrgID == nil {
-		return hold("org_unassigned")
+		return deferObservation("held", "org_unassigned")
 	}
 	if !containsInt64(src.AllowedOrgIDs, *src.DefaultOrgID) {
-		return hold(fmt.Sprintf("org_not_authorized:%d", *src.DefaultOrgID))
+		return deferObservation("held", fmt.Sprintf("org_not_authorized:%d", *src.DefaultOrgID))
 	}
-	// ⑤ 旧序号：stale，保留收据、不覆盖镜像、不建周期。
-	latest, recordExists, err := repository.LockSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey)
+	// ⑤ 旧观察和无法确定次序的观察保留收据，不覆盖镜像或写风险历史。
+	latest, err := repository.LockSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey)
 	if err != nil {
 		return item, err
 	}
-	if recordExists && latest != nil && seq != nil && compareCanonicalSequence(*seq, *latest) < 0 {
-		if err := repository.ApplyObservationTx(ctx, tx, row.IngestID, "held", "stale",
-			nil, "stale_sequence:"+*latest); err != nil {
-			return item, err
+	if latest != nil {
+		switch {
+		case seq != nil && latest.Sequence != nil:
+			if compareCanonicalSequence(*seq, *latest.Sequence) < 0 {
+				return deferObservation("stale", "stale_sequence:"+*latest.Sequence)
+			}
+		case latest.ObservedAt == nil:
+			return deferObservation("held", "missing_observed_at_baseline")
+		default:
+			// Use the just-persisted timestamp at the same precision as the mirror.
+			switch row.ObservedAt.Compare(*latest.ObservedAt) {
+			case -1:
+				return deferObservation("stale", "stale_observed_at")
+			case 0:
+				return deferObservation("held", "ambiguous_observed_at")
+			}
 		}
-		item.Result, item.Processing, item.SafeReason = "stale", "held", "stale_sequence:"+*latest
-		return item, nil
 	}
 	// 应用：family 稳定键 → 周期 → 镜像（§4 锁序：family 稳定键 → risk ID）。
 	canonicalKeyHash := canonicalKeyHex(src.FingerprintScope, o.SourceItemKey)
@@ -340,7 +350,7 @@ func (s *Service) applyObservation(ctx context.Context, tx pgx.Tx, src *reposito
 		hasItem = true
 	}
 	mirror := jsonBytes(fp)
-	if recordExists {
+	if latest != nil {
 		err = repository.UpdateSourceRecordTx(ctx, tx, o.SourceRef, o.SourceItemKey,
 			seq, o.ObservedAt, hash, o.MappingRef, mirror)
 	} else {
@@ -396,6 +406,7 @@ func replayOrQuarantineEvent(ctx context.Context, tx pgx.Tx, row *repository.Ris
 		item.IngestID = row.IngestID
 		item.Result = "duplicate"
 		item.Processing = row.ProcessingStatus
+		item.SafeReason = derefStr(row.SafeReason)
 		if row.RiskID != nil {
 			ref, err := riskRefByIDTx(ctx, tx, *row.RiskID)
 			if err != nil {

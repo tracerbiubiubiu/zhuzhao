@@ -108,7 +108,7 @@ func scanRiskItemRow(row pgx.Row) (*RiskItemRow, error) {
 // 别名约定：ri=risk_items、go=管理组织、ao=受影响组织。
 func riskVisiblePredicate(actorParam string) string {
 	return `(
-		ri.owner_user_id = ` + actorParam + `
+		COALESCE(ri.owner_user_id = ` + actorParam + `, FALSE)
 		OR EXISTS (
 			SELECT 1 FROM user_orgs m
 			JOIN organizations mo ON mo.id = m.org_id
@@ -419,18 +419,24 @@ func ApplyObservationTx(ctx context.Context, tx pgx.Tx, ingestID, processingStat
 	return err
 }
 
-// LockSourceRecordTx 行锁读取来源镜像；无记录返回 (nil,false,nil)（首观察随后插入）。
-func LockSourceRecordTx(ctx context.Context, tx pgx.Tx, sourceRef, sourceItemKey string) (*string, bool, error) {
-	var latest *string
-	err := tx.QueryRow(ctx, `SELECT latest_sequence FROM risk_source_records
-		WHERE source_ref=$1 AND source_item_key=$2 FOR UPDATE`, sourceRef, sourceItemKey).Scan(&latest)
+type RiskSourceWatermark struct {
+	Sequence   *string
+	ObservedAt *time.Time
+}
+
+// LockSourceRecordTx locks the source mirror and returns nil when it does not exist.
+func LockSourceRecordTx(ctx context.Context, tx pgx.Tx, sourceRef, sourceItemKey string) (*RiskSourceWatermark, error) {
+	var latest RiskSourceWatermark
+	err := tx.QueryRow(ctx, `SELECT latest_sequence, observed_at FROM risk_source_records
+		WHERE source_ref=$1 AND source_item_key=$2 FOR UPDATE`, sourceRef, sourceItemKey).
+		Scan(&latest.Sequence, &latest.ObservedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("lock risk source record: %w", err)
+		return nil, fmt.Errorf("lock risk source record: %w", err)
 	}
-	return latest, true, nil
+	return &latest, nil
 }
 
 // SourceItemLockKey 来源项稳定键的事务级 advisory 锁键
