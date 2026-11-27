@@ -800,6 +800,8 @@ definitions:
       id:
         example: "0"
         type: string
+      identity_supplement:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskIdentitySupplement'
       level:
         type: string
       operation_id:
@@ -898,6 +900,39 @@ definitions:
     - external_id
     - provider
     type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskFalsePositiveRequest:
+    properties:
+      expected_revision:
+        type: string
+      id:
+        example: "0"
+        type: string
+      operation_id:
+        maxLength: 128
+        type: string
+      reason:
+        maxLength: 2000
+        type: string
+      suppression_valid_until:
+        type: string
+    required:
+    - expected_revision
+    - id
+    - operation_id
+    - reason
+    - suppression_valid_until
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskIdentitySupplement:
+    properties:
+      asset_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskAssetRef'
+      evidence_refs:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskEvidenceRef'
+        type: array
+      finding_key:
+        type: string
+    type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt:
     properties:
       command:
@@ -969,6 +1004,90 @@ definitions:
       scheme:
         type: string
       value:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult:
+    properties:
+      receipt_ref:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReceipt'
+      risk:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskRef'
+      status:
+        type: string
+      suppression:
+        $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRef'
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionList:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionView'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRef:
+    properties:
+      id:
+        example: "0"
+        type: string
+      revision:
+        example: "0"
+        type: string
+      valid_until:
+        type: string
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRemoveRequest:
+    properties:
+      expected_revision:
+        type: string
+      id:
+        example: "0"
+        type: string
+      operation_id:
+        maxLength: 128
+        type: string
+      reason:
+        maxLength: 2000
+        type: string
+    required:
+    - expected_revision
+    - id
+    - operation_id
+    - reason
+    type: object
+  github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionView:
+    properties:
+      active:
+        type: boolean
+      created_at:
+        type: string
+      created_by:
+        example: "0"
+        type: string
+      ended_at:
+        type: string
+      ended_by:
+        example: "0"
+        type: string
+      ended_reason:
+        type: string
+      id:
+        example: "0"
+        type: string
+      reason:
+        type: string
+      revision:
+        example: "0"
+        type: string
+      risk_id:
+        example: "0"
+        type: string
+      valid_until:
         type: string
     type: object
   github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskWorkflowContext:
@@ -3856,6 +3975,32 @@ paths:
       summary: 按当前及派单时主部门读取已授权的派单统计
       tags:
       - risk
+  /api/v1/risk-items/false-positive:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 误报、抑制期限及回执身份
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskFalsePositiveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult'
+              type: object
+      summary: 关闭误报并记录限期抑制
+      tags:
+      - risk
   /api/v1/risk-items/ingest-receipts/{id}:
     get:
       parameters:
@@ -4175,6 +4320,58 @@ paths:
                   $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskReportResult'
               type: object
       summary: 合成来源上报（单条 FindingObservationV1 或 batch≤100）
+      tags:
+      - risk
+  /api/v1/risk-suppressions:
+    get:
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionList'
+              type: object
+      summary: 按主锚管理权限查询误报抑制
+      tags:
+      - risk
+  /api/v1/risk-suppressions/remove:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 抑制及当前修订
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionRemoveRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tracerbiubiubiu_zhuzhao_internal_model.RiskSuppressionActionResult'
+              type: object
+      summary: 终止误报抑制
       tags:
       - risk
   /api/v1/roles:

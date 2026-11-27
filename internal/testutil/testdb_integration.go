@@ -245,6 +245,8 @@ func SetupPostgresShared() (*pgxpool.Pool, func(), error) {
 			"000100_mock_directory_termination.up.sql",
 			"000101_b3_execution.up.sql",
 			"000102_review_notification_delivery.up.sql",
+			"000103_risk_ingest_batches.up.sql",
+			"000104_risk_false_positive.up.sql",
 			// ⚠ 维护纪律（W1 教训）：新迁移必须同步本清单——清单停在旧版时
 			// shared PG 集成测试（catalog 对账等）会以「路由×绑定漂移」形态全红，
 			// 且报错指向 missing/dead_binding 而非清单本身，极易误判。

@@ -168,10 +168,10 @@ func UpsertFamilyTx(ctx context.Context, tx pgx.Tx, scope, canonicalKeyHash stri
 	return id, nil
 }
 
-// FindItemIDByFamilyTx 家族现有周期（本轮不建回归代）。
+// FindItemIDByFamilyTx reads the newest cycle, including families predating the head pointer.
 func FindItemIDByFamilyTx(ctx context.Context, tx pgx.Tx, familyID int64) (int64, bool, error) {
 	var id int64
-	err := tx.QueryRow(ctx, `SELECT id FROM risk_items WHERE family_id=$1 ORDER BY id LIMIT 1`, familyID).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT id FROM risk_items WHERE family_id=$1 ORDER BY generation DESC LIMIT 1`, familyID).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, nil
 	}
@@ -181,15 +181,22 @@ func FindItemIDByFamilyTx(ctx context.Context, tx pgx.Tx, familyID int64) (int64
 	return id, true, nil
 }
 
-// LockObservedRiskItemsTx locks existing cycles in dispatch order. The caller
-// has already serialized each supplied family key with the source advisory lock.
+// LockObservedRiskItemsTx locks families and then their cycles in ID order,
+// matching the assignment workflow. The caller holds the source advisory locks.
 func LockObservedRiskItemsTx(ctx context.Context, tx pgx.Tx, scope string, schemaVersion int, keys []string) error {
+	if _, err := tx.Exec(ctx, `
+		SELECT id FROM risk_families
+		WHERE fingerprint_scope=$1 AND key_schema_version=$2 AND canonical_key_hash = ANY($3)
+		ORDER BY id FOR UPDATE`, scope, schemaVersion, keys); err != nil {
+		return err
+	}
 	rows, err := tx.Query(ctx, `
 		SELECT r.id FROM risk_items r
 		JOIN risk_families f ON f.id = r.family_id
 		WHERE f.fingerprint_scope = $1 AND f.key_schema_version = $2
 			AND f.canonical_key_hash = ANY($3)
-			AND r.id = (SELECT min(first.id) FROM risk_items first WHERE first.family_id = f.id)
+			AND r.id = (SELECT newest.id FROM risk_items newest WHERE newest.family_id = f.id
+				ORDER BY newest.generation DESC LIMIT 1)
 		ORDER BY r.id FOR UPDATE OF r`, scope, schemaVersion, keys)
 	if err != nil {
 		return err
@@ -202,20 +209,36 @@ func LockObservedRiskItemsTx(ctx context.Context, tx pgx.Tx, scope string, schem
 
 // InsertRiskItemTx 落风险周期行（human_key 由服务层生成后传入）。
 func InsertRiskItemTx(ctx context.Context, tx pgx.Tx, r *RiskItemRow) (int64, error) {
+	return insertRiskCycleTx(ctx, tx, r, 1)
+}
+
+// InsertRiskCycleAfterSuppressionTx moves a locked family to its next cycle.
+func InsertRiskCycleAfterSuppressionTx(ctx context.Context, tx pgx.Tx, r *RiskItemRow, previousID int64) (int64, error) {
+	var generation int64
+	if err := tx.QueryRow(ctx, `SELECT generation FROM risk_items WHERE id=$1 AND family_id=$2`,
+		previousID, r.FamilyID).Scan(&generation); err != nil {
+		return 0, err
+	}
+	return insertRiskCycleTx(ctx, tx, r, generation+1)
+}
+
+func insertRiskCycleTx(ctx context.Context, tx pgx.Tx, r *RiskItemRow, generation int64) (int64, error) {
 	var id int64
 	err := tx.QueryRow(ctx, `INSERT INTO risk_items
 		(human_key, family_id, status, revision, org_id, affected_org_id, owner_user_id,
 		 level, deadline, init_deadline, treatment, title, description, system_ref,
-		 finding_key, asset_provider, asset_external_id, evidence_refs, attributes, created_by)
-		VALUES ($1,$2,$3,1,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+		 finding_key, asset_provider, asset_external_id, evidence_refs, attributes, created_by, generation)
+		VALUES ($1,$2,$3,1,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 		RETURNING id`,
 		r.HumanKey, r.FamilyID, r.Status, r.OrgID, r.AffectedOrgID, r.OwnerUserID,
 		r.Level, r.Deadline, r.InitDeadline, r.Treatment, r.Title, r.Description, r.SystemRef,
-		r.FindingKey, r.AssetProvider, r.AssetExternalID, r.EvidenceRefs, r.Attributes, r.CreatedBy).Scan(&id)
+		r.FindingKey, r.AssetProvider, r.AssetExternalID, r.EvidenceRefs, r.Attributes, r.CreatedBy, generation).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("insert risk item: %w", err)
 	}
-	return id, nil
+	_, err = tx.Exec(ctx, `UPDATE risk_families SET current_cycle_id=$2, revision=revision+1, updated_at=clock_timestamp()
+		WHERE id=$1`, r.FamilyID, id)
+	return id, err
 }
 
 // LockRiskItemTx 锁定风险行（IAM 守卫之后、按稳定键→risk ID 锁序进入）。

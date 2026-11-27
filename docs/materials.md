@@ -52,6 +52,8 @@ B2 隔离实施的本机执行材料登记为 `g04-it1-20261122/stage3` 和 `g04
 
 ## 后续新增材料
 
+第 16 项续批材料使用 `evidence/phase6-step16-completion-20261127/`，保存冻结源码摘要、自动接续进程证据、误报与补核红绿、独占门禁和主线查验。[续批隔离验收](review/reports/phase6-step16-completion-2026-11-27.md)
+
 第 16 项首批材料使用 `evidence/phase6-scan-intake-20261127/`，保存合成扫描的独立进程旅程、冻结源码摘要、红绿回归和独占门禁。[首批隔离验收](review/reports/phase6-step16-scan-intake-2026-11-27.md)
 
 第 15 项复核消息材料使用 `evidence/phase6-notifications-20261127/`，保存候选校验值、独占门禁、真实 HTTP 断连与 Core 重启证据。 [本地候选验收](review/reports/phase6-step15-notifications-2026-11-27.md)

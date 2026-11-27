@@ -197,6 +197,16 @@ func (s *Service) OperationResult(ctx context.Context, operationID string, actor
 	if _, err := s.Detail(ctx, *row.ResultRiskID, actorID); err != nil {
 		return nil, err
 	}
+	switch row.Command {
+	case assessIdentityCommand, falsePositiveCommand, removeSuppressionCommand:
+		manage, err := repository.CanManageRiskItem(ctx, repository.IAMDB(ctx, s.db), *row.ResultRiskID, actorID)
+		if err != nil {
+			return nil, err
+		}
+		if !manage {
+			return nil, ErrRiskNotFound
+		}
+	}
 	result := receiptFromRow(row, true)
 	return &result, nil
 }

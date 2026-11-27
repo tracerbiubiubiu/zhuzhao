@@ -570,6 +570,12 @@ func provideApp(cfg *config.Config) (*App, func(), error) {
 		return nil, nil, err
 	}
 	app.riskReminder = riskCron
+	if cfg.RiskIngest.Enabled {
+		const jobName = "risk_intake_recovery"
+		worker := riskIntakeRecovery{service: riskService, sourceRef: cfg.RiskIngest.SourceRef}
+		app.riskIntake = service.NewCronScheduler(pool, jobName, worker, 5*time.Second, logger)
+		cronRegistry.Register(jobName, app.riskIntake)
+	}
 	if messageHTTP != nil {
 		worker := service.NewMessageDeliveryWorker(pool, mockCfg.Profile, messageHTTP, reviewCheck)
 		app.messageDelivery = service.NewCronScheduler(pool, "message_delivery", worker, 2*time.Second, logger)

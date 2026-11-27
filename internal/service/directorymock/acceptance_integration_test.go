@@ -78,7 +78,7 @@ func TestMockDirectoryBatchCLI(t *testing.T) {
 		assertDepartment(t, db, "scope-full", "dept-b", "Synthetic Beta", 3)
 	})
 
-	t.Run("partial records its failed page and can replay without touching committed rows", func(t *testing.T) {
+	t.Run("failed second page recovers in a new batch without rewriting committed departments", func(t *testing.T) {
 		seed := directoryBatch("scope-partial", "seed-1", "", "seed-cursor", `[
 			{"cursor":"","next_cursor":"","done":true,"records":[
 				{"external_id":"dept-a","display_name":"Synthetic Alpha","source_revision":1},
@@ -105,25 +105,53 @@ func TestMockDirectoryBatchCLI(t *testing.T) {
 		})
 		assertStoredReceipt(t, db, receipt)
 		assertScopeWatermark(t, db, "scope-partial", "seed-1", "seed-cursor")
-		assertDepartment(t, db, "scope-partial", "dept-a", "Synthetic Alpha Revised", 2)
-		assertDepartment(t, db, "scope-partial", "dept-new", "Synthetic New", 1)
+		updatedAt := assertDepartment(t, db, "scope-partial", "dept-a", "Synthetic Alpha Revised", 2)
+		newUpdatedAt := assertDepartment(t, db, "scope-partial", "dept-new", "Synthetic New", 1)
+		assertNoDepartment(t, db, "scope-partial", "dept-recovered")
 		if got := assertDepartment(t, db, "scope-partial", "dept-absent", "Synthetic Absent", 4); !got.Equal(absentUpdatedAt) {
 			t.Errorf("absent department timestamp changed from %v to %v", absentUpdatedAt, got)
 		}
 
 		recovery := directoryBatch("scope-partial", "recovery-1", "seed-1", "recovery-cursor", `[
-			{"cursor":"","next_cursor":"","done":true,"records":[
-				{"external_id":"dept-a","display_name":"Synthetic Alpha Revised","source_revision":2}]}
+			{"cursor":"","next_cursor":"page-2","done":false,"records":[
+				{"external_id":"dept-a","display_name":"Synthetic Alpha Revised","source_revision":2},
+				{"external_id":"dept-new","display_name":"Synthetic New","source_revision":1}]},
+			{"cursor":"page-2","next_cursor":"","done":true,"records":[
+				{"external_id":"dept-recovered","display_name":"Synthetic Recovered","source_revision":7}]}
 		]`)
-		recovered, _ := cli.receipt(t, recovery, 0)
+		recovered, recoveryStdout := cli.receipt(t, recovery, 0)
 		assertReceipt(t, recovered, batchReceipt{
-			ScopeRef: "scope-partial", BatchID: "recovery-1", Status: "succeeded", AppliedPages: 1,
+			ScopeRef: "scope-partial", BatchID: "recovery-1", Status: "succeeded", AppliedPages: 2,
 			BaselineBefore: "seed-1", BaselineAfter: "recovery-1", CursorAfter: "recovery-cursor",
-			Records: []recordResult{{ExternalID: "dept-a", SourceRevision: 2, Outcome: "unchanged"}},
+			Records: []recordResult{
+				{ExternalID: "dept-a", SourceRevision: 2, Outcome: "unchanged"},
+				{ExternalID: "dept-new", SourceRevision: 1, Outcome: "unchanged"},
+				{ExternalID: "dept-recovered", SourceRevision: 7, Outcome: "created"},
+			},
 		})
+		if recovered.RunID == receipt.RunID {
+			t.Fatal("completed recovery must have a separate run ID from the partial batch")
+		}
+		assertStoredReceipt(t, db, recovered)
+		assertStoredReceipt(t, db, receipt)
 		assertScopeWatermark(t, db, "scope-partial", "recovery-1", "recovery-cursor")
+		assertDepartment(t, db, "scope-partial", "dept-recovered", "Synthetic Recovered", 7)
+		if got := assertDepartment(t, db, "scope-partial", "dept-a", "Synthetic Alpha Revised", 2); !got.Equal(updatedAt) {
+			t.Errorf("recovery rewrote the previously updated department: %v became %v", updatedAt, got)
+		}
+		if got := assertDepartment(t, db, "scope-partial", "dept-new", "Synthetic New", 1); !got.Equal(newUpdatedAt) {
+			t.Errorf("recovery rewrote the previously created department: %v became %v", newUpdatedAt, got)
+		}
+		if got := assertDepartment(t, db, "scope-partial", "dept-absent", "Synthetic Absent", 4); !got.Equal(absentUpdatedAt) {
+			t.Errorf("recovery rewrote the absent department: %v became %v", absentUpdatedAt, got)
+		}
 
 		beforeReplay := snapshotDirectory(t, db)
+		replayedRecovery, replayRecoveryStdout := cli.receipt(t, recovery, 0)
+		assertReceipt(t, replayedRecovery, recovered)
+		if !bytes.Equal(recoveryStdout, replayRecoveryStdout) {
+			t.Error("recovery replay stdout differs from the original receipt")
+		}
 		replayed, replayStdout := cli.receipt(t, input, 3)
 		assertReceipt(t, replayed, receipt)
 		if !bytes.Equal(stdout, replayStdout) {
