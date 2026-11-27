@@ -41,22 +41,5 @@ func (f *B3Flow) drainExecution(ctx context.Context, run repository.B3Execution)
 	if !run.RemoteStarted {
 		return f.finish(ctx, run, "held", "integration_draining", nil)
 	}
-	return f.reconcileDrainUpdate(ctx, run)
-}
-
-func (f *B3Flow) reconcileDrainUpdate(ctx context.Context, run repository.B3Execution) error {
-	command, input, err := f.documentUpdateCommand(run)
-	if err != nil {
-		return f.unknownUpdate(ctx, run)
-	}
-	if err := f.authorize(ctx, run, f.policyModel, func(ctx context.Context) error {
-		return f.store.AuthorizeDocumentUpdate(ctx, run.ActorID, input)
-	}); err != nil {
-		return f.unknownUpdate(ctx, run)
-	}
-	result, err := f.al.LookupUpdate(ctx, command)
-	if err != nil {
-		return f.unknownUpdate(ctx, run)
-	}
-	return f.finish(ctx, run, "succeeded", "", result)
+	return f.reconcileUpdate(ctx, run)
 }

@@ -88,7 +88,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **菜单** | 菜单树/详情、用户菜单/权限码；词表与API绑定由迁移维护，生产运行时菜单CRUD已退役 | ✅ Phase 1底座 + Phase 4 W1只读边界 | `internal/service/menu_service.go` |
 | **第 10 项目录收口** | 合成直属主管、部门负责人、显式停用与会话撤销、批准映射及在办事实的撤部预览 | 第 10 项隔离交付候选 | `internal/service/directorymock`；[实施与验收](../planning/phase6-step10-delivery-plan.md) |
 | **改权事务审计** | `SetRoles`、`AssignMenus` 的操作回执、业务与成功事实同事务、按原事实补送 | 第 10 项隔离交付候选 | `internal/service/iam_receipt.go`、`iam_audit_delivery.go`；迁移 `000099` |
-| **合成参考资产查询（B1）** | 固定只读参考页、独立应用与 HTTP 查询来源、短期请求引用、当前角色/组织复核、有界分页和操作元数据审计 | 第 11 项隔离候选，专项运行结果见[验收记录](reports/phase6-step11-b1-validation-2026-11-26.md) | `internal/service/referenceassets/service.go` 的 `Read` 和 `Admit`，`internal/middleware/logger.go` 的 `isMetadataOnlyLogRoute`，`pkg/referencequery`，`cmd/reference-assets-app`，`cmd/reference-assets-source` |
+| **合成参考资产查询（B1）** | 固定只读参考页、独立应用与 HTTP 查询来源、短期请求引用、当前角色/组织复核、有界分页和操作元数据审计。补修候选区分本地会话与服务认证、查询合同错误。 | 第 11 项已合主线，原专项见[验收记录](reports/phase6-step11-b1-validation-2026-11-26.md) | `internal/service/referenceassets/service.go` 的 `Read` 和 `Admit`，`internal/middleware/logger.go` 的 `isMetadataOnlyLogRoute`，`pkg/referencequery`，`cmd/reference-assets-app`，`cmd/reference-assets-source` |
 | **审计** | 操作日志中间件、同步写、登录审计、事件表 FK 去 CASCADE | ✅ Phase 1 + 2c（000014 去 CASCADE + deleted 事件） | `internal/middleware/audit.go` `internal/service/audit_service.go` |
 | **鉴权 L1** | 路由级Casbin RBAC（BFS角色展开+超管通配）；IAM敏感写当前资格同事务核验，策略投影失败拒绝旧缓存；受控重启恢复SOP及撤权403/合法200实证 | ✅ Phase 1；pass8当前出口本地验证通过，完整C05/自动恢复后继 | `internal/middleware/casbin.go`、`policy_projection.go`；`internal/repository/iam_guard.go`、`docs/ops/runbook.md` §6.3 |
 | **鉴权 L2/L3** | 资源级鉴权：属主/assigned/scope/虚拟组/BFS 三源/组织内委托 | ✅ Phase 2 | `internal/service/ticket/resource.go` `scope_resolver.go` |
@@ -122,7 +122,7 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 | **任务面人性化（P5-S4）** | 动作清单端点+提交 fail-fast 21010 + CronBuilder 双模式 17 测 + 死信对账结论=三 Tab 维持 | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/jobs/` `migrations/000066` |
 | **威胁情报缓存代理（P5-S9）** | intel_cache TTL 7/30 天 config 化 + singleflight + 429 降级矩阵（8 子测）+ intel_cleanup cron | ✅ 2026-10-24（🔵 待走查） | `internal/pkg/threatintel/` `migrations/000067` |
 | **语义引擎（P5-S3a）** | transition 端点 + condition/validator（transition_meta "from>to" 键）+ assignment_rules 自动分派 + ActionRegistry 四动作（notify/cc/reassign/spawn_task）+ SLA0.5 deadline 激活 | ✅ 2026-10-24（🔵 待走查） | `internal/service/ticket/` `migrations/000068-000071` |
-| **B3 工单、Taskrunner 与 ActiveList 联动** | 原工单任务回执、清单条件写与持久变化触发只读任务。执行前复核原流转职责和当前范围，停用联动时原工单保留受权历史。普通任务的详情、取消和重试按已保存的动作区分，支持历史自选任务号。已发送的清单写在队列取消或命令到期后按原号对账。启动时检查 B3 内部路由冲突和 Taskrunner 出站签名，并按实际凭据核对 B1、B3 隔离。 | 2026-11-26 固定候选的三条隔离链通过 | [第 12–14 项复验证据](reports/phase6-b3-steps12-14-validation-2026-11-26.md) |
+| **B3 工单、Taskrunner 与 ActiveList 联动** | 原工单任务回执、清单条件写与持久变化触发只读任务。执行前复核原流转职责和当前范围，停用联动时原工单保留受权历史。普通任务的详情、取消和重试按已保存的动作区分，支持历史自选任务号。补修候选以实际 Taskrunner 签名身份认领原任务，已发送清单写只查原回执。排空模式停接并保留现有回执和原号对账。启动检查 B3 路由与 B1、B3 签名隔离。 | 第 12–14 项已合主线，补修候选见本页 §6 | [第 12–14 项复验证据](reports/phase6-b3-steps12-14-validation-2026-11-26.md) |
 
 ### 工程与验证现状
 
@@ -313,6 +313,10 @@ Go 编写的**模块化单体 IAM + 工单系统**：三层鉴权（路由 RBAC 
 ---
 
 ## 6. 当前健康状态（遗留问题追踪）
+
+### 2026-11-27 第 11–14 项复验修复
+
+四仓第 11–14 项原交付已合入主线。Core 补修候选完善实际签名身份的原号对账和在途排空。工单预检与发布校验固定任务参数。B1 将服务认证失败归为依赖不可用，已准入的合同不符归为 409。原验收报告继续记录当时的制品和范围。 [修复计划](../planning/phase6-b3-b1-repair-plan.md) · [B3 停接操作](../ops/runbook.md#66-b3-停接与原号对账)
 
 ### 2026-11-26 B3 第 12–14 项候选
 
